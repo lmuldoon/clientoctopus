@@ -1,0 +1,4 @@
+/* Minimal reset before the portal bundle injects its own styles */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: #F8F7F5; }
+#co-portal-root { min-height: 100vh; }

@@ -1,0 +1,531 @@
+/* ─── Google Font ─────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
+
+/* ─── Variables ───────────────────────────────────────────────────────── */
+#co-admin-wrap {
+    --navy:      #0F172A;
+    --navy-mid:  #1E293B;
+    --navy-dim:  #334155;
+    --indigo:    #6366F1;
+    --indigo-lt: #818CF8;
+    --indigo-bg: #EEF2FF;
+    --emerald:   #10B981;
+    --emerald-bg:#ECFDF5;
+    --amber:     #F59E0B;
+    --amber-bg:  #FFFBEB;
+    --red:       #EF4444;
+    --red-bg:    #FEF2F2;
+    --slate-50:  #F8FAFC;
+    --slate-100: #F1F5F9;
+    --slate-200: #E2E8F0;
+    --slate-400: #94A3B8;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1E293B;
+    --white:     #FFFFFF;
+    --radius:    12px;
+    --radius-sm: 8px;
+    --shadow:    0 1px 3px rgba(15,23,42,.06), 0 4px 16px rgba(15,23,42,.08);
+    --shadow-lg: 0 4px 6px rgba(15,23,42,.05), 0 10px 40px rgba(15,23,42,.12);
+    font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--slate-800);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Reset WP admin styles inside our wrapper ────────────────────────── */
+#co-admin-wrap *, #co-admin-wrap *::before, #co-admin-wrap *::after {
+    box-sizing: border-box;
+}
+#co-admin-wrap h2, #co-admin-wrap h3, #co-admin-wrap h4, #co-admin-wrap ul, #co-admin-wrap li {
+    margin: 0; padding: 0; font-size: inherit; font-weight: inherit;
+    color: inherit; line-height: inherit;
+}
+#co-admin-wrap a { text-decoration: none; }
+
+/* ─── Layout ──────────────────────────────────────────────────────────── */
+#co-admin-wrap {
+    padding: 32px 28px 64px;
+}
+
+/* ─── Top Header ──────────────────────────────────────────────────────── */
+.co-header {
+    margin-bottom: 28px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+.co-brand { display: flex; flex-direction: column; }
+.co-brand-icon { display: none; }
+.co-brand-name {
+    font-family: 'Archivo', -apple-system, sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin: 0;
+}
+.co-brand-tagline {
+    font-size: 14px;
+    color: var(--slate-400);
+    margin: 6px 0 0;
+}
+.co-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ─── Plan Badge ──────────────────────────────────────────────────────── */
+.co-plan-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.co-plan-badge.free   { background: var(--slate-100); color: var(--slate-600); }
+.co-plan-badge.pro    { background: var(--indigo-bg);  color: var(--indigo); }
+.co-plan-badge.agency { background: var(--emerald-bg); color: var(--emerald); }
+.co-plan-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.8;
+}
+
+/* ─── Upgrade Button ──────────────────────────────────────────────────── */
+.co-btn-upgrade {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--indigo);
+    color: #fff !important;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Archivo', sans-serif;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(99,102,241,.4);
+    white-space: nowrap;
+}
+.co-btn-upgrade:hover {
+    background: #4F46E5;
+    color: #fff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(99,102,241,.5);
+}
+.co-btn-upgrade svg { width: 14px; height: 14px; stroke: currentColor; }
+
+/* ─── Grid Layouts ────────────────────────────────────────────────────── */
+.co-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.co-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+    .co-grid-2 { grid-template-columns: 1fr; }
+    .co-grid-4 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ─── Cards ───────────────────────────────────────────────────────────── */
+.co-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--slate-200);
+    padding: 24px;
+}
+.co-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 16px;
+}
+
+/* ─── Plan Overview Card ──────────────────────────────────────────────── */
+.co-plan-card {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+.co-plan-name {
+    font-family: 'Archivo', -apple-system, sans-serif;
+    font-size: 32px;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+    font-weight: 800;
+}
+.co-plan-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,.5);
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+}
+.co-plan-limits {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    z-index: 1;
+}
+.co-plan-cta {
+    margin-top: 24px;
+    position: relative;
+    z-index: 1;
+}
+.co-btn-upgrade-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: var(--radius-sm);
+    background: var(--indigo);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Archivo', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+    box-shadow: 0 2px 10px rgba(99,102,241,.5);
+}
+.co-btn-upgrade-card:hover {
+    background: #4F46E5;
+    color: #fff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(99,102,241,.6);
+}
+
+/* ─── Progress Bars ───────────────────────────────────────────────────── */
+.co-limit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+}
+.co-limit-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,.7);
+}
+.co-limit-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,.9);
+    font-variant-numeric: tabular-nums;
+}
+.co-bar-track {
+    height: 5px;
+    background: rgba(255,255,255,.12);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.co-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--indigo-lt), var(--indigo));
+    width: 0; /* animated by JS */
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.co-bar-fill.unlimited {
+    background: linear-gradient(90deg, var(--emerald), #059669);
+    width: 100% !important;
+}
+.co-bar-fill.warn {
+    background: linear-gradient(90deg, #FCD34D, var(--amber));
+}
+.co-bar-fill.danger {
+    background: linear-gradient(90deg, #FCA5A5, var(--red));
+}
+
+/* Inline (white-background) progress bars */
+.co-bar-track.light { background: var(--slate-100); }
+.co-bar-fill.light-indigo {
+    background: linear-gradient(90deg, var(--indigo-lt), var(--indigo));
+}
+.co-limit-label.dark  { color: var(--slate-600); }
+.co-limit-count.dark  { color: var(--slate-700); }
+
+/* ─── Feature Grid ────────────────────────────────────────────────────── */
+.co-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+@media (max-width: 900px) {
+    .co-feature-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.co-feature-item {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    position: relative;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    cursor: default;
+}
+.co-feature-item.co-active {
+    background: var(--white);
+    border-color: rgba(99,102,241,.3);
+}
+.co-feature-item.co-active:hover {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.08);
+}
+.co-feature-item.co-locked {
+    opacity: 0.65;
+}
+.co-feature-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+}
+.co-active .co-feature-icon {
+    background: var(--indigo-bg);
+}
+.co-active .co-feature-icon svg {
+    stroke: var(--indigo);
+}
+.co-locked .co-feature-icon {
+    background: var(--slate-100);
+}
+.co-locked .co-feature-icon svg {
+    stroke: var(--slate-400);
+}
+.co-feature-icon svg {
+    width: 18px; height: 18px;
+}
+.co-feature-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-700);
+    margin-bottom: 3px;
+}
+.co-feature-note {
+    font-size: 11.5px;
+    color: var(--slate-400);
+}
+.co-active .co-feature-name { color: var(--slate-800); }
+.co-active .co-feature-note { color: var(--slate-500); }
+
+/* Lock badge */
+.co-lock-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 22px; height: 22px;
+    background: var(--slate-200);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+}
+.co-lock-badge svg {
+    width: 11px; height: 11px;
+    stroke: var(--slate-400);
+    stroke-width: 2;
+}
+
+/* Upgrade required tooltip */
+.co-feature-item[data-tooltip] {
+    position: relative;
+}
+.co-feature-item[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--navy);
+    color: rgba(255,255,255,.9);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+    z-index: 10;
+}
+.co-feature-item[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border: 5px solid transparent;
+    border-top-color: var(--navy);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+    z-index: 10;
+}
+.co-feature-item[data-tooltip]:hover::after,
+.co-feature-item[data-tooltip]:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Active check badge */
+.co-check-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 22px; height: 22px;
+    background: var(--emerald-bg);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+}
+.co-check-badge svg {
+    width: 11px; height: 11px;
+    stroke: var(--emerald);
+    stroke-width: 2.5;
+}
+
+/* ─── Stats Mini Cards ────────────────────────────────────────────────── */
+.co-stat-card {
+    background: var(--white);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+}
+.co-stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+.co-stat-card.indigo::after { background: linear-gradient(90deg, var(--indigo), var(--indigo-lt)); }
+.co-stat-card.emerald::after { background: linear-gradient(90deg, var(--emerald), #34D399); }
+.co-stat-card.amber::after { background: linear-gradient(90deg, var(--amber), #FCD34D); }
+.co-stat-card.navy::after { background: linear-gradient(90deg, var(--navy-dim), var(--navy-mid)); }
+
+.co-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+}
+.co-stat-value {
+    font-family: 'Archivo', -apple-system, sans-serif;
+    font-size: 28px;
+    color: var(--slate-800);
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+.co-stat-meta {
+    font-size: 12px;
+    color: var(--slate-400);
+    margin-top: -4px;
+}
+.co-stat-bar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* ─── Quick Actions ───────────────────────────────────────────────────── */
+.co-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.co-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    border: 1px solid var(--slate-200);
+    color: var(--slate-700) !important;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Archivo', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+    text-decoration: none;
+}
+.co-action-btn:hover {
+    border-color: var(--indigo);
+    color: var(--indigo) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.08);
+    background: var(--indigo-bg);
+}
+.co-action-btn svg {
+    width: 14px; height: 14px;
+    stroke: currentColor;
+    flex-shrink: 0;
+}
+.co-action-btn.primary {
+    background: var(--indigo);
+    border-color: var(--indigo);
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(99,102,241,.3);
+}
+.co-action-btn.primary:hover {
+    background: #4F46E5;
+    border-color: #4F46E5;
+    color: #fff !important;
+    box-shadow: 0 4px 16px rgba(99,102,241,.4);
+}
+
+/* ─── Section Title ───────────────────────────────────────────────────── */
+.co-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-700);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.co-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--slate-200);
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────── */
+@keyframes co-fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.co-animate { animation: co-fade-up 0.4s ease both; }
+.co-animate-1 { animation-delay: 0.05s; }
+.co-animate-2 { animation-delay: 0.10s; }
+.co-animate-3 { animation-delay: 0.15s; }
+.co-animate-4 { animation-delay: 0.20s; }
+.co-animate-5 { animation-delay: 0.25s; }

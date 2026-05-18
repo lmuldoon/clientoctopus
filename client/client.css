@@ -1,0 +1,33 @@
+/* Minimal body reset to avoid flash of unstyled content before React mounts */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+	margin: 0;
+	padding: 0;
+	background: #F8F7F5;
+	font-family: -apple-system, 'DM Sans', sans-serif;
+	min-height: 100vh;
+}
+#co-client-root {
+	min-height: 100vh;
+}
+/* Loading indicator shown before React hydrates */
+.co-preload {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	flex-direction: column;
+	gap: 16px;
+	color: #9CA3AF;
+	font-size: 14px;
+	font-family: -apple-system, sans-serif;
+}
+.co-preload__spinner {
+	width: 32px;
+	height: 32px;
+	border: 2.5px solid #E5E7EB;
+	border-top-color: #6366F1;
+	border-radius: 50%;
+	animation: co-pre-spin 0.8s linear infinite;
+}
+@keyframes co-pre-spin { to { transform: rotate(360deg); } }

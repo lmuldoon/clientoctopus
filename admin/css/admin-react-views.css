@@ -1,0 +1,14 @@
+/* Shared styles for all Client Octopus React-powered admin views. */
+
+@keyframes co-spin {
+	from { transform: rotate(0deg); }
+	to   { transform: rotate(360deg); }
+}
+
+/* Hide loading fallback once React has mounted. */
+#co-proposals-root:not(:empty) > #co-loading-fallback:not(:only-child) { display: none; }
+#co-projects-root:not(:empty) > #co-loading-fallback:not(:only-child) { display: none; }
+#co-webhooks-root:not(:empty) > #co-loading-fallback:not(:only-child) { display: none; }
+#co-analytics-root:not(:empty) > #co-loading-fallback:not(:only-child) { display: none; }
+#co-clients-root:not(:empty) > #co-loading-fallback:not(:only-child) { display: none; }
+#co-team-root:not(:empty) > #co-loading-fallback:not(:only-child) { display: none; }
