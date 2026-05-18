@@ -7,7 +7,7 @@
  * Props: { onViewProject }
  */
 import { useState, useEffect } from '@wordpress/element';
-import { cfFetch } from '../ProjectsApp';
+import { coFetch } from '../ProjectsApp';
 
 const STATUS_TABS = [
 	{ id: '',          label: 'All'       },
@@ -230,7 +230,7 @@ export default function ProjectList( { onViewProject } ) {
 		setLoading( true );
 		setError( null );
 		try {
-			const data = await cfFetch( 'projects' );
+			const data = await coFetch( 'projects' );
 			setProjects( data.projects || [] );
 		} catch ( e ) {
 			setError( e.message );

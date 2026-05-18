@@ -1,5 +1,5 @@
 /**
- * ClientFlow App Root
+ * Client Octopus App Root
  *
  * Manages top-level view state: list ↔ wizard.
  * Injects global CSS variables and font import once on mount.
@@ -80,7 +80,7 @@ function injectGlobalStyles() {
 }
 
 // ─── API helper ───────────────────────────────────────────────────────────────
-export async function cfFetch( path, options = {} ) {
+export async function coFetch( path, options = {} ) {
 	const { apiUrl, nonce } = window.coData || {};
 	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
 
@@ -120,7 +120,7 @@ export default function App() {
 		setLoading( true );
 		setError( null );
 		try {
-			const data = await cfFetch( 'proposals' );
+			const data = await coFetch( 'proposals' );
 			setProposals( data.proposals || [] );
 		} catch ( e ) {
 			setError( e.message );
@@ -131,7 +131,7 @@ export default function App() {
 
 	async function handleEditProposal( id ) {
 		try {
-			const data = await cfFetch( `proposals/${ id }` );
+			const data = await coFetch( `proposals/${ id }` );
 			setEditingProposal( data.proposal );
 			setView( 'wizard' );
 		} catch ( e ) {
@@ -157,7 +157,7 @@ export default function App() {
 
 	async function handleEditContent( id ) {
 		try {
-			const data = await cfFetch( `proposals/${ id }` );
+			const data = await coFetch( `proposals/${ id }` );
 			setEditingContentProposal( data.proposal );
 			setView( 'edit-content' );
 		} catch ( e ) {

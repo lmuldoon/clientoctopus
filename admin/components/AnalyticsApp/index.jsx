@@ -1,7 +1,7 @@
 /**
  * AnalyticsApp
  *
- * Analytics dashboard for ClientFlow admins.
+ * Analytics dashboard for Client Octopus admins.
  * KPI cards, revenue chart, proposal performance, activity feed.
  */
 import { useState, useEffect, useCallback } from '@wordpress/element';

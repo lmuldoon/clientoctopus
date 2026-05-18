@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useRef } from '@wordpress/element';
-import { cfFetch } from '../../App';
+import { coFetch } from '../../App';
 import {
 	parseSections,
 	moveSectionUp,
@@ -1274,7 +1274,7 @@ export default function ContentEditor( { proposal, onSave, onCancel } ) {
 
 		setAiStates( prev => ( { ...prev, [ index ]: 'loading' } ) );
 		try {
-			const data = await cfFetch( 'ai/process', {
+			const data = await coFetch( 'ai/process', {
 				method: 'POST',
 				body: JSON.stringify( { action, text } ),
 			} );
@@ -1303,7 +1303,7 @@ export default function ContentEditor( { proposal, onSave, onCancel } ) {
 
 	async function handleGenerate( brief ) {
 		try {
-			const data = await cfFetch( 'ai/process', {
+			const data = await coFetch( 'ai/process', {
 				method: 'POST',
 				body: JSON.stringify( { action: 'generate', text: brief, brief } ),
 			} );
@@ -1319,7 +1319,7 @@ export default function ContentEditor( { proposal, onSave, onCancel } ) {
 		setSaving( true );
 		setSaveError( null );
 		try {
-			const data = await cfFetch( `proposals/${ proposal.id }/update`, {
+			const data = await coFetch( `proposals/${ proposal.id }/update`, {
 				method: 'POST',
 				body: JSON.stringify( { content: buildContentPayload( proposal, sections ) } ),
 			} );

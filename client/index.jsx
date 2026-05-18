@@ -1,7 +1,7 @@
 /**
- * ClientFlow — Client-facing entry point.
+ * Client Octopus — Client-facing entry point.
  *
- * Reads window.cfClientData.pageType to decide which top-level component to
+ * Reads window.coClientData.pageType to decide which top-level component to
  * mount:
  *   'proposal' (default) → <ProposalClientView />
  *   'success'            → <PaymentSuccess />
@@ -27,10 +27,10 @@ window.injectStyles = function ( id, css ) {
 const { render } = wp.element;
 
 const root       = document.getElementById( 'co-client-root' );
-const cfData     = window.cfClientData || {};
-const pageType   = cfData.pageType   || 'proposal';
-const token      = cfData.token      || '';
-const sessionId  = cfData.sessionId  || '';
+const coData     = window.coClientData || {};
+const pageType   = coData.pageType   || 'proposal';
+const token      = coData.token      || '';
+const sessionId  = coData.sessionId  || '';
 
 if ( root ) {
 	if ( pageType === 'success' ) {

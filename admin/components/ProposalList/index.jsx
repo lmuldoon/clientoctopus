@@ -13,7 +13,7 @@
  *   onRefresh       {fn}
  */
 import { useState, useMemo } from '@wordpress/element';
-import { cfFetch } from '../../App';
+import { coFetch } from '../../App';
 
 const TABS = [
 	{ id: 'all',       label: 'All'       },
@@ -771,7 +771,7 @@ export default function ProposalList( {
 		if ( ! window.confirm( 'Delete this proposal? This cannot be undone.' ) ) return;
 		setDeletingId( id );
 		try {
-			await cfFetch( `proposals/${ id }`, { method: 'DELETE' } );
+			await coFetch( `proposals/${ id }`, { method: 'DELETE' } );
 			onProposalDeleted( id );
 		} catch ( e ) {
 			alert( e.message || 'Delete failed.' );
@@ -799,7 +799,7 @@ export default function ProposalList( {
 		setSendModal( m => ( { ...m, error: '' } ) );
 		setSendingId( proposal.id );
 		try {
-			await cfFetch( `proposals/${ proposal.id }/send`, {
+			await coFetch( `proposals/${ proposal.id }/send`, {
 				method: 'POST',
 				body:   JSON.stringify( { client_email: email.trim(), email_subject: subject.trim() } ),
 			} );
@@ -819,7 +819,7 @@ export default function ProposalList( {
 
 	async function handleDuplicate( id ) {
 		try {
-			await cfFetch( `proposals/${ id }/duplicate`, { method: 'POST' } );
+			await coFetch( `proposals/${ id }/duplicate`, { method: 'POST' } );
 			setActiveTab( 'draft' );
 			setPage( 1 );
 			setSuccessMsg( '✓ Proposal cloned — it now appears in the Draft tab.' );
@@ -833,7 +833,7 @@ export default function ProposalList( {
 	async function handleMarkCompleted( id ) {
 		if ( ! window.confirm( 'Mark this proposal as completed? This cannot be undone.' ) ) return;
 		try {
-			await cfFetch( `proposals/${ id }/update`, {
+			await coFetch( `proposals/${ id }/update`, {
 				method: 'POST',
 				body:   JSON.stringify( { status: 'completed' } ),
 			} );
@@ -1136,7 +1136,7 @@ export default function ProposalList( {
 							: activeTab !== 'all'
 							? `You have no ${ activeTab } proposals yet.`
 							: window.coData?.onboardingComplete === false
-							? <>New to ClientFlow? <a href="admin.php?page=clientoctopus-setup" style={ { color: 'var(--co-indigo)' } }>Complete your setup</a> then create your first proposal.</>
+							? <>New to Client Octopus? <a href="admin.php?page=clientoctopus-setup" style={ { color: 'var(--co-indigo)' } }>Complete your setup</a> then create your first proposal.</>
 							: 'Create your first proposal to get started.' }
 					</p>
 					{ ! search && activeTab === 'all' && ! isAtLimit && (

@@ -244,7 +244,7 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 						autocomplete="off"
 						spellcheck="false"
 					>
-					<div class="co-logo-preview-wrap" id="co-logo-preview-wrap" style="<?php echo $logo_url ? '' : 'display:none;'; ?>">
+					<div class="co-logo-preview-wrap" id="co-logo-preview-wrap" style="<?php echo esc_attr( $logo_url ? '' : 'display:none;' ); ?>">
 						<span class="co-logo-preview-label"><?php esc_html_e( 'Preview', 'clientoctopus' ); ?></span>
 						<img id="co-logo-preview" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Logo preview', 'clientoctopus' ); ?>">
 					</div>

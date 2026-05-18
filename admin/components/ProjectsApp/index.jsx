@@ -63,7 +63,7 @@ function injectGlobalStyles() {
 	document.head.appendChild( el );
 }
 
-export async function cfFetch( path, options = {} ) {
+export async function coFetch( path, options = {} ) {
 	const { apiUrl, nonce } = window.coData || {};
 	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
 

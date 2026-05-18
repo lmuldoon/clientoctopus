@@ -548,7 +548,7 @@ function WelcomeStep() {
 	return (
 		<div>
 			<p className="co-sw-step-num">Getting Started</p>
-			<h1 className="co-sw-heading">Welcome to ClientFlow</h1>
+			<h1 className="co-sw-heading">Welcome to Client Octopus</h1>
 			<p className="co-sw-sub">
 				The complete client management toolkit — proposals, payments, and projects in one WordPress plugin.
 			</p>
@@ -718,7 +718,7 @@ function DoneStep() {
 			<p className="co-sw-step-num">Setup Complete</p>
 			<h1 className="co-sw-heading">You're all set!</h1>
 			<p className="co-sw-sub">
-				ClientFlow is configured and ready to use. Create your first proposal to start winning clients.
+				Client Octopus is configured and ready to use. Create your first proposal to start winning clients.
 			</p>
 			<div className="co-sw-done-actions">
 				<a
@@ -837,7 +837,7 @@ export default function SetupWizard() {
 							<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
 						</svg>
 					</div>
-					<span className="co-sw-logo-name">ClientFlow</span>
+					<span className="co-sw-logo-name">Client Octopus</span>
 				</div>
 
 				<div className="co-sw-steps">

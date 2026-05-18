@@ -17,7 +17,7 @@ import TemplateSelector from '../TemplateSelector';
 import ClientDetailsForm from '../ClientDetailsForm';
 import ProposalSettings from '../ProposalSettings';
 import PricingSetup from '../PricingSetup';
-import { cfFetch } from '../../App';
+import { coFetch } from '../../App';
 
 const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€', CAD: '$', AUD: '$' };
 
@@ -484,7 +484,7 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 				? `proposals/${ initialProposal.id }/update-wizard`
 				: 'proposals/create';
 
-			const result = await cfFetch( endpoint, {
+			const result = await coFetch( endpoint, {
 				method: 'POST',
 				body:   JSON.stringify( body ),
 			} );

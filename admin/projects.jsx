@@ -1,5 +1,5 @@
 /**
- * ClientFlow Projects — React Entry Point
+ * Client Octopus Projects — React Entry Point
  *
  * Mounts the ProjectsApp component into #co-projects-root.
  */

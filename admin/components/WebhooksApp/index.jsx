@@ -1,11 +1,11 @@
 /**
  * WebhooksApp
  *
- * Outbound webhook management for ClientFlow Pro/Agency accounts.
+ * Outbound webhook management for Client Octopus Pro/Agency accounts.
  * Add, edit, enable/disable, test, and delete webhook endpoints.
  */
 import { useState, useEffect, useCallback, useRef } from '@wordpress/element';
-import { cfFetch } from '../../App.jsx';
+import { coFetch } from '../../App.jsx';
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -331,7 +331,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleToggle = async ( enabled ) => {
 		setToggling( true );
 		try {
-			const res = await cfFetch( `webhooks/${ webhook.id }`, {
+			const res = await coFetch( `webhooks/${ webhook.id }`, {
 				method: 'PATCH',
 				body: JSON.stringify( { enabled } ),
 			} );
@@ -343,7 +343,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleSave = async ( data ) => {
 		setSaving( true );
 		try {
-			const res = await cfFetch( `webhooks/${ webhook.id }`, {
+			const res = await coFetch( `webhooks/${ webhook.id }`, {
 				method: 'PATCH',
 				body: JSON.stringify( data ),
 			} );
@@ -356,7 +356,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleTest = async () => {
 		setTestState( 'loading' );
 		try {
-			const res = await cfFetch( `webhooks/${ webhook.id }/test`, { method: 'POST' } );
+			const res = await coFetch( `webhooks/${ webhook.id }/test`, { method: 'POST' } );
 			setTestState( { ok: res.success, msg: res.message } );
 		} catch ( e ) {
 			setTestState( { ok: false, msg: e.message || 'Request failed.' } );
@@ -367,7 +367,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleDelete = async () => {
 		if ( ! confirming ) { setConfirming( true ); return; }
 		try {
-			await cfFetch( `webhooks/${ webhook.id }`, { method: 'DELETE' } );
+			await coFetch( `webhooks/${ webhook.id }`, { method: 'DELETE' } );
 			onDelete( webhook.id );
 		} catch {}
 		setConfirming( false );
@@ -463,7 +463,7 @@ export default function WebhooksApp() {
 	const load = useCallback( async () => {
 		setLoading( true );
 		try {
-			const res = await cfFetch( 'webhooks' );
+			const res = await coFetch( 'webhooks' );
 			setWebhooks( res.webhooks || [] );
 		} catch ( e ) {
 			setError( e.message || 'Failed to load webhooks.' );
@@ -477,7 +477,7 @@ export default function WebhooksApp() {
 		setSaving( true );
 		setNewWebhookSecret( null );
 		try {
-			const res = await cfFetch( 'webhooks', {
+			const res = await coFetch( 'webhooks', {
 				method: 'POST',
 				body: JSON.stringify( data ),
 			} );
@@ -518,7 +518,7 @@ export default function WebhooksApp() {
 			{ ! canUse && (
 				<div className="co-wh-upgrade">
 					<p className="co-wh-upgrade-title">Unlock Outbound Webhooks</p>
-					<p className="co-wh-upgrade-sub">Connect ClientFlow to Zapier, Make, Slack, and 7,000+ other tools. Available on Pro and Agency plans.</p>
+					<p className="co-wh-upgrade-sub">Connect Client Octopus to Zapier, Make, Slack, and 7,000+ other tools. Available on Pro and Agency plans.</p>
 					<a href="https://clientoctopus.com/pricing" target="_blank" rel="noreferrer" className="co-wh-btn co-wh-btn--primary" style={{ textDecoration: 'none' }}>
 						Upgrade Plan
 					</a>
@@ -541,7 +541,7 @@ export default function WebhooksApp() {
 						<span className="co-wh-secret-val">{ newWebhookSecret }</span>
 						<button className="co-wh-btn co-wh-btn--ghost co-wh-btn--sm" onClick={ () => { navigator.clipboard.writeText( newWebhookSecret ); } }>Copy</button>
 					</div>
-					<p className="co-wh-secret-note">Use this secret to verify the <code>X-ClientFlow-Signature</code> header on incoming requests. It won't be shown again.</p>
+					<p className="co-wh-secret-note">Use this secret to verify the <code>X-ClientOctopus-Signature</code> header on incoming requests. It won't be shown again.</p>
 				</div>
 			) }
 

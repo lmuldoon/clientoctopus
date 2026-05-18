@@ -1,5 +1,5 @@
 /**
- * ClientFlow Analytics — React Entry Point
+ * Client Octopus Analytics — React Entry Point
  *
  * Mounts the AnalyticsApp component into #co-analytics-root.
  */

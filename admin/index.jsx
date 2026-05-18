@@ -1,5 +1,5 @@
 /**
- * ClientFlow Admin — React Entry Point
+ * Client Octopus Admin — React Entry Point
  *
  * Mounts the App component into #co-proposals-root.
  * Uses @wordpress/element (React wrapper) for WP compatibility.

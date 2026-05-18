@@ -8,7 +8,7 @@
  * Props: { projectId }
  */
 import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
-import { cfFetch } from '../ProjectsApp';
+import { coFetch } from '../ProjectsApp';
 
 function injectStyles( id, css ) {
 	if ( document.getElementById( id ) ) return;
@@ -349,7 +349,7 @@ export default function ProjectMessages( { projectId, onUnreadChange } ) {
 	const fetchMessages = useCallback( async ( silent = false ) => {
 		if ( ! silent ) setLoading( true );
 		try {
-			const data = await cfFetch( `projects/${ projectId }/messages` );
+			const data = await coFetch( `projects/${ projectId }/messages` );
 			const msgs = data.messages || [];
 			setMessages( msgs );
 			if ( onUnreadChange ) onUnreadChange( 0 ); // tab opened = read
@@ -393,7 +393,7 @@ export default function ProjectMessages( { projectId, onUnreadChange } ) {
 		setSending( true );
 		setError( null );
 		try {
-			const data = await cfFetch( `projects/${ projectId }/messages`, {
+			const data = await coFetch( `projects/${ projectId }/messages`, {
 				method: 'POST',
 				body:   JSON.stringify( { message: trimmed } ),
 			} );
@@ -420,7 +420,7 @@ export default function ProjectMessages( { projectId, onUnreadChange } ) {
 
 	async function handleDelete( mid ) {
 		try {
-			await cfFetch( `projects/${ projectId }/messages/${ mid }`, { method: 'DELETE' } );
+			await coFetch( `projects/${ projectId }/messages/${ mid }`, { method: 'DELETE' } );
 			setMessages( prev => prev.filter( m => m.id !== mid ) );
 		} catch ( err ) {
 			setError( err.message || 'Delete failed.' );

@@ -1,7 +1,7 @@
 /**
  * TeamApp
  *
- * Team seat management for ClientFlow Agency accounts.
+ * Team seat management for Client Octopus Agency accounts.
  * Displays seat usage, member list, and an invite form.
  */
 import { useState, useEffect, useCallback } from '@wordpress/element';
@@ -361,7 +361,7 @@ function injectStyles() {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function cfFetch( endpoint, options = {} ) {
+function coFetch( endpoint, options = {} ) {
 	const { apiUrl, nonce } = window.coData || {};
 	return fetch( apiUrl + endpoint, {
 		headers: {
@@ -407,7 +407,7 @@ export default function TeamApp() {
 	const loadMembers = useCallback( async () => {
 		setLoading( true );
 		try {
-			const data = await cfFetch( 'team/members' );
+			const data = await coFetch( 'team/members' );
 			if ( data.members ) {
 				setMembers( data.members );
 				setSeatsUsed( data.seats_used );
@@ -432,7 +432,7 @@ export default function TeamApp() {
 		setInviting( true );
 		setNotice( null );
 		try {
-			const data = await cfFetch( 'team/invite', {
+			const data = await coFetch( 'team/invite', {
 				method: 'POST',
 				body: JSON.stringify( form ),
 			} );
@@ -455,7 +455,7 @@ export default function TeamApp() {
 		if ( removing ) return;
 		setRemoving( memberId );
 		try {
-			const data = await cfFetch( `team/members/${ memberId }`, { method: 'DELETE' } );
+			const data = await coFetch( `team/members/${ memberId }`, { method: 'DELETE' } );
 			if ( data.success ) {
 				showNotice( 'success', 'Team member removed.' );
 				await loadMembers();
@@ -480,7 +480,7 @@ export default function TeamApp() {
 			<div className="co-tm-header">
 				<div>
 					<h1 className="co-tm-title">Team</h1>
-					<p className="co-tm-subtitle">Manage who has access to your ClientFlow account.</p>
+					<p className="co-tm-subtitle">Manage who has access to your Client Octopus account.</p>
 				</div>
 			</div>
 

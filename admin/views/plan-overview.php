@@ -353,7 +353,7 @@ $upgrade_url = function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_u
                 ?>
             </div>
             <div class="co-stat-meta">
-                <?php echo $is_agency ? 'of 1 GB limit' : 'Not available'; ?>
+                <?php echo esc_html( $is_agency ? 'of 1 GB limit' : 'Not available' ); ?>
             </div>
             <?php if ( $is_agency ) : ?>
                 <div class="co-stat-bar-row">

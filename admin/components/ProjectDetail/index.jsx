@@ -8,7 +8,7 @@
  * Props: { projectId, onBack }
  */
 import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
-import { cfFetch } from '../ProjectsApp';
+import { coFetch } from '../ProjectsApp';
 import ProjectFiles     from '../ProjectFiles';
 import ProjectApprovals from '../ProjectApprovals';
 import ProjectMessages  from '../ProjectMessages';
@@ -803,9 +803,9 @@ export default function ProjectDetail( { projectId, onBack } ) {
 		setLoading( true );
 		try {
 			const [ projectData, msgData, pmtData ] = await Promise.all( [
-				cfFetch( `projects/${ projectId }` ),
-				cfFetch( `messages/unread-count` ).catch( () => ( { count: 0 } ) ),
-				cfFetch( `projects/${ projectId }/payments` ).catch( () => null ),
+				coFetch( `projects/${ projectId }` ),
+				coFetch( `messages/unread-count` ).catch( () => ( { count: 0 } ) ),
+				coFetch( `projects/${ projectId }/payments` ).catch( () => null ),
 			] );
 			setProject( projectData.project );
 			setNotes( projectData.project.description || '' );
@@ -827,7 +827,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 	async function handleStatusChange( e ) {
 		const status = e.target.value;
 		try {
-			const data = await cfFetch( `projects/${ projectId }/update`, {
+			const data = await coFetch( `projects/${ projectId }/update`, {
 				method: 'POST',
 				body:   JSON.stringify( { status } ),
 			} );
@@ -843,7 +843,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 		if ( ! newTitle.trim() ) return;
 		setAdding( true );
 		try {
-			const data = await cfFetch( `projects/${ projectId }/milestones`, {
+			const data = await coFetch( `projects/${ projectId }/milestones`, {
 				method: 'POST',
 				body:   JSON.stringify( { title: newTitle.trim(), due_date: newDue } ),
 			} );
@@ -856,7 +856,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 
 	async function handleSubmitMilestone( milestone ) {
 		try {
-			const data = await cfFetch( `projects/${ projectId }/milestones/${ milestone.id }/submit`, {
+			const data = await coFetch( `projects/${ projectId }/milestones/${ milestone.id }/submit`, {
 				method: 'POST',
 			} );
 			setProject( data.project );
@@ -876,7 +876,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 			setTimeout( () => setJustCompleted( null ), 500 );
 		}
 		try {
-			const data = await cfFetch( `projects/${ projectId }/milestones/${ milestone.id }/update`, {
+			const data = await coFetch( `projects/${ projectId }/milestones/${ milestone.id }/update`, {
 				method: 'POST',
 				body:   JSON.stringify( { status: nextStatus } ),
 			} );
@@ -887,7 +887,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 	async function handleDeleteMilestone( mid ) {
 		if ( ! window.confirm( 'Delete this milestone?' ) ) return;
 		try {
-			const data = await cfFetch( `projects/${ projectId }/milestones/${ mid }`, { method: 'DELETE' } );
+			const data = await coFetch( `projects/${ projectId }/milestones/${ mid }`, { method: 'DELETE' } );
 			setProject( data.project );
 		} catch {}
 	}
@@ -895,7 +895,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 	async function handleSaveNotes() {
 		setSavingNotes( true );
 		try {
-			const data = await cfFetch( `projects/${ projectId }/update`, {
+			const data = await coFetch( `projects/${ projectId }/update`, {
 				method: 'POST',
 				body:   JSON.stringify( { description: notes } ),
 			} );
@@ -909,7 +909,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 	async function handleDeleteProject() {
 		if ( ! window.confirm( 'Permanently delete this project? This will also remove all milestones, messages, approvals, and payment records. This cannot be undone.' ) ) return;
 		try {
-			await cfFetch( `projects/${ projectId }`, { method: 'DELETE' } );
+			await coFetch( `projects/${ projectId }`, { method: 'DELETE' } );
 			onBack();
 		} catch ( err ) {
 			const msg = err?.message || ( await err?.json?.().catch( () => null ) )?.message;
@@ -928,7 +928,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 		dragOver.current = null;
 		setProject( prev => ( { ...prev, milestones } ) );
 		try {
-			const data = await cfFetch( `projects/${ projectId }/milestones/reorder`, {
+			const data = await coFetch( `projects/${ projectId }/milestones/reorder`, {
 				method: 'POST',
 				body:   JSON.stringify( { ordered_ids: milestones.map( m => m.id ) } ),
 			} );

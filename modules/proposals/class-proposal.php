@@ -213,19 +213,24 @@ class ClientOctopus_Proposal {
 
 		$where_sql = implode( ' AND ', $where );
 
-		// Total count.
+		// $orderby and $order are whitelisted above; $where_sql components are
+		// individually prepared via $wpdb->prepare(). The ORDER BY clause cannot
+		// use placeholders, so it is built from the validated whitelist values.
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $t p WHERE $where_sql" );
+		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t p WHERE $where_sql" ) );
 
-		// Rows.
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
-			"SELECT p.*, c.name AS client_name, c.email AS client_email, c.company AS client_company
-			 FROM $t p
-			 LEFT JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-			 WHERE $where_sql
-			 ORDER BY p.$orderby $order
-			 LIMIT $per_page OFFSET $offset",
+			$wpdb->prepare(
+				"SELECT p.*, c.name AS client_name, c.email AS client_email, c.company AS client_company
+				 FROM $t p
+				 LEFT JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
+				 WHERE $where_sql
+				 ORDER BY p.$orderby $order
+				 LIMIT %d OFFSET %d",
+				$per_page,
+				$offset
+			),
 			ARRAY_A
 		);
 
