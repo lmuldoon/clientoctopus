@@ -433,8 +433,11 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 	do_action( 'clientoctopus_payment_completed', ! is_wp_error( $payment ) ? (int) $payment['id'] : 0, (int) $proposal['owner_id'] );
 
 	// If the proposal was already marked complete before this payment arrived,
-	// the testimonial check at completion time would have found no completed
-	// payment and silently skipped. Retry it now.
+	// the testimonial check at completion time found no completed payment and
+	// silently skipped. Schedule the retry now that the final payment is in.
+	// Deferred 60 s to avoid goSMTP connection failures when multiple emails
+	// fire in quick succession. spawn_cron() ensures the event fires via a
+	// background HTTP request without requiring a future page load.
 	//
 	// Agency path: proposal completed via project → check for completed project.
 	// Pro path: proposal completed directly (no project) → check proposal status.
@@ -451,6 +454,7 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 			'clientoctopus_send_testimonial_email',
 			[ $completed_project, (int) $proposal['owner_id'] ]
 		);
+		spawn_cron();
 	} else {
 		$proposal_status = (string) $wpdb->get_var(
 			$wpdb->prepare(
@@ -464,6 +468,7 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 				'clientoctopus_send_testimonial_email',
 				[ [ 'proposal_id' => $proposal_id ], (int) $proposal['owner_id'] ]
 			);
+			spawn_cron();
 		}
 	}
 
@@ -511,7 +516,7 @@ function clientoctopus_notify_owner_payment_complete( int $owner_id, array $prop
 
 	// Owner notification.
 	/* translators: %s is the proposal title */
-	$subject = sprintf( __( '💰 Payment received for "%s"', 'clientoctopus' ), $proposal['title'] ?? 'Proposal' );
+	$subject = sprintf( __( '💰 Payment received for "%s"', 'clientoctopus' ), sanitize_text_field( $proposal['title'] ?? 'Proposal' ) );
 	wp_mail(
 		$owner->user_email,
 		$subject,
@@ -538,7 +543,7 @@ function clientoctopus_notify_owner_payment_complete( int $owner_id, array $prop
 			wp_mail(
 				$client_row['email'],
 				/* translators: %s is the proposal title */
-				sprintf( __( 'Payment confirmed — %s', 'clientoctopus' ), $proposal['title'] ?? 'Proposal' ),
+				sprintf( __( 'Payment confirmed — %s', 'clientoctopus' ), sanitize_text_field( $proposal['title'] ?? 'Proposal' ) ),
 				clientoctopus_email_html( [
 					'name'      => $client_row['name'] ?? '',
 					'body'      => "<p style=\"margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;\">We have received your payment of <strong style=\"color:#1A1A2E;\">{$amount_fmt}</strong> for <em>{$proposal_title}</em>. Thank you!</p><p style=\"margin:0;font-size:16px;color:#6B7280;line-height:1.65;\">You can view your payment history from your client portal.</p>",

@@ -67,8 +67,8 @@ $clientoctopus_ver        = $clientoctopus_asset['version'];
 $clientoctopus_bundle_url = plugins_url( 'build/portal.js', CLIENTOCTOPUS_DIR . 'clientoctopus.php' );
 
 // Enqueue portal bundle with its dependencies so WordPress loads wp-element,
-// react, react-jsx-runtime etc. before the bundle runs.
-$clientoctopus_deps = array_unique( array_merge( $clientoctopus_asset['dependencies'], [ 'wp-element' ] ) );
+// wp-i18n, react, react-jsx-runtime etc. before the bundle runs.
+$clientoctopus_deps = array_unique( array_merge( $clientoctopus_asset['dependencies'], [ 'wp-element', 'wp-i18n' ] ) );
 wp_enqueue_script( 'co-portal', $clientoctopus_bundle_url, $clientoctopus_deps, $clientoctopus_ver, true );
 wp_enqueue_style( 'co-portal-reset', plugins_url( 'portal/portal.css', CLIENTOCTOPUS_DIR . 'clientoctopus.php' ), [], CLIENTOCTOPUS_VERSION );
 
@@ -88,6 +88,7 @@ wp_add_inline_script(
 		'verifyToken'     => $clientoctopus_verify_token,
 		'pluginUrl'       => CLIENTOCTOPUS_URL,
 		'hasProjects'     => $clientoctopus_has_projects,
+		'hasPassword'     => ClientOctopus_Portal_Auth::is_authenticated() && ClientOctopus_Portal_Auth::has_set_password( get_current_user_id() ),
 	] ) . ';',
 	'before'
 );

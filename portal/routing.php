@@ -107,14 +107,11 @@ function clientoctopus_portal_template_redirect(): void {
 	$authenticated_pages = [ 'dashboard', 'proposals', 'payments', 'projects', 'receipt' ];
 	$public_pages        = [ 'login', 'verify' ];
 
-	// /portal/set-password — auth required; bypass if password already set.
+	// /portal/set-password — auth required; accessible for both first-time
+	// setup and password changes from within the portal.
 	if ( 'set-password' === $page ) {
 		if ( ! ClientOctopus_Portal_Auth::is_authenticated() ) {
 			wp_safe_redirect( home_url( '/clientoctopus/login' ) );
-			exit;
-		}
-		if ( ClientOctopus_Portal_Auth::has_set_password( get_current_user_id() ) ) {
-			wp_safe_redirect( home_url( '/clientoctopus/dashboard' ) );
 			exit;
 		}
 		require CLIENTOCTOPUS_DIR . 'portal/template.php';

@@ -11,7 +11,8 @@
     "lint:style": "wp-scripts lint-style",
     "test:js": "wp-scripts test-unit-js",
     "test:php": "composer run test",
-    "format": "wp-scripts format"
+    "format": "wp-scripts format",
+    "zip": "bash scripts/build-zip.sh"
   },
   "devDependencies": {
     "@wordpress/scripts": "^30.0.0"

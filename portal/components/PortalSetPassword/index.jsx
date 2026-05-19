@@ -278,14 +278,16 @@ const CheckIcon = () => (
 );
 
 export default function PortalSetPassword() {
-	const [ password,      setPassword      ] = useState( '' );
-	const [ confirm,       setConfirm       ] = useState( '' );
-	const [ showPass,      setShowPass      ] = useState( false );
-	const [ showConfirm,   setShowConfirm   ] = useState( false );
+	const isChange = !! ( window.coPortalData || {} ).hasPassword;
+
+	const [ password,       setPassword      ] = useState( '' );
+	const [ confirm,        setConfirm       ] = useState( '' );
+	const [ showPass,       setShowPass      ] = useState( false );
+	const [ showConfirm,    setShowConfirm   ] = useState( false );
 	const [ confirmTouched, setConfirmTouched ] = useState( false );
-	const [ submitting,    setSubmitting    ] = useState( false );
-	const [ serverError,   setServerError   ] = useState( '' );
-	const [ redirectUrl,   setRedirectUrl   ] = useState( '' );
+	const [ submitting,     setSubmitting    ] = useState( false );
+	const [ serverError,    setServerError   ] = useState( '' );
+	const [ redirectUrl,    setRedirectUrl   ] = useState( '' );
 
 	const ruleStates  = RULES.map( r => ( { ...r, met: r.test( password ) } ) );
 	const allRulesMet = ruleStates.every( r => r.met );
@@ -338,26 +340,36 @@ export default function PortalSetPassword() {
 							<polyline points="20 6 9 17 4 12"/>
 						</svg>
 					</div>
-					<h1 className="cpsp-heading">Password set!</h1>
-					<p className="cpsp-sub">Your portal is ready. Bookmark your login page so you can sign in any time:</p>
-					<a
-						href={ loginUrl }
-						style={ {
-							display: 'inline-block',
-							marginBottom: 28,
-							padding: '10px 20px',
-							background: '#EEF2FF',
-							color: '#6366F1',
-							borderRadius: 8,
-							fontSize: 14,
-							fontWeight: 600,
-							textDecoration: 'none',
-							wordBreak: 'break-all',
-						} }
-					>
-						{ loginUrl }
-					</a>
-					<p style={ { fontSize: 13, color: '#9CA3AF', margin: 0 } }>Taking you to your dashboard…</p>
+					{ isChange ? (
+						<>
+							<h1 className="cpsp-heading">Password updated!</h1>
+							<p className="cpsp-sub">Your password has been changed successfully.</p>
+							<p style={ { fontSize: 13, color: '#9CA3AF', margin: 0 } }>Taking you back to your dashboard…</p>
+						</>
+					) : (
+						<>
+							<h1 className="cpsp-heading">Password set!</h1>
+							<p className="cpsp-sub">Your portal is ready. Bookmark your login page so you can sign in any time:</p>
+							<a
+								href={ loginUrl }
+								style={ {
+									display: 'inline-block',
+									marginBottom: 28,
+									padding: '10px 20px',
+									background: '#EEF2FF',
+									color: '#6366F1',
+									borderRadius: 8,
+									fontSize: 14,
+									fontWeight: 600,
+									textDecoration: 'none',
+									wordBreak: 'break-all',
+								} }
+							>
+								{ loginUrl }
+							</a>
+							<p style={ { fontSize: 13, color: '#9CA3AF', margin: 0 } }>Taking you to your dashboard…</p>
+						</>
+					) }
 				</div>
 			</div>
 		);
@@ -373,15 +385,18 @@ export default function PortalSetPassword() {
 					</svg>
 				</div>
 
-				<h1 className="cpsp-heading">Set your password</h1>
+				<h1 className="cpsp-heading">{ isChange ? 'Change password' : 'Set your password' }</h1>
 				<p className="cpsp-sub">
-					Create a password so you can sign in to your portal without needing an email link each time.
+					{ isChange
+						? 'Enter your current password, then choose a new one.'
+						: 'Create a password so you can sign in to your portal without needing an email link each time.'
+					}
 				</p>
 
 				<form onSubmit={ handleSubmit } noValidate>
-					{ /* Password field */ }
+					{ /* New password field */ }
 					<div className="cpsp-field">
-						<label className="cpsp-label" htmlFor="cpsp-pass">Password</label>
+						<label className="cpsp-label" htmlFor="cpsp-pass">{ isChange ? 'New password' : 'Password' }</label>
 						<div className="cpsp-input-wrap">
 							<input
 								id="cpsp-pass"
@@ -451,9 +466,9 @@ export default function PortalSetPassword() {
 						disabled={ ! canSubmit }
 					>
 						{ submitting ? (
-							<><span className="cpsp-spinner" /> Setting password&hellip;</>
+							<><span className="cpsp-spinner" /> { isChange ? 'Updating…' : 'Setting password…' }</>
 						) : (
-							<>Set password &amp; continue &rarr;</>
+							isChange ? <>Update password &rarr;</> : <>Set password &amp; continue &rarr;</>
 						) }
 					</button>
 				</form>

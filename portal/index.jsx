@@ -1,7 +1,7 @@
 /**
  * Portal bundle entry point.
  *
- * Reads cfPortalData.page and mounts the correct top-level component.
+ * Reads coPortalData.page and mounts the correct top-level component.
  *
  *   login     → PortalLogin   (unauthenticated)
  *   verify    → PortalVerify  (unauthenticated, auto-fires token verification)
@@ -21,7 +21,7 @@ import PortalApp         from './components/PortalApp';
 const { render } = wp.element;
 
 const root = document.getElementById( 'co-portal-root' );
-const page = ( window.cfPortalData || {} ).page || 'login';
+const page = ( window.coPortalData || {} ).page || 'login';
 
 if ( 'login' === page ) {
 	render( <PortalLogin />, root );

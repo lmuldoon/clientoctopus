@@ -155,7 +155,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 
 define( 'CLIENTOCTOPUS_VERSION',        '0.1.2' );
 define( 'CLIENTOCTOPUS_DB_VERSION',     '12' );
-define( 'CLIENTOCTOPUS_REWRITE_VERSION', '2' );
+define( 'CLIENTOCTOPUS_REWRITE_VERSION', '3' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'CLIENTOCTOPUS_URL',        plugin_dir_url( __FILE__ ) );
 define( 'CLIENTOCTOPUS_BASENAME',   plugin_basename( __FILE__ ) );
@@ -771,6 +771,20 @@ final class ClientOctopus {
 				[ 'id' => (int) $row['client_id'] ]
 			);
 		}, 20, 2 );
+
+		// When a WP admin changes a client user's password via the admin UI,
+		// automatically mark the portal password as set so password login works.
+		// Compares the old and new password hashes — if they differ, the password
+		// was changed and the client should be able to log in with the new one.
+		add_action( 'profile_update', static function ( int $user_id, WP_User $old_user ): void {
+			$user = get_user_by( 'ID', $user_id );
+			if ( ! $user || ! in_array( 'clientoctopus_client', (array) $user->roles, true ) ) {
+				return;
+			}
+			if ( $user->user_pass !== $old_user->user_pass ) {
+				ClientOctopus_Portal_Auth::mark_password_set( $user_id );
+			}
+		}, 10, 2 );
 
 		// ── Outbound webhook dispatch ─────────────────────────────────────────
 		//@fs_premium_only

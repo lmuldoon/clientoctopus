@@ -168,10 +168,10 @@ function clientoctopus_portal_verify( WP_REST_Request $request ): WP_REST_Respon
 		], 401 );
 	}
 
-	// First-time login: force password setup before entering the portal.
-	$redirect = ClientOctopus_Portal_Auth::has_set_password( $result->ID )
-		? home_url( '/clientoctopus/dashboard' )
-		: home_url( '/clientoctopus/set-password' );
+	// Successful magic link verification proves email ownership — equivalent to
+	// having set a password. Mark it so password login is enabled from here on.
+	ClientOctopus_Portal_Auth::mark_password_set( $result->ID );
+	$redirect = home_url( '/clientoctopus/dashboard' );
 
 	return new WP_REST_Response( [
 		'success'      => true,
@@ -257,19 +257,6 @@ function clientoctopus_validate_portal_password( string $password ): array {
 function clientoctopus_portal_set_password( WP_REST_Request $request ): WP_REST_Response {
 	$user_id  = get_current_user_id();
 	$password = $request->get_param( 'password' );
-
-	// If the client has already set a password, require verification of the current one.
-	if ( ClientOctopus_Portal_Auth::has_set_password( $user_id ) ) {
-		$current = (string) $request->get_param( 'current_password' );
-		$user    = get_user_by( 'ID', $user_id );
-		if ( ! $user || ! wp_check_password( $current, $user->user_pass, $user_id ) ) {
-			return new WP_REST_Response( [
-				'success' => false,
-				'message' => __( 'Current password is incorrect.', 'clientoctopus' ),
-				'errors'  => [ 'current_password' ],
-			], 401 );
-		}
-	}
 
 	$errors = clientoctopus_validate_portal_password( $password );
 

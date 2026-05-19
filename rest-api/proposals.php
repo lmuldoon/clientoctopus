@@ -382,6 +382,10 @@ function clientoctopus_rest_update_proposal( WP_REST_Request $request ): WP_REST
 		if ( ! $has_project && function_exists( 'clientoctopus_maybe_send_testimonial_email' ) ) {
 			clientoctopus_maybe_send_testimonial_email( [ 'proposal_id' => $id ], $user_id );
 		}
+
+		// Notify client of outstanding balance when a deposit was taken but the
+		// remaining balance hasn't been paid yet.
+		clientoctopus_maybe_send_balance_due_email( $id );
 	}
 
 	return new WP_REST_Response( [ 'proposal' => $proposal ], 200 );
@@ -518,4 +522,89 @@ function clientoctopus_rest_revoke_preview_token( WP_REST_Request $request ): WP
 	}
 
 	return new WP_REST_Response( [ 'revoked' => true ], 200 );
+}
+
+/**
+ * Send the client a "balance due" email when a proposal is marked complete
+ * and a deposit has been paid but the remaining balance is still outstanding.
+ *
+ * @param int $proposal_id
+ */
+function clientoctopus_maybe_send_balance_due_email( int $proposal_id ): void {
+	global $wpdb;
+
+	$pt = $wpdb->prefix . 'clientoctopus_proposals';
+	$pm = $wpdb->prefix . 'clientoctopus_payments';
+	$ct = $wpdb->prefix . 'clientoctopus_clients';
+
+	// Fetch proposal with client email and token.
+	$proposal = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT p.id, p.title, p.token, p.total_amount, p.client_id,
+			        c.name AS client_name, c.email AS client_email
+			 FROM   {$pt} p
+			 LEFT JOIN {$ct} c ON c.id = p.client_id
+			 WHERE  p.id = %d",
+			$proposal_id
+		),
+		ARRAY_A
+	);
+
+	if ( ! $proposal || empty( $proposal['client_email'] ) ) {
+		return;
+	}
+
+	$total = (float) $proposal['total_amount'];
+
+	// Sum all completed payments for this proposal.
+	$total_paid = (float) $wpdb->get_var(
+		$wpdb->prepare(
+			"SELECT COALESCE( SUM(amount), 0 )
+			 FROM   {$pm}
+			 WHERE  proposal_id = %d AND status = 'completed'",
+			$proposal_id
+		)
+	);
+
+	// Only send if the deposit was paid but the balance isn't — i.e. some money
+	// has been received but the full amount hasn't been cleared yet.
+	if ( $total_paid <= 0 || $total_paid >= $total ) {
+		return;
+	}
+
+	$remaining      = $total - $total_paid;
+	$currency       = strtoupper( (string) $wpdb->get_var(
+		$wpdb->prepare( "SELECT currency FROM {$pt} WHERE id = %d", $proposal_id )
+	) ) ?: 'GBP';
+	$remaining_fmt  = $currency . ' ' . number_format( $remaining, 2 );
+	$proposal_title = esc_html( $proposal['title'] ?? 'Proposal' );
+	$proposal_url   = home_url( '/proposals/' . $proposal['token'] );
+
+	$body  = "<p style=\"margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;\">";
+	$body .= sprintf(
+		/* translators: %s is the proposal title */
+		esc_html__( 'Great news — the work on your project "%s" is now complete!', 'clientoctopus' ),
+		$proposal_title
+	);
+	$body .= "</p>";
+	$body .= "<p style=\"margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;\">";
+	$body .= sprintf(
+		/* translators: %s is the formatted remaining amount */
+		esc_html__( 'The outstanding balance of %s is now due. Please click the button below to make your payment.', 'clientoctopus' ),
+		"<strong style=\"color:#1A1A2E;\">{$remaining_fmt}</strong>"
+	);
+	$body .= "</p>";
+
+	wp_mail(
+		$proposal['client_email'],
+		/* translators: %s is the proposal title */
+		sprintf( __( 'Your balance is due — %s', 'clientoctopus' ), sanitize_text_field( $proposal['title'] ?? 'Proposal' ) ),
+		clientoctopus_email_html( [
+			'name'      => $proposal['client_name'] ?? '',
+			'body'      => $body,
+			'cta_label' => __( 'Pay Remaining Balance', 'clientoctopus' ),
+			'cta_url'   => $proposal_url,
+		] ),
+		[ 'Content-Type: text/html; charset=UTF-8' ]
+	);
 }

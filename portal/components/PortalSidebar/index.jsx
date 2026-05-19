@@ -8,6 +8,7 @@
  */
 
 const { useState } = wp.element;
+const __           = ( wp.i18n && wp.i18n.__ ) || ( ( text ) => text );
 
 const apiFetch = ( path, opts = {} ) =>
 	fetch( window.coPortalData.apiUrl + path, {
@@ -226,6 +227,17 @@ injectStyles( 'cps-s', `
 	text-overflow: ellipsis;
 	margin-top: 1px;
 }
+
+.cps-change-password-link {
+	display: inline-block;
+	font-family: 'DM Sans', sans-serif;
+	font-size: 11px;
+	color: #9CA3AF;
+	text-decoration: none;
+	margin-top: 4px;
+	transition: color .15s;
+}
+.cps-change-password-link:hover { color: #6366F1; }
 
 .cps-signout-btn {
 	width: 28px;
@@ -470,10 +482,10 @@ export default function PortalSidebar( { page } ) {
 		.split( ' ' ).slice( 0, 2 ).map( w => w[0] ).join( '' ).toUpperCase() || '?';
 
 	const nav = [
-		{ slug: 'dashboard', label: 'Dashboard', Icon: IconDashboard },
-		{ slug: 'proposals', label: 'Proposals', Icon: IconProposals },
-		...( hasProjects ? [ { slug: 'projects', label: 'Projects', Icon: IconProjects } ] : [] ),
-		{ slug: 'payments',  label: 'Payments',  Icon: IconPayments  },
+		{ slug: 'dashboard', label: __( 'Dashboard', 'clientoctopus' ), Icon: IconDashboard },
+		{ slug: 'proposals', label: __( 'Proposals', 'clientoctopus' ), Icon: IconProposals },
+		...( hasProjects ? [ { slug: 'projects', label: __( 'Projects', 'clientoctopus' ), Icon: IconProjects } ] : [] ),
+		{ slug: 'payments',  label: __( 'Payments', 'clientoctopus' ),  Icon: IconPayments  },
 	];
 
 	async function handleLogout() {
@@ -529,7 +541,7 @@ export default function PortalSidebar( { page } ) {
 					<span className="cps-nav-icon">
 						<IconSignOut color={ loggingOut ? '#9CA3AF' : '#6B7280' } />
 					</span>
-					{ loggingOut ? '…' : 'Sign out' }
+					{ loggingOut ? '…' : __( 'Sign out', 'clientoctopus' ) }
 				</button>
 			</nav>
 
@@ -542,12 +554,18 @@ export default function PortalSidebar( { page } ) {
 						{ clientEmail && (
 							<div className="cps-profile-email">{ clientEmail }</div>
 						) }
+						<a
+							href="/clientoctopus/set-password"
+							className="cps-change-password-link"
+						>
+							{ __( 'Change password', 'clientoctopus' ) }
+						</a>
 					</div>
 					<button
 						className="cps-signout-btn"
 						onClick={ handleLogout }
 						disabled={ loggingOut }
-						title="Sign out"
+						title={ __( 'Sign out', 'clientoctopus' ) }
 					>
 						<IconSignOut color="currentColor" />
 					</button>
@@ -563,7 +581,7 @@ export default function PortalSidebar( { page } ) {
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						<span>Powered by</span>
+						<span>{ __( 'Powered by', 'clientoctopus' ) }</span>
 						<img src={ cfLogoUrl } alt="Client Octopus" />
 					</a>
 				) }
