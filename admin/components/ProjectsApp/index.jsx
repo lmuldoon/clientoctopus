@@ -11,7 +11,6 @@ import ProjectList   from '../ProjectList';
 import ProjectDetail from '../ProjectDetail';
 
 const CF_GLOBAL_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
 
 :root {
   --co-navy:       #0F172A;

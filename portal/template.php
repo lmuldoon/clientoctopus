@@ -70,6 +70,7 @@ $clientoctopus_bundle_url = plugins_url( 'build/portal.js', CLIENTOCTOPUS_DIR . 
 // wp-i18n, react, react-jsx-runtime etc. before the bundle runs.
 $clientoctopus_deps = array_unique( array_merge( $clientoctopus_asset['dependencies'], [ 'wp-element', 'wp-i18n' ] ) );
 wp_enqueue_script( 'co-portal', $clientoctopus_bundle_url, $clientoctopus_deps, $clientoctopus_ver, true );
+wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fonts.css', [], CLIENTOCTOPUS_VERSION );
 wp_enqueue_style( 'co-portal-reset', plugins_url( 'portal/portal.css', CLIENTOCTOPUS_DIR . 'clientoctopus.php' ), [], CLIENTOCTOPUS_VERSION );
 
 // Inject runtime data via wp_add_inline_script so no bare <script> tag is needed.

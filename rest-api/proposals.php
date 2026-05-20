@@ -27,6 +27,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Prevent page-caching plugins (e.g. LiteSpeed Cache) from caching our REST
+// API responses. Must fire before routes are registered so the no-cache flag
+// is set early enough in the request lifecycle.
+add_action( 'rest_api_init', static function (): void {
+	do_action( 'litespeed_control_set_nocache', 'clientoctopus-rest-api' );
+}, 1 );
+
+// Add the LiteSpeed-specific no-cache response header for our namespace so
+// the server won't store a stale copy of dynamic data like the proposals list.
+add_filter( 'rest_pre_serve_request', static function ( $served, $result, $request ) {
+	if ( $request instanceof WP_REST_Request && str_starts_with( $request->get_route(), '/clientoctopus/' ) ) {
+		header( 'X-LiteSpeed-Cache-Control: no-cache' );
+	}
+	return $served;
+}, 5, 3 );
+
 // Load proposal classes if not already autoloaded.
 add_action( 'rest_api_init', static function (): void {
 	// Load each module class independently — a single shared condition was
@@ -199,7 +215,7 @@ function clientoctopus_proposal_create_args(): array {
 function clientoctopus_proposal_update_args(): array {
 	return [
 		'title'        => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
-		'content'      => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'wp_kses_post' ],
+		'content'      => [ 'type' => 'string', 'required' => false ],
 		'status'       => [ 'type' => 'string', 'required' => false, 'enum' => ClientOctopus_Proposal::STATUSES ],
 		'currency'     => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
 		'expiry_date'  => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
@@ -246,6 +262,9 @@ function clientoctopus_rest_create_proposal( WP_REST_Request $request ): WP_REST
 	if ( is_wp_error( $result ) ) {
 		return $result;
 	}
+
+	// Purge any cached version of the proposals list so fresh data is returned.
+	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
 
 	return new WP_REST_Response( [ 'proposal' => $result ], 201 );
 }
@@ -388,6 +407,8 @@ function clientoctopus_rest_update_proposal( WP_REST_Request $request ): WP_REST
 		clientoctopus_maybe_send_balance_due_email( $id );
 	}
 
+	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
+
 	return new WP_REST_Response( [ 'proposal' => $proposal ], 200 );
 }
 
@@ -421,7 +442,13 @@ function clientoctopus_rest_send_proposal( WP_REST_Request $request ): WP_REST_R
 		return $result;
 	}
 
-	return new WP_REST_Response( [ 'sent' => true, 'id' => $id ], 200 );
+	$proposal = ClientOctopus_Proposal::get( $id );
+
+	return new WP_REST_Response( [
+		'sent'       => true,
+		'id'         => $id,
+		'client_url' => $proposal ? home_url( '/proposals/' . $proposal['token'] ) : null,
+	], 200 );
 }
 
 /**
@@ -464,6 +491,8 @@ function clientoctopus_rest_duplicate_proposal( WP_REST_Request $request ): WP_R
 		return new WP_REST_Response( [ 'duplicated' => true, 'id' => $new_id ], 201 );
 	}
 
+	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
+
 	return new WP_REST_Response( [ 'proposal' => $proposal ], 201 );
 }
 
@@ -481,6 +510,8 @@ function clientoctopus_rest_delete_proposal( WP_REST_Request $request ): WP_REST
 	if ( is_wp_error( $result ) ) {
 		return $result;
 	}
+
+	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
 
 	return new WP_REST_Response( [ 'deleted' => true, 'id' => $id ], 200 );
 }

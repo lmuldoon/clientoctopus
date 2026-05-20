@@ -2,7 +2,8 @@
  * SetupWizard
  *
  * Full-screen onboarding wizard. Hides WP admin chrome on mount.
- * Five steps: Welcome → Plan → Stripe → Brand → Done
+ * Free plan:  Welcome → Brand → Done  (3 steps)
+ * Paid plans: Welcome → Stripe → Brand → Done  (4 steps)
  */
 import { useState, useEffect } from '@wordpress/element';
 
@@ -22,7 +23,6 @@ async function apiFetch( path, opts = {} ) {
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap');
 
 body.co-setup-active #adminmenuback,
 body.co-setup-active #adminmenuwrap,
@@ -488,11 +488,17 @@ function injectStyles( id, css ) {
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
-const STEPS = [
-	{ label: 'Welcome',   sub: 'Get started'          },
-	{ label: 'Payments',  sub: 'Stripe integration'    },
-	{ label: 'Brand',     sub: 'Your identity'         },
-	{ label: 'Done',      sub: 'All set!'              },
+const FREE_STEPS = [
+	{ label: 'Welcome', sub: 'Get started'   },
+	{ label: 'Brand',   sub: 'Your identity' },
+	{ label: 'Done',    sub: 'All set!'      },
+];
+
+const ALL_STEPS = [
+	{ label: 'Welcome',  sub: 'Get started'        },
+	{ label: 'Payments', sub: 'Stripe integration'  },
+	{ label: 'Brand',    sub: 'Your identity'       },
+	{ label: 'Done',     sub: 'All set!'            },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -622,12 +628,12 @@ function StripeStep( { data, onChange, plan } ) {
 	);
 }
 
-function BrandStep( { data, onChange } ) {
+function BrandStep( { data, onChange, stepNum = 3, totalSteps = 4 } ) {
 	const color = data.brand_color || '#6366f1';
 
 	return (
 		<div>
-			<p className="co-sw-step-num">Step 3 of 4</p>
+			<p className="co-sw-step-num">Step { stepNum } of { totalSteps }</p>
 			<h1 className="co-sw-heading">Your Brand</h1>
 			<p className="co-sw-sub">
 				Your branding appears on proposals, emails, and the client portal.
@@ -752,6 +758,9 @@ export default function SetupWizard() {
 	const [ saving,    setSaving    ] = useState( false );
 	const [ error,     setError     ] = useState( null );
 	const [ plan ] = useState( window.coData?.userPlan || '' );
+	const isFree      = plan === 'free' || ! plan;
+	const steps       = isFree ? FREE_STEPS : ALL_STEPS;
+	const lastDataStep = isFree ? 1 : 2;
 	const [ data,      setData      ] = useState( {
 		stripe_pk:             '',
 		stripe_sk:             '',
@@ -769,8 +778,12 @@ export default function SetupWizard() {
 			if ( status.saved ) {
 				setData( prev => ( { ...prev, ...status.saved } ) );
 			}
-			if ( status.step > 0 ) {
-				setStep( Math.min( status.step, 3 ) );
+			if ( status.complete ) {
+				// Already completed — jump to Done screen so the user isn't forced
+				// through the wizard again (e.g. after a Freemius opt-in redirect).
+				setStep( steps.length - 1 );
+			} else if ( status.step > 0 ) {
+				setStep( Math.min( status.step, steps.length - 1 ) );
 			}
 		} ).catch( () => {} );
 
@@ -785,19 +798,13 @@ export default function SetupWizard() {
 		setError( null );
 		setSaving( true );
 		try {
-			// Save current step's data.
-			if ( step > 0 && step < 3 ) {
+			if ( step > 0 && step < steps.length - 1 ) {
 				await apiFetch( 'onboarding/save', {
 					method: 'POST',
 					body:   JSON.stringify( { step, ...data } ),
 				} );
 			}
-			// Step 2 (Brand): save then mark complete before rendering done.
-			if ( step === 2 ) {
-				await apiFetch( 'onboarding/save', {
-					method: 'POST',
-					body:   JSON.stringify( { step: 2, ...data } ),
-				} );
+			if ( step === lastDataStep ) {
 				await apiFetch( 'onboarding/complete', { method: 'POST', body: '{}' } );
 			}
 			setDirection( 'forward' );
@@ -823,7 +830,7 @@ export default function SetupWizard() {
 	};
 
 	const primaryLabel = step === 0 ? 'Get Started →'
-		: step === 2 ? ( saving ? 'Saving…' : 'Finish Setup →' )
+		: step === lastDataStep ? ( saving ? 'Saving…' : 'Finish Setup →' )
 		: ( saving ? 'Saving…' : 'Save & Continue →' );
 
 	return (
@@ -841,7 +848,7 @@ export default function SetupWizard() {
 				</div>
 
 				<div className="co-sw-steps">
-					{ STEPS.map( ( s, idx ) => {
+					{ steps.map( ( s, idx ) => {
 						const state = stepDotState( idx );
 						return (
 							<div className="co-sw-step-row" key={ idx }>
@@ -876,15 +883,25 @@ export default function SetupWizard() {
 			<div className="co-sw-right">
 				<div className="co-sw-content">
 					<div key={ step } className={ animClass }>
-						{ step === 0 && <WelcomeStep /> }
-						{ step === 1 && <StripeStep  data={ data } onChange={ handleChange } plan={ plan } /> }
-						{ step === 2 && <BrandStep   data={ data } onChange={ handleChange } /> }
-						{ step === 3 && <DoneStep /> }
+						{ isFree ? (
+							<>
+								{ step === 0 && <WelcomeStep /> }
+								{ step === 1 && <BrandStep data={ data } onChange={ handleChange } stepNum={ 2 } totalSteps={ 3 } /> }
+								{ step === 2 && <DoneStep /> }
+							</>
+						) : (
+							<>
+								{ step === 0 && <WelcomeStep /> }
+								{ step === 1 && <StripeStep data={ data } onChange={ handleChange } plan={ plan } /> }
+								{ step === 2 && <BrandStep data={ data } onChange={ handleChange } stepNum={ 3 } totalSteps={ 4 } /> }
+								{ step === 3 && <DoneStep /> }
+							</>
+						) }
 					</div>
 					{ error && <div className="co-sw-error">{ error }</div> }
 				</div>
 
-				{ step < 3 && (
+				{ step < steps.length - 1 && (
 					<div className="co-sw-nav">
 						<div className="co-sw-nav-left">
 							{ step > 0 && (
@@ -892,7 +909,7 @@ export default function SetupWizard() {
 									← Back
 								</button>
 							) }
-							{ step === 1 && (
+							{ step === 1 && ! isFree && (
 								<button className="co-sw-skip" onClick={ goNext } disabled={ saving }>
 									Skip for now
 								</button>

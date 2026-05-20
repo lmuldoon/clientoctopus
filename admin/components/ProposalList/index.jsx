@@ -186,7 +186,7 @@ const CSS = `
 /* Table header row */
 .co-list-col-headers {
   display: grid;
-  grid-template-columns: 2fr 2fr 110px 124px 120px 115px;
+  grid-template-columns: 2fr 2fr 110px 124px 120px 140px;
   gap: 12px;
   padding: 8px 16px;
   font-size: 11px;
@@ -201,7 +201,7 @@ const CSS = `
 /* Row card */
 .co-list-row {
   display: grid;
-  grid-template-columns: 2fr 2fr 110px 124px 120px 115px;
+  grid-template-columns: 2fr 2fr 110px 124px 120px 140px;
   gap: 12px;
   align-items: center;
   padding: 14px 16px;
@@ -640,7 +640,7 @@ const CSS = `
 }
 .co-no-sender-warning a { color: var(--co-amber); text-decoration: underline; }
 .co-send-success-banner {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 12px 16px;
   background: var(--co-emerald-bg);
   color: var(--co-emerald);
@@ -650,6 +650,27 @@ const CSS = `
   font-weight: 600;
   margin-bottom: 12px;
   animation: co-fade-up .2s ease both;
+}
+.co-send-link-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 400;
+  color: var(--co-slate-600);
+  flex-wrap: wrap;
+}
+.co-send-link-row code {
+  font-size: 11.5px; background: rgba(0,0,0,.06);
+  padding: 2px 6px; border-radius: 4px;
+  word-break: break-all; flex: 1; min-width: 0;
+}
+.co-send-link-copy-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: var(--co-emerald);
+  color: #fff;
+  border: none; border-radius: 4px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
 }
 `;
 
@@ -714,6 +735,12 @@ export default function ProposalList( {
 	const [ declineReason, setDeclineReason ] = useState( null );
 	const [ sendModal, setSendModal ]         = useState( { open: false, proposal: null, email: '', subject: '', error: '' } );
 	const [ successMsg, setSuccessMsg ]       = useState( '' );
+	const [ sentUrl, setSentUrl ]             = useState( null );
+	const [ copied, setCopied ]               = useState( false );
+	const [ previewingId, setPreviewingId ]   = useState( null );
+	const [ copiedId, setCopiedId ]           = useState( null );
+
+	const homeUrl = ( window.coData?.homeUrl || '' ).replace( /\/$/, '' );
 
 	async function handleRefresh() {
 		setRefreshing( true );
@@ -799,7 +826,7 @@ export default function ProposalList( {
 		setSendModal( m => ( { ...m, error: '' } ) );
 		setSendingId( proposal.id );
 		try {
-			await coFetch( `proposals/${ proposal.id }/send`, {
+			const result = await coFetch( `proposals/${ proposal.id }/send`, {
 				method: 'POST',
 				body:   JSON.stringify( { client_email: email.trim(), email_subject: subject.trim() } ),
 			} );
@@ -807,8 +834,10 @@ export default function ProposalList( {
 			onProposalSent( proposal.id );
 			setActiveTab( 'sent' );
 			setPage( 1 );
+			setSentUrl( result?.client_url ?? null );
+			setCopied( false );
 			setSuccessMsg( '✓ Proposal sent — it now appears in the Sent tab.' );
-			setTimeout( () => setSuccessMsg( '' ), 4000 );
+			setTimeout( () => { setSuccessMsg( '' ); setSentUrl( null ); }, 8000 );
 			onRefresh();
 		} catch ( e ) {
 			setSendModal( m => ( { ...m, error: e.message || 'Send failed. Please try again.' } ) );
@@ -841,6 +870,41 @@ export default function ProposalList( {
 		} catch ( e ) {
 			alert( e.message || 'Update failed.' );
 		}
+	}
+
+	async function handlePreview( proposal ) {
+		if ( proposal.preview_token ) {
+			window.open( `${ homeUrl }/proposals/preview/${ proposal.preview_token }`, '_blank' );
+			return;
+		}
+		setPreviewingId( proposal.id );
+		try {
+			const { preview_url } = await coFetch( `proposals/${ proposal.id }/preview-token`, { method: 'POST' } );
+			window.open( preview_url, '_blank' );
+		} catch ( e ) {
+			alert( e.message || 'Could not generate preview link.' );
+		} finally {
+			setPreviewingId( null );
+		}
+	}
+
+	async function handleCopyClientLink( proposal ) {
+		const url = `${ homeUrl }/proposals/${ proposal.token }`;
+		try {
+			await navigator.clipboard.writeText( url );
+		} catch {
+			// Clipboard API unavailable (HTTP/local) — fall back to execCommand.
+			const ta = document.createElement( 'textarea' );
+			ta.value = url;
+			ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+			document.body.appendChild( ta );
+			ta.focus();
+			ta.select();
+			document.execCommand( 'copy' );
+			document.body.removeChild( ta );
+		}
+		setCopiedId( proposal.id );
+		setTimeout( () => setCopiedId( null ), 2000 );
 	}
 
 	return (
@@ -951,7 +1015,24 @@ export default function ProposalList( {
 
 			{ successMsg && (
 				<div className="co-send-success-banner">
-					{ successMsg }
+					<span>{ successMsg }</span>
+					{ sentUrl && (
+						<div className="co-send-link-row">
+							<span>Share link (if email didn&apos;t arrive):</span>
+							<code>{ sentUrl }</code>
+							<button
+								type="button"
+								className="co-send-link-copy-btn"
+								onClick={ () => {
+									navigator.clipboard.writeText( sentUrl );
+									setCopied( true );
+									setTimeout( () => setCopied( false ), 2000 );
+								} }
+							>
+								{ copied ? '✓ Copied' : 'Copy link' }
+							</button>
+						</div>
+					) }
 				</div>
 			) }
 
@@ -1091,6 +1172,42 @@ export default function ProposalList( {
 								<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
 									<polyline points="20 6 9 17 4 12"/>
 								</svg>
+							</button>
+						) }
+						<button
+							type="button"
+							className="co-list-action-btn"
+							title="Preview (opens in new tab)"
+							disabled={ previewingId === proposal.id }
+							onClick={ () => handlePreview( proposal ) }
+						>
+							{ previewingId === proposal.id ? (
+								<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" style={ { animation: 'co-spin 1s linear infinite' } }>
+									<circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 20"/>
+								</svg>
+							) : (
+								<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+									<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+								</svg>
+							) }
+						</button>
+						{ [ 'sent', 'viewed', 'revision_requested', 'accepted' ].includes( proposal.status ) && (
+							<button
+								type="button"
+								className="co-list-action-btn"
+								title="Copy client link"
+								onClick={ () => handleCopyClientLink( proposal ) }
+							>
+								{ copiedId === proposal.id ? (
+									<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+										<polyline points="20 6 9 17 4 12"/>
+									</svg>
+								) : (
+									<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+										<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+										<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+									</svg>
+								) }
 							</button>
 						) }
 						<button

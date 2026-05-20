@@ -15,7 +15,7 @@ const RULES = [
 	{ key: 'special',    label: 'One special character',      test: p => /[^A-Za-z0-9]/.test( p ) },
 ];
 
-injectStyles( 'co-global-s', `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap');
+injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
 
@@ -388,7 +388,7 @@ export default function PortalSetPassword() {
 				<h1 className="cpsp-heading">{ isChange ? 'Change password' : 'Set your password' }</h1>
 				<p className="cpsp-sub">
 					{ isChange
-						? 'Enter your current password, then choose a new one.'
+						? 'Choose a new password for your account.'
 						: 'Create a password so you can sign in to your portal without needing an email link each time.'
 					}
 				</p>

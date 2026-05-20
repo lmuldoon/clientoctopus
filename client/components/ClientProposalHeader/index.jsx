@@ -200,9 +200,40 @@ const CSS = `
 	.cfh-title { font-size: 28px; }
 }
 
+/* ── Download button ───────────────────────────────────────── */
+.cfh-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	padding: 10px 56px 0;
+}
+.cfh-download-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 7px 14px;
+	border: 1px solid rgba(26,26,46,.12);
+	border-radius: 8px;
+	background: #fff;
+	color: #4B5563;
+	font-family: 'DM Sans', sans-serif;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: border-color .12s, color .12s, background .12s;
+}
+.cfh-download-btn:hover {
+	border-color: #6366F1;
+	color: #6366F1;
+	background: #F5F6FF;
+}
+@media (max-width: 680px) {
+	.cfh-toolbar { padding: 10px 24px 0; }
+}
+
 @media print {
 	.cfh-banner { display: none !important; }
 	.cfh-header { box-shadow: none; border-bottom: 1px solid #ddd; }
+	.cfh-toolbar { display: none !important; }
 }
 `;
 
@@ -241,7 +272,7 @@ function expiryInfo( expiryDate, status ) {
 	return { text: `Expires ${ fmt }`, cls: '' };
 }
 
-export default function ClientProposalHeader( { proposal, businessName, businessLogo, hideBusinessName = false } ) {
+export default function ClientProposalHeader( { proposal, businessName, businessLogo, hideBusinessName = false, showDownloadBtn = false } ) {
 	injectStyles( 'co-header-s', CSS );
 
 	const { title, expiry_date, status, client_name, accepted_at } = proposal;
@@ -256,6 +287,19 @@ export default function ClientProposalHeader( { proposal, businessName, business
 
 	return (
 		<header className="cfh-header">
+
+			{ showDownloadBtn && (
+				<div className="cfh-toolbar">
+					<button type="button" className="cfh-download-btn" onClick={ () => window.print() }>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+							<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+							<polyline points="7 10 12 15 17 10"/>
+							<line x1="12" y1="15" x2="12" y2="3"/>
+						</svg>
+						Download PDF
+					</button>
+				</div>
+			) }
 
 			{ isPortalClient && (
 				<a href="/clientoctopus/proposals" className="cfh-portal-back">

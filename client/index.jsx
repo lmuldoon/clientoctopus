@@ -38,6 +38,6 @@ if ( root ) {
 	} else if ( pageType === 'cancel' ) {
 		render( <PaymentCancelled token={ token } />, root );
 	} else {
-		render( <ProposalClientView />, root );
+		render( <ProposalClientView isPreview={ pageType === 'preview' } />, root );
 	}
 }

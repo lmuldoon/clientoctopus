@@ -112,6 +112,7 @@ $clientoctopus_favicon_url = get_site_icon_url( 32 );
 		$clientoctopus_script_deps[] = 'wp-element';
 	}
 
+	wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fonts.css', [], CLIENTOCTOPUS_VERSION );
 	wp_enqueue_script( 'co-client', $clientoctopus_script_url, $clientoctopus_script_deps, $clientoctopus_script_ver, false );
 
 	wp_add_inline_script(

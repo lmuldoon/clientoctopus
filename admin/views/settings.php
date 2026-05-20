@@ -248,7 +248,7 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 						<span class="co-logo-preview-label"><?php esc_html_e( 'Preview', 'clientoctopus' ); ?></span>
 						<img id="co-logo-preview" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Logo preview', 'clientoctopus' ); ?>">
 					</div>
-					<p class="co-help"><?php esc_html_e( 'Displayed in proposal headers and portal. Use a PNG or SVG with transparent background. Max 180×48px recommended.', 'clientoctopus' ); ?></p>
+					<p class="co-help"><?php esc_html_e( 'Displayed in proposal headers and portal. Use PNG or JPG — SVG files are not supported by email clients and will not appear in sent proposal emails. Max 180×48px recommended.', 'clientoctopus' ); ?></p>
 				</div>
 			</div>
 
@@ -274,57 +274,53 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 					<?php esc_html_e( 'Find these in your Stripe Dashboard under Developers → API Keys.', 'clientoctopus' ); ?>
 				</p>
 
-				<div style="position:relative;">
-
-					<?php if ( $cf_payments_locked ) : ?>
-					<div style="position:absolute;inset:0;z-index:10;background:rgba(255,255,255,0.85);backdrop-filter:blur(3px);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;">
-						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-							<path d="M7 11V7a5 5 0 0110 0v4"/>
-						</svg>
-						<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
-						<a href="https://clientoctopus.com/pricing" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
-					</div>
-					<?php endif; ?>
-
-					<div class="co-field">
-						<label class="co-label" for="co-pub-key">
-							<?php esc_html_e( 'Publishable Key', 'clientoctopus' ); ?>
-							<span><?php esc_html_e( '(pk_test_… or pk_live_…)', 'clientoctopus' ); ?></span>
-						</label>
-						<input
-							type="text"
-							id="co-pub-key"
-							name="clientoctopus_stripe_publishable_key"
-							class="co-input"
-							<?php disabled( $cf_payments_locked, true ); ?>
-							value="<?php echo esc_attr( $pub_key ); ?>"
-							placeholder="pk_test_…"
-							autocomplete="off"
-							spellcheck="false"
-						>
-					</div>
-
-					<div class="co-field">
-						<label class="co-label" for="co-secret-key">
-							<?php esc_html_e( 'Secret Key', 'clientoctopus' ); ?>
-							<span><?php esc_html_e( '(sk_test_… or sk_live_…)', 'clientoctopus' ); ?></span>
-						</label>
-						<input
-							type="password"
-							id="co-secret-key"
-							name="clientoctopus_stripe_secret_key"
-							class="co-input"
-							<?php disabled( $cf_payments_locked, true ); ?>
-							value="<?php echo esc_attr( $secret_key ); ?>"
-							placeholder="sk_test_…"
-							autocomplete="new-password"
-							spellcheck="false"
-						>
-						<p class="co-help"><?php esc_html_e( 'Never share your secret key. It is stored encrypted in your database.', 'clientoctopus' ); ?></p>
-					</div>
-
+				<?php if ( $cf_payments_locked ) : ?>
+				<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+						<path d="M7 11V7a5 5 0 0110 0v4"/>
+					</svg>
+					<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
+					<a href="<?php echo esc_url( function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_upgrade_url() : 'https://clientoctopus.com/pricing' ); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
 				</div>
+				<?php else : ?>
+
+				<div class="co-field">
+					<label class="co-label" for="co-pub-key">
+						<?php esc_html_e( 'Publishable Key', 'clientoctopus' ); ?>
+						<span><?php esc_html_e( '(pk_test_… or pk_live_…)', 'clientoctopus' ); ?></span>
+					</label>
+					<input
+						type="text"
+						id="co-pub-key"
+						name="clientoctopus_stripe_publishable_key"
+						class="co-input"
+						value="<?php echo esc_attr( $pub_key ); ?>"
+						placeholder="pk_test_…"
+						autocomplete="off"
+						spellcheck="false"
+					>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-secret-key">
+						<?php esc_html_e( 'Secret Key', 'clientoctopus' ); ?>
+						<span><?php esc_html_e( '(sk_test_… or sk_live_…)', 'clientoctopus' ); ?></span>
+					</label>
+					<input
+						type="password"
+						id="co-secret-key"
+						name="clientoctopus_stripe_secret_key"
+						class="co-input"
+						value="<?php echo esc_attr( $secret_key ); ?>"
+						placeholder="sk_test_…"
+						autocomplete="new-password"
+						spellcheck="false"
+					>
+					<p class="co-help"><?php esc_html_e( 'Never share your secret key. It is stored encrypted in your database.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<?php endif; ?>
 			</div>
 
 			<!-- ── Webhook card ──────────────────────────────────────────────────── -->
@@ -347,60 +343,56 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 					?>
 				</p>
 
-				<div style="position:relative;">
-
-					<?php if ( $cf_payments_locked ) : ?>
-					<div style="position:absolute;inset:0;z-index:10;background:rgba(255,255,255,0.85);backdrop-filter:blur(3px);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;">
-						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-							<path d="M7 11V7a5 5 0 0110 0v4"/>
-						</svg>
-						<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
-						<a href="https://clientoctopus.com/pricing" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
-					</div>
-					<?php endif; ?>
-
-					<div class="co-field">
-						<label class="co-label" for="co-webhook-url"><?php esc_html_e( 'Webhook Endpoint URL', 'clientoctopus' ); ?></label>
-						<div class="co-webhook-row">
-							<input
-								type="text"
-								id="co-webhook-url"
-								class="co-input"
-								value="<?php echo esc_url( $webhook_url ); ?>"
-								readonly
-							>
-							<button
-								type="button"
-								class="co-copy-btn"
-								<?php disabled( $cf_payments_locked, true ); ?>
-								onclick="navigator.clipboard.writeText(document.getElementById('co-webhook-url').value).then(function(){this.textContent='Copied!';}.bind(this))"
-							><?php esc_html_e( 'Copy', 'clientoctopus' ); ?></button>
-						</div>
-					</div>
-
-					<div class="co-field">
-						<label class="co-label" for="co-webhook-secret">
-							<?php esc_html_e( 'Signing Secret', 'clientoctopus' ); ?>
-							<span><?php esc_html_e( '(whsec_…)', 'clientoctopus' ); ?></span>
-						</label>
-						<input
-							type="password"
-							id="co-webhook-secret"
-							name="clientoctopus_stripe_webhook_secret"
-							class="co-input"
-							<?php disabled( $cf_payments_locked, true ); ?>
-							value="<?php echo esc_attr( $webhook_sec ); ?>"
-							placeholder="whsec_…"
-							autocomplete="new-password"
-							spellcheck="false"
-						>
-						<p class="co-help">
-							<?php esc_html_e( 'Found in your webhook\'s settings page on the Stripe Dashboard. Used to verify events are genuinely from Stripe.', 'clientoctopus' ); ?>
-						</p>
-					</div>
-
+				<?php if ( $cf_payments_locked ) : ?>
+				<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+						<path d="M7 11V7a5 5 0 0110 0v4"/>
+					</svg>
+					<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
+					<a href="<?php echo esc_url( function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_upgrade_url() : 'https://clientoctopus.com/pricing' ); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
 				</div>
+				<?php else : ?>
+
+				<div class="co-field">
+					<label class="co-label" for="co-webhook-url"><?php esc_html_e( 'Webhook Endpoint URL', 'clientoctopus' ); ?></label>
+					<div class="co-webhook-row">
+						<input
+							type="text"
+							id="co-webhook-url"
+							class="co-input"
+							value="<?php echo esc_url( $webhook_url ); ?>"
+							readonly
+						>
+						<button
+							type="button"
+							class="co-copy-btn"
+							onclick="navigator.clipboard.writeText(document.getElementById('co-webhook-url').value).then(function(){this.textContent='Copied!';}.bind(this))"
+						><?php esc_html_e( 'Copy', 'clientoctopus' ); ?></button>
+					</div>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-webhook-secret">
+						<?php esc_html_e( 'Signing Secret', 'clientoctopus' ); ?>
+						<span><?php esc_html_e( '(whsec_…)', 'clientoctopus' ); ?></span>
+					</label>
+					<input
+						type="password"
+						id="co-webhook-secret"
+						name="clientoctopus_stripe_webhook_secret"
+						class="co-input"
+						value="<?php echo esc_attr( $webhook_sec ); ?>"
+						placeholder="whsec_…"
+						autocomplete="new-password"
+						spellcheck="false"
+					>
+					<p class="co-help">
+						<?php esc_html_e( 'Found in your webhook\'s settings page on the Stripe Dashboard. Used to verify events are genuinely from Stripe.', 'clientoctopus' ); ?>
+					</p>
+				</div>
+
+				<?php endif; ?>
 			</div>
 
 			</div><!-- /.stripe-column -->
@@ -417,90 +409,84 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 					<?php esc_html_e( 'When enabled, clients will receive a review request email once their final payment clears. Tick the box below to turn this on. Available on Pro and Agency plans.', 'clientoctopus' ); ?>
 				</p>
 
-				<div style="position:relative;">
-
-					<?php if ( $cf_is_free ) : ?>
-					<div style="position:absolute;inset:0;z-index:10;background:rgba(255,255,255,0.85);backdrop-filter:blur(3px);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;">
-						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-							<path d="M7 11V7a5 5 0 0110 0v4"/>
-						</svg>
-						<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
-						<a href="https://clientoctopus.com/pricing" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
-					</div>
-					<?php endif; ?>
-
-					<div class="co-field" style="display:flex;align-items:center;gap:10px;">
-						<input
-							type="checkbox"
-							id="co-testimonial-enabled"
-							name="clientoctopus_testimonial_enabled"
-							value="1"
-							<?php checked( $testimonial_enabled, '1' ); ?>
-							<?php disabled( $cf_is_free, true ); ?>
-							style="width:18px;height:18px;cursor:pointer;flex-shrink:0;"
-						>
-						<label for="co-testimonial-enabled" style="margin:0;font-size:13px;font-weight:500;color:#374151;cursor:pointer;">
-							<?php esc_html_e( 'Send testimonial request email after final payment', 'clientoctopus' ); ?>
-						</label>
-					</div>
-
-					<div class="co-divider"></div>
-
-					<div class="co-field">
-						<label class="co-label" for="co-testimonial-body">
-							<?php esc_html_e( 'Email body copy', 'clientoctopus' ); ?>
-						</label>
-						<textarea
-							id="co-testimonial-body"
-							name="clientoctopus_testimonial_body"
-							class="co-input"
-							rows="4"
-							<?php disabled( $cf_is_free, true ); ?>
-							style="height:auto;padding:12px 14px;font-family:-apple-system,sans-serif;letter-spacing:0;resize:vertical;"
-							placeholder="<?php esc_attr_e( "It was a pleasure working with you. If you have a moment, we\xe2\x80\x99d love to hear your feedback \xe2\x80\x94 it helps us improve and helps others find us.", 'clientoctopus' ); ?>"
-						><?php echo esc_textarea( $testimonial_body ); ?></textarea>
-						<p class="co-hint"><?php esc_html_e( 'Plain text. Leave blank to use the default message.', 'clientoctopus' ); ?></p>
-					</div>
-
-					<div class="co-field">
-						<label class="co-label" for="co-testimonial-url">
-							<?php esc_html_e( 'Review / testimonial URL', 'clientoctopus' ); ?>
-							<span><?php esc_html_e( '(optional)', 'clientoctopus' ); ?></span>
-						</label>
-						<input
-							type="url"
-							id="co-testimonial-url"
-							name="clientoctopus_testimonial_url"
-							class="co-input"
-							<?php disabled( $cf_is_free, true ); ?>
-							value="<?php echo esc_url( $testimonial_review_url ); ?>"
-							placeholder="https://g.page/r/your-google-review-link"
-							autocomplete="off"
-							spellcheck="false"
-						>
-						<p class="co-hint"><?php esc_html_e( 'Google Reviews, Trustpilot, Clutch, or any custom form. Leave blank to omit the button.', 'clientoctopus' ); ?></p>
-					</div>
-
-					<div class="co-field">
-						<label class="co-label" for="co-testimonial-cta-label">
-							<?php esc_html_e( 'Button label', 'clientoctopus' ); ?>
-							<span><?php esc_html_e( '(optional)', 'clientoctopus' ); ?></span>
-						</label>
-						<input
-							type="text"
-							id="co-testimonial-cta-label"
-							name="clientoctopus_testimonial_cta_label"
-							class="co-input"
-							<?php disabled( $cf_is_free, true ); ?>
-							value="<?php echo esc_attr( $testimonial_cta_label ); ?>"
-							placeholder="<?php esc_attr_e( 'Leave a Review', 'clientoctopus' ); ?>"
-							spellcheck="false"
-						>
-						<p class="co-hint"><?php esc_html_e( 'Text shown on the review button. Defaults to "Leave a Review".', 'clientoctopus' ); ?></p>
-					</div>
-
+				<?php if ( $cf_is_free ) : ?>
+				<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+						<path d="M7 11V7a5 5 0 0110 0v4"/>
+					</svg>
+					<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
+					<a href="<?php echo esc_url( function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_upgrade_url() : 'https://clientoctopus.com/pricing' ); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
 				</div>
+				<?php else : ?>
+
+				<div class="co-field" style="display:flex;align-items:center;gap:10px;">
+					<input
+						type="checkbox"
+						id="co-testimonial-enabled"
+						name="clientoctopus_testimonial_enabled"
+						value="1"
+						<?php checked( $testimonial_enabled, '1' ); ?>
+						style="width:18px;height:18px;cursor:pointer;flex-shrink:0;"
+					>
+					<label for="co-testimonial-enabled" style="margin:0;font-size:13px;font-weight:500;color:#374151;cursor:pointer;">
+						<?php esc_html_e( 'Send testimonial request email after final payment', 'clientoctopus' ); ?>
+					</label>
+				</div>
+
+				<div class="co-divider"></div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-testimonial-body">
+						<?php esc_html_e( 'Email body copy', 'clientoctopus' ); ?>
+					</label>
+					<textarea
+						id="co-testimonial-body"
+						name="clientoctopus_testimonial_body"
+						class="co-input"
+						rows="4"
+						style="height:auto;padding:12px 14px;font-family:-apple-system,sans-serif;letter-spacing:0;resize:vertical;"
+						placeholder="<?php esc_attr_e( "It was a pleasure working with you. If you have a moment, we\xe2\x80\x99d love to hear your feedback \xe2\x80\x94 it helps us improve and helps others find us.", 'clientoctopus' ); ?>"
+					><?php echo esc_textarea( $testimonial_body ); ?></textarea>
+					<p class="co-hint"><?php esc_html_e( 'Plain text. Leave blank to use the default message.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-testimonial-url">
+						<?php esc_html_e( 'Review / testimonial URL', 'clientoctopus' ); ?>
+						<span><?php esc_html_e( '(optional)', 'clientoctopus' ); ?></span>
+					</label>
+					<input
+						type="url"
+						id="co-testimonial-url"
+						name="clientoctopus_testimonial_url"
+						class="co-input"
+						value="<?php echo esc_url( $testimonial_review_url ); ?>"
+						placeholder="https://g.page/r/your-google-review-link"
+						autocomplete="off"
+						spellcheck="false"
+					>
+					<p class="co-hint"><?php esc_html_e( 'Google Reviews, Trustpilot, Clutch, or any custom form. Leave blank to omit the button.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-testimonial-cta-label">
+						<?php esc_html_e( 'Button label', 'clientoctopus' ); ?>
+						<span><?php esc_html_e( '(optional)', 'clientoctopus' ); ?></span>
+					</label>
+					<input
+						type="text"
+						id="co-testimonial-cta-label"
+						name="clientoctopus_testimonial_cta_label"
+						class="co-input"
+						value="<?php echo esc_attr( $testimonial_cta_label ); ?>"
+						placeholder="<?php esc_attr_e( 'Leave a Review', 'clientoctopus' ); ?>"
+						spellcheck="false"
+					>
+					<p class="co-hint"><?php esc_html_e( 'Text shown on the review button. Defaults to "Leave a Review".', 'clientoctopus' ); ?></p>
+				</div>
+
+				<?php endif; ?>
 			</div>
 
 		</div><!-- /.co-settings-grid -->

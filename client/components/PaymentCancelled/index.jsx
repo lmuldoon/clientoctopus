@@ -19,7 +19,7 @@ const injectStyles = ( id, css ) => {
 };
 
 /* Inject fonts if ProposalClientView hasn't already (standalone cancel page). */
-injectStyles( 'co-global-s', `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&family=DM+Mono&display=swap');
+injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
 

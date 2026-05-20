@@ -168,10 +168,13 @@ function clientoctopus_portal_verify( WP_REST_Request $request ): WP_REST_Respon
 		], 401 );
 	}
 
-	// Successful magic link verification proves email ownership — equivalent to
-	// having set a password. Mark it so password login is enabled from here on.
-	ClientOctopus_Portal_Auth::mark_password_set( $result->ID );
-	$redirect = home_url( '/clientoctopus/dashboard' );
+	// First-time clients (no password set yet) go to the set-password screen.
+	// Returning clients who have already set a password go straight to the dashboard.
+	if ( ClientOctopus_Portal_Auth::has_set_password( $result->ID ) ) {
+		$redirect = home_url( '/clientoctopus/dashboard' );
+	} else {
+		$redirect = home_url( '/clientoctopus/set-password' );
+	}
 
 	return new WP_REST_Response( [
 		'success'      => true,

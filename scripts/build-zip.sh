@@ -4,7 +4,8 @@ set -e
 SLUG="clientoctopus"
 PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TMP_DIR="$(mktemp -d)"
-ZIP_NAME="${SLUG}.zip"
+VERSION=$(grep -m1 "Version:" "$PLUGIN_DIR/clientoctopus.php" | awk '{print $NF}' | tr -d '[:space:]')
+ZIP_NAME="${SLUG}-${VERSION}.zip"
 
 echo "Building ${SLUG}..."
 cd "$PLUGIN_DIR"
@@ -31,7 +32,8 @@ rsync -a \
   --exclude='portal/components' \
   --exclude='portal/index.jsx' \
   --exclude='portal/portal-globals.js' \
-  --exclude='client' \
+  --exclude='client/index.jsx' \
+  --exclude='client/components' \
   . "$TMP_DIR/$SLUG/"
 
 echo "Zipping..."

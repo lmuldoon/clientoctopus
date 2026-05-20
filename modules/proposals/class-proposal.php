@@ -216,8 +216,9 @@ class ClientOctopus_Proposal {
 		// $orderby and $order are whitelisted above; $where_sql components are
 		// individually prepared via $wpdb->prepare(). The ORDER BY clause cannot
 		// use placeholders, so it is built from the validated whitelist values.
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $t p WHERE $where_sql" ) );
+		// $where_sql components are individually prepared above; no outer prepare() needed.
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $t p WHERE $where_sql" );
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
@@ -234,8 +235,13 @@ class ClientOctopus_Proposal {
 			ARRAY_A
 		);
 
+		if ( null === $rows ) {
+			error_log( 'ClientOctopus proposals list error: ' . $wpdb->last_error );
+			$rows = [];
+		}
+
 		return [
-			'proposals' => array_map( [ __CLASS__, 'prepare_row' ], $rows ?: [] ),
+			'proposals' => array_map( [ __CLASS__, 'prepare_row' ], $rows ),
 			'total'     => $total,
 			'pages'     => (int) ceil( $total / $per_page ),
 			'page'      => $page,

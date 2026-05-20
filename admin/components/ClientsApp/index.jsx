@@ -55,7 +55,6 @@ function avatarColour( name ) {
 // ── CSS ───────────────────────────────────────────────────────────────────────
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap');
 
 .co-cl {
   font-family: 'Archivo', -apple-system, sans-serif;

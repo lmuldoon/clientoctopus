@@ -100,6 +100,47 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 		}
 	}, 10, 2 );
 
+	clientoctopus_fs()->add_action( 'after_uninstall', static function (): void {
+		global $wpdb;
+
+		// ── Custom tables ─────────────────────────────────────────────────────
+		$tables = [
+			'clientoctopus_user_meta',
+			'clientoctopus_ai_usage_logs',
+			'clientoctopus_clients',
+			'clientoctopus_proposals',
+			'clientoctopus_projects',
+			'clientoctopus_milestones',
+			'clientoctopus_payments',
+			'clientoctopus_messages',
+			'clientoctopus_files',
+			'clientoctopus_approvals',
+			'clientoctopus_events',
+			'clientoctopus_team_members',
+			'clientoctopus_webhooks',
+			'clientoctopus_webhook_logs',
+		];
+		foreach ( $tables as $table ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are hardcoded strings, not user input.
+			$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}{$table}" );
+		}
+
+		// ── Options & transients ──────────────────────────────────────────────
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE 'clientoctopus\_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE '_transient_clientoctopus\_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE '_transient_timeout_clientoctopus\_%'" );
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		// ── Custom roles ──────────────────────────────────────────────────────
+		remove_role( 'clientoctopus_client' );
+		remove_role( 'clientoctopus_member' );
+
+		// ── User meta ─────────────────────────────────────────────────────────
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}usermeta WHERE meta_key LIKE '\_cf\_%'" );
+	} );
+
 	// Backfill: sync key and plan on first admin load after deployment,
 	// for licenses that were active before these hooks existed.
 	add_action( 'admin_init', static function (): void {
@@ -305,13 +346,18 @@ function clientoctopus_email_html( array $args ): string {
 	$cf_logo_url   = CLIENTOCTOPUS_URL . 'assets/images/logo-icon.png';
 
 	$logo_html = '';
-	if ( $logo_url ) {
+	// SVG images are not rendered by email clients (Gmail, Outlook, Apple Mail).
+	// Skip the logo block if the URL points to an SVG file.
+	$logo_is_svg = $logo_url && (
+		str_ends_with( strtolower( parse_url( $logo_url, PHP_URL_PATH ) ?? '' ), '.svg' )
+	);
+	if ( $logo_url && ! $logo_is_svg ) {
 		$safe_logo = esc_url( $logo_url );
 		$logo_html = "
           <tr>
             <td style=\"padding-bottom:16px;\">
               <img src=\"{$safe_logo}\" alt=\"{$business_name}\"
-                   style=\"max-height:48px;max-width:180px;object-fit:contain;display:block;\">
+                   style=\"max-height:48px;max-width:180px;display:block;\" border=\"0\">
             </td>
           </tr>";
 	}
@@ -406,9 +452,9 @@ echo $footer_html;
           <tr>
             <td align="center" style="padding-bottom:32px;">
               <a href="https://clientoctopus.com"
-                 style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;vertical-align:middle;">
+                 style="text-decoration:none;display:inline-flex;align-items:center;vertical-align:middle;">
                 <span style="font-family:'DM Sans',Helvetica,Arial,sans-serif;font-size:13px;
-                             color:#9CA3AF;vertical-align:middle;letter-spacing:0.02em;">Powered by</span>
+                             color:#9CA3AF;vertical-align:middle;letter-spacing:0.02em;margin-right:7px;">Powered by</span>
                 <img src="<?php echo esc_url( $cf_logo_url ); ?>" alt="Client Octopus"
                      style="display:inline-block;vertical-align:middle;border:0;height:18px;width:auto;">
               </a>
@@ -518,18 +564,22 @@ final class ClientOctopus {
 			}
 
 			global $wpdb;
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names use $wpdb->users and $wpdb->prefix with hardcoded slugs, not user input.
 			$unauthorised = $wpdb->get_col(
-				"SELECT u.ID
-				 FROM {$wpdb->users} u
-				 JOIN {$wpdb->usermeta} um ON um.user_id = u.ID
-				    AND um.meta_key = '{$wpdb->prefix}capabilities'
-				    AND um.meta_value LIKE '%clientoctopus_member%'
-				 WHERE u.ID NOT IN (
-				     SELECT member_user_id FROM {$wpdb->prefix}clientoctopus_team_members
-				 )"
+				$wpdb->prepare(
+					"SELECT u.ID
+					 FROM {$wpdb->users} u
+					 JOIN {$wpdb->usermeta} um ON um.user_id = u.ID
+					    AND um.meta_key = %s
+					    AND um.meta_value LIKE %s
+					 WHERE u.ID NOT IN (
+					     SELECT member_user_id FROM {$wpdb->prefix}clientoctopus_team_members
+					 )",
+					$wpdb->prefix . 'capabilities',
+					'%clientoctopus_member%'
+				)
 			);
-			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			foreach ( $unauthorised as $uid ) {
 				( new WP_User( (int) $uid ) )->remove_role( 'clientoctopus_member' );
 			}
@@ -949,7 +999,7 @@ final class ClientOctopus {
 	public function register_admin_menu(): void {
 		$svg_raw  = file_get_contents( CLIENTOCTOPUS_DIR . 'assets/images/logo-icon.svg' );
 		$svg_raw  = preg_replace( '/^<\?xml[^?]*\?>\s*/s', '', $svg_raw );
-		$svg_raw  = preg_replace( '/<svg\b/', '<svg fill="#a7aaad"', $svg_raw, 1 );
+		$svg_raw  = preg_replace( '/<svg\b/', '<svg fill="#a7aaad" shape-rendering="geometricPrecision" width="20" height="20"', $svg_raw, 1 );
 		$svg_icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_raw );
 
 		add_menu_page(
@@ -1176,6 +1226,9 @@ final class ClientOctopus {
 		$admin_css = CLIENTOCTOPUS_URL . 'admin/css/';
 		$admin_js  = CLIENTOCTOPUS_URL . 'admin/js/';
 
+		// Self-hosted fonts — no Google Fonts CDN calls.
+		wp_enqueue_style( 'co-admin-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fonts.css', [], CLIENTOCTOPUS_VERSION );
+
 		// Shared spinner + React mount styles for all Client Octopus admin pages.
 		wp_enqueue_style( 'co-admin-views', $admin_css . 'admin-react-views.css', [], CLIENTOCTOPUS_VERSION );
 		$user_id   = clientoctopus_get_owner_id( get_current_user_id() );
@@ -1205,6 +1258,7 @@ final class ClientOctopus {
 			'teamSeats'            => ClientOctopus_Entitlements::get_team_seats_used( $user_id ),
 			'teamLimit'            => ClientOctopus_Entitlements::get_team_limit( $user_id ),
 			'senderEmailConfigured' => ! empty( get_option( 'clientoctopus_from_email', '' ) ),
+			'homeUrl'               => home_url(),
 		];
 
 		//@fs_premium_only
@@ -1428,6 +1482,30 @@ register_deactivation_hook( __FILE__, 'clientoctopus_deactivate' );
 
 add_action( 'plugins_loaded', static function (): void {
 	ClientOctopus::instance();
+} );
+
+// ── Privacy policy content ────────────────────────────────────────────────────
+
+add_action( 'admin_init', static function (): void {
+	if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+		return;
+	}
+	wp_add_privacy_policy_content(
+		'Client Octopus',
+		wp_kses_post(
+			'<h2>What data this plugin collects</h2>
+			<p>Client Octopus stores the following data in your WordPress database:</p>
+			<ul>
+				<li>Client contact details (name, email address, company name, phone number) entered by the site owner</li>
+				<li>Proposal content, status history, and timestamps</li>
+				<li>Payment records (amount, currency, date — no card data is stored by this plugin)</li>
+				<li>Client portal login tokens (temporary, expire after 24 hours)</li>
+			</ul>
+			<h2>External services</h2>
+			<p>When the AI writing assistant is used (Pro/Agency plans only), the text prompt and your site URL are sent to the Client Octopus relay server for processing. See the plugin readme for full details and links to the privacy policy of each third-party service.</p>
+			<p>Payment processing is handled by Stripe. No card details pass through or are stored by this plugin. See <a href="https://stripe.com/privacy">Stripe\'s Privacy Policy</a>.</p>'
+		)
+	);
 } );
 
 } // end Freemius free/paid guard
