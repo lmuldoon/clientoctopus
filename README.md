@@ -10,7 +10,7 @@ Client Octopus gives freelancers and agencies everything they need to send propo
 
 | Feature | Free | Pro | Agency |
 |---|---|---|---|
-| Proposals | 3 proposals per month | Unlimited | Unlimited |
+| Proposals | Unlimited | Unlimited | Unlimited |
 | Clients | ✓ | ✓ | ✓ |
 | Client Portal | — | ✓ | ✓ |
 | Stripe Payments | — | ✓ | ✓ |
@@ -226,10 +226,10 @@ Client-facing portal routes (token or cookie auth, no WP login required):
 All feature access routes through a single function:
 
 ```php
-cf_can_user( int $user_id, string $feature, array $options = [] ): bool|string
+clientoctopus_can_user( int $user_id, string $feature, array $options = [] ): bool|string
 ```
 
-Never add `if ($plan === 'pro')` checks in module code — always call `cf_can_user()` or `Client Octopus_Entitlements::can_user()`.
+Never add `if ($plan === 'pro')` checks in module code — always call `clientoctopus_can_user()` or `ClientOctopus_Entitlements::can_user()`.
 
 ### Feature slugs
 

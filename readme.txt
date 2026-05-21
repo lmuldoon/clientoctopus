@@ -18,7 +18,7 @@ Create professional proposals, collect Stripe payments, manage milestones, autom
 
 = Free Features =
 
-* Create up to 3 proposals per month
+* Unlimited proposals
 * Unlimited clients
 * Proposal templates
 * Proposal status tracking (draft, sent, accepted, declined)
@@ -28,7 +28,6 @@ Create professional proposals, collect Stripe payments, manage milestones, autom
 = Pro Features =
 
 * Everything in Free plus...
-* Unlimited proposals
 * Stripe payment collection on proposals
 * Client portal with magic-link login
 * AI writing tools for proposal content
