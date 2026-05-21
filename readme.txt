@@ -106,8 +106,8 @@ Client Octopus uses Stripe to process client payments. When a client pays an inv
 Client Octopus's AI writing tools route requests through a relay service operated by the plugin author (clientoctopus.com). This relay authenticates your licence and forwards requests to an AI model. AI features are only triggered when you explicitly use an AI writing action in the admin.
 
 - Service: clientoctopus.com (operated by codievolt)
-- Data sent: the text prompt you submit (proposal content or instructions), your licence key for authentication, and your WordPress site URL for rate-limiting purposes.
-- Privacy Policy: https://clientoctopus.com/privacy
+- Data sent: the text prompt you submit (proposal content or instructions), your licence key for authentication, and your WordPress site URL for rate-limiting purposes. Your admin email address is also transmitted for account identification purposes.
+- Privacy Policy: https://clientoctopus.clientoctopus.com/privacy-policy/
 
 == Changelog ==
 

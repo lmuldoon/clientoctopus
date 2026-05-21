@@ -240,8 +240,7 @@ class ClientOctopus_Proposal_Template {
 			return $all;
 		}
 
-		// Free: only 'free' tier templates.
-		return array_values( array_filter( $all, fn( $t ) => $t['tier'] === 'free' ) );
+		return $all;
 	}
 
 	/**
@@ -263,10 +262,7 @@ class ClientOctopus_Proposal_Template {
 			return true;
 		}
 
-		// Pro templates require pro or agency plan.
-		$plan = ClientOctopus_Entitlements::get_user_plan( $user_id );
-
-		return in_array( $plan, [ 'pro', 'agency' ], true );
+		return true;
 	}
 
 	/**

@@ -36,6 +36,7 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'
 		];
 
 		update_option( 'clientoctopus_hide_business_name', ! empty( $_POST['clientoctopus_hide_business_name'] ) ? '1' : '' );
+		update_option( 'clientoctopus_show_powered_by',    ! empty( $_POST['clientoctopus_show_powered_by'] )    ? '1' : '' );
 
 		foreach ( $fields as $option => $sanitizer ) {
 			$value = isset( $_POST[ $option ] ) ? call_user_func( $sanitizer, wp_unslash( $_POST[ $option ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized via $sanitizer callback registered above.
@@ -77,6 +78,7 @@ $webhook_url   = rest_url( 'clientoctopus/v1/payments/webhook' );
 
 $business_name        = get_option( 'clientoctopus_business_name', '' );
 $hide_business_name   = get_option( 'clientoctopus_hide_business_name', '' );
+$show_powered_by      = get_option( 'clientoctopus_show_powered_by',    '' );
 $from_name            = get_option( 'clientoctopus_from_name', '' );
 $from_email    = get_option( 'clientoctopus_from_email', '' );
 $brand_color   = get_option( 'clientoctopus_brand_color', '#6366f1' );
@@ -165,6 +167,19 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 						<?php esc_html_e( 'Hide business name on proposals and emails', 'clientoctopus' ); ?>
 					</label>
 					<p class="co-help"><?php esc_html_e( 'If your logo already includes your business name, enable this to avoid repeating it beneath the logo on proposals and outgoing emails.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<div class="co-field">
+					<label class="co-checkbox-label">
+						<input
+							type="checkbox"
+							name="clientoctopus_show_powered_by"
+							value="1"
+							<?php checked( '1', $show_powered_by ); ?>
+						>
+						<?php esc_html_e( 'Show "Powered by Client Octopus" in emails', 'clientoctopus' ); ?>
+					</label>
+					<p class="co-help"><?php esc_html_e( 'When enabled, a small "Powered by Client Octopus" badge is added to the footer of all outgoing emails.', 'clientoctopus' ); ?></p>
 				</div>
 
 				<div class="co-divider"></div>

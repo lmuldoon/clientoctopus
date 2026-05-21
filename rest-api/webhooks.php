@@ -25,15 +25,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CLIENTOCTOPUS_WEBHOOK_EVENTS = [
-	'proposal.sent',
-	'proposal.accepted',
-	'proposal.declined',
-	'proposal.revision_requested',
-	'payment.completed',
-	'project.created',
-	'project.completed',
-];
+if ( ! defined( 'CLIENTOCTOPUS_WEBHOOK_EVENTS' ) ) {
+	define( 'CLIENTOCTOPUS_WEBHOOK_EVENTS', [
+		'proposal.sent',
+		'proposal.accepted',
+		'proposal.declined',
+		'proposal.revision_requested',
+		'payment.completed',
+		'project.created',
+		'project.completed',
+	] );
+}
 
 // ── Route registration ────────────────────────────────────────────────────────
 

@@ -62,9 +62,9 @@ class ClientOctopus_Entitlements {
 		return [
 			// ── Proposals ────────────────────────────────────────────────────
 			'create_proposal' => [
-				'free'   => [ 'limit' => 3,    'limit_type' => 'monthly' ],
-				'pro'    => [ 'limit' => null,  'limit_type' => null ],
-				'agency' => [ 'limit' => null,  'limit_type' => null ],
+				'free'   => [ 'limit' => null, 'limit_type' => null ],
+				'pro'    => [ 'limit' => null, 'limit_type' => null ],
+				'agency' => [ 'limit' => null, 'limit_type' => null ],
 			],
 
 			// ── AI Assistance ─────────────────────────────────────────────────

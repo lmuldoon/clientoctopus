@@ -240,7 +240,7 @@ function clientoctopus_rest_list_templates( WP_REST_Request $request ): WP_REST_
 
 	// Annotate each template with whether it's accessible.
 	$templates = array_map( static function ( array $tpl ) use ( $plan ) {
-		$tpl['locked'] = ( 'pro' === $tpl['tier'] && 'free' === $plan );
+		$tpl['locked'] = false;
 		unset( $tpl['sections'] ); // Don't expose full content in listing.
 		return $tpl;
 	}, $all );

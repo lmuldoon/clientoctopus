@@ -138,7 +138,7 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 
 		// ── User meta ─────────────────────────────────────────────────────────
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}usermeta WHERE meta_key LIKE '\_cf\_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}usermeta WHERE meta_key LIKE '\_clientoctopus\_%'" );
 	} );
 
 	// Backfill: sync key and plan on first admin load after deployment,
@@ -448,6 +448,7 @@ echo $footer_html;
 // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 ?>
         </table>
+        <?php if ( get_option( 'clientoctopus_show_powered_by' ) ) : ?>
         <table width="520" cellpadding="0" cellspacing="0" style="margin-top:24px;">
           <tr>
             <td align="center" style="padding-bottom:32px;">
@@ -461,6 +462,7 @@ echo $footer_html;
             </td>
           </tr>
         </table>
+        <?php endif; ?>
       </td>
     </tr>
   </table>
@@ -585,12 +587,30 @@ final class ClientOctopus {
 			}
 		} );
 
-		// Redirect to setup wizard on first admin load after fresh activation.
 		add_action( 'admin_init', static function (): void {
-			if ( get_transient( 'clientoctopus_redirect_to_setup' ) && current_user_can( 'manage_options' ) ) {
-				delete_transient( 'clientoctopus_redirect_to_setup' );
-				wp_safe_redirect( admin_url( 'admin.php?page=clientoctopus-setup' ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page detection, no state change.
+			$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+
+			// Redirect away from setup if onboarding is already complete
+			// (e.g. Freemius opt-in redirected back to first-path after wizard was done).
+			if ( 'clientoctopus-setup' === $page && get_option( 'clientoctopus_onboarding_complete' ) ) {
+				wp_safe_redirect( admin_url( 'admin.php?page=clientoctopus' ) );
 				exit;
+			}
+
+			// Redirect to setup wizard after fresh activation, but only once Freemius
+			// opt-in is resolved (registered or skipped). This lets Freemius show its
+			// opt-in banner on the first admin page load; the wizard opens on the next.
+			if (
+				get_option( 'clientoctopus_show_setup_wizard' ) &&
+				current_user_can( 'manage_options' ) &&
+				( clientoctopus_fs()->is_registered() || clientoctopus_fs()->is_anonymous() )
+			) {
+				delete_option( 'clientoctopus_show_setup_wizard' );
+				if ( 'clientoctopus-setup' !== $page ) {
+					wp_safe_redirect( admin_url( 'admin.php?page=clientoctopus-setup' ) );
+					exit;
+				}
 			}
 		} );
 
@@ -1458,8 +1478,11 @@ function clientoctopus_activate(): void {
 	flush_rewrite_rules();
 
 	// Queue redirect to setup wizard on first admin load after activation.
+	// Uses a persistent option (not a transient) so it survives slow page loads,
+	// and the redirect is gated on Freemius opt-in completion so Freemius can
+	// display its opt-in banner on the first admin page load before we redirect.
 	if ( ! get_option( 'clientoctopus_onboarding_complete' ) ) {
-		set_transient( 'clientoctopus_redirect_to_setup', true, 30 );
+		update_option( 'clientoctopus_show_setup_wizard', '1', false );
 	}
 }
 

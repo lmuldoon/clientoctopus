@@ -62,20 +62,7 @@ class ClientOctopus_Proposal {
 	public static function create( int $owner_id, array $data ): int|WP_Error {
 		global $wpdb;
 
-		// ── Entitlement check ────────────────────────────────────────────────
-		if ( ! clientoctopus_can_user( $owner_id, 'create_proposal' ) ) {
-			return new WP_Error(
-				'proposal_limit_reached',
-				sprintf(
-					/* translators: %s: date the monthly limit resets, e.g. "1 June" */
-					__( 'You have reached your 3 proposal limit for this month. Your limit resets on %s. Upgrade to Pro for unlimited proposals.', 'clientoctopus' ),
-					gmdate( 'j F', strtotime( 'first day of next month' ) )
-				),
-				[ 'status' => 403 ]
-			);
-		}
-
-		$now      = current_time( 'mysql' );
+$now      = current_time( 'mysql' );
 		$defaults = [
 			'owner_id'        => $owner_id,
 			'client_id'       => null,

@@ -74,7 +74,7 @@ $features = [
 		'key'     => 'create_proposal',
 		'label'   => 'Proposals',
 		'icon'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
-		'note'    => 'free' === $user_plan ? '3 per month' : 'Unlimited',
+		'note'    => 'Unlimited',
 		'gate'    => 'all',
 	],
 	[
@@ -164,9 +164,9 @@ $upgrade_url = function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_u
             <div class="co-plan-name"><?php echo esc_html( $plan_label ); ?></div>
             <div class="co-plan-sub">
                 <?php if ( 'free' === $user_plan ) : ?>
-                    Try Client Octopus — upgrade to unlock payments & AI.
+                    Upgrade to Pro to unlock AI assistance, payments, client portal & testimonials.
                 <?php elseif ( 'pro' === $user_plan ) : ?>
-                    Unlimited proposals · AI assistance · Stripe payments.
+                    Upgrade to Agency to unlock projects, messaging, file uploads & up to 5 team seats.
                 <?php else : ?>
                     Full access · Team collaboration · Projects & messaging.
                 <?php endif; ?>
@@ -386,14 +386,12 @@ $upgrade_url = function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_u
 
     <div class="co-animate co-animate-5">
         <div class="co-actions">
-            <?php if ( $is_pro_or_above ) : ?>
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-proposals&action=new' ) ); ?>" class="co-action-btn primary">
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-proposals&action=new' ) ); ?>" class="co-action-btn primary">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                     New Proposal
                 </a>
-            <?php endif; ?>
 
             <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-clients' ) ); ?>" class="co-action-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -402,14 +400,12 @@ $upgrade_url = function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_u
                 Manage Clients
             </a>
 
-            <?php if ( $is_pro_or_above ) : ?>
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-proposals' ) ); ?>" class="co-action-btn">
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-proposals' ) ); ?>" class="co-action-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
                     </svg>
                     All Proposals
                 </a>
-            <?php endif; ?>
 
             <?php if ( $is_agency ) : ?>
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-projects' ) ); ?>" class="co-action-btn">

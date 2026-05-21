@@ -1,6 +1,6 @@
 {
   "name": "clientoctopus",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Professional proposal, payment, and client management for freelancers and agencies.",
   "private": true,
   "scripts": {

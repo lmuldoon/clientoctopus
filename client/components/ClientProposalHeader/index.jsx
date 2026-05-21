@@ -85,7 +85,7 @@ const CSS = `
 .cfh-brand {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: start;
 	gap: 9px;
 	padding-top: 6px;
 }
@@ -195,7 +195,6 @@ const CSS = `
 @media (max-width: 680px) {
 	.cfh-banner { padding: 12px 24px; }
 	.cfh-main { grid-template-columns: 1fr; gap: 20px; padding: 28px 24px 24px; }
-	.cfh-brand { flex-direction: row; align-items: center; gap: 14px; }
 	.cfh-business-name { text-align: left; }
 	.cfh-title { font-size: 28px; }
 }
