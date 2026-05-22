@@ -440,7 +440,7 @@ export default function AnalyticsApp() {
 	const [ error,   setError   ] = useState( null );
 	const [ upgradeRequired, setUpgradeRequired ] = useState( false );
 
-	const apiUrl = window.coData?.apiUrl ?? '/wp-json/clientoctopus/v1/';
+	const apiUrl = window.clientoctopusData?.apiUrl ?? '/wp-json/clientoctopus/v1/';
 
 	const fetchData = useCallback( async () => {
 		setLoading( true );
@@ -475,7 +475,7 @@ export default function AnalyticsApp() {
 		document.head.appendChild( style );
 	}, [] );
 
-	const exportUrl = `${ apiUrl }analytics/overview?range=${ range }&export=csv&_wpnonce=${ window.coData?.nonce ?? '' }`;
+	const exportUrl = `${ apiUrl }analytics/overview?range=${ range }&export=csv&_wpnonce=${ window.clientoctopusData?.nonce ?? '' }`;
 
 	// ── Upgrade prompt ──
 	if ( upgradeRequired ) {

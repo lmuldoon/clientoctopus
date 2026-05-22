@@ -49,7 +49,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/files", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_files',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -57,7 +57,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/files", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_upload_file',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -65,7 +65,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}/download", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_download_file',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'fid' => [ 'type' => 'integer', 'required' => true ],
@@ -76,7 +76,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_file',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'fid' => [ 'type' => 'integer', 'required' => true ],

@@ -213,9 +213,9 @@ function SkeletonCard() {
 export default function ProjectList( { onViewProject } ) {
 	injectStyles( 'co-pl-styles', CSS );
 
-	const isAgency    = window.coData?.featureAccess?.use_projects === true;
-	const currentPlan = window.coData?.userPlan ?? 'free';
-	const settingsUrl = ( window.coData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
+	const isAgency    = window.clientoctopusData?.featureAccess?.use_projects === true;
+	const currentPlan = window.clientoctopusData?.userPlan ?? 'free';
+	const settingsUrl = ( window.clientoctopusData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
 
 	const [ projects, setProjects ] = useState( [] );
 	const [ loading, setLoading ]   = useState( true );

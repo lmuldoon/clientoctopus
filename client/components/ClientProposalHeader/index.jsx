@@ -287,19 +287,6 @@ export default function ClientProposalHeader( { proposal, businessName, business
 	return (
 		<header className="cfh-header">
 
-			{ showDownloadBtn && (
-				<div className="cfh-toolbar">
-					<button type="button" className="cfh-download-btn" onClick={ () => window.print() }>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-							<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-							<polyline points="7 10 12 15 17 10"/>
-							<line x1="12" y1="15" x2="12" y2="3"/>
-						</svg>
-						Download PDF
-					</button>
-				</div>
-			) }
-
 			{ isPortalClient && (
 				<a href="/clientoctopus/proposals" className="cfh-portal-back">
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -335,6 +322,19 @@ export default function ClientProposalHeader( { proposal, businessName, business
 						<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
 					</svg>
 					You declined this proposal.
+				</div>
+			) }
+
+			{ showDownloadBtn && (
+				<div className="cfh-toolbar">
+					<button type="button" className="cfh-download-btn" onClick={ () => window.print() }>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+							<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+							<polyline points="7 10 12 15 17 10"/>
+							<line x1="12" y1="15" x2="12" y2="3"/>
+						</svg>
+						Download PDF
+					</button>
 				</div>
 			) }
 

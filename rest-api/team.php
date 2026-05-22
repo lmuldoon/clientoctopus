@@ -23,13 +23,13 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/team/members', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_team_list',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	register_rest_route( $ns, '/team/invite', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_team_invite',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'email' => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_email' ],
 			'name'  => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
@@ -45,7 +45,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/team/members/(?P<id>\d+)', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_team_remove',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true ],
 		],

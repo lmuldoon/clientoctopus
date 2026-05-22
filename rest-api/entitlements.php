@@ -37,14 +37,14 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/user/plan', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_user_plan',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── POST /user/can ────────────────────────────────────────────────────────
 	register_rest_route( $ns, '/user/can', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_check_feature',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'feature' => [
 				'required'          => true,
@@ -66,14 +66,14 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/user/usage', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_usage',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── POST /user/log-usage ──────────────────────────────────────────────────
 	register_rest_route( $ns, '/user/log-usage', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_log_usage',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'feature' => [
 				'required'          => true,
@@ -131,15 +131,15 @@ function clientoctopus_rest_require_auth(): true|WP_Error {
 }
 
 /**
- * Require login and webhook management capability.
+ * Require login and the manage_clientoctopus capability.
  *
- * Used as permission_callback for webhook write routes (POST, PATCH, DELETE, test).
- * Checks both authentication and the manage_clientoctopus capability so that
- * only admin-level users can create or modify webhook configuration.
+ * Used as permission_callback for any privileged admin endpoint — proposals,
+ * clients, team, files, and similar write/read routes that must not be
+ * accessible to arbitrary WordPress subscribers.
  *
  * @return true|WP_Error
  */
-function clientoctopus_rest_require_webhook_manage(): true|WP_Error {
+function clientoctopus_rest_require_manage(): true|WP_Error {
 	if ( ! is_user_logged_in() ) {
 		return new WP_Error(
 			'rest_not_logged_in',
@@ -148,16 +148,29 @@ function clientoctopus_rest_require_webhook_manage(): true|WP_Error {
 		);
 	}
 
-	$owner_id = clientoctopus_get_owner_id( get_current_user_id() );
-	if ( ! user_can( $owner_id, 'manage_clientoctopus' ) ) {
+	if ( ! current_user_can( 'manage_clientoctopus' ) ) {
 		return new WP_Error(
 			'rest_forbidden',
-			__( 'You do not have permission to manage webhooks.', 'clientoctopus' ),
+			__( 'You do not have permission to perform this action.', 'clientoctopus' ),
 			[ 'status' => 403 ]
 		);
 	}
 
 	return true;
+}
+
+/**
+ * Require login and webhook management capability.
+ *
+ * Used as permission_callback for webhook write routes (POST, PATCH, DELETE, test).
+ * Delegates to clientoctopus_rest_require_manage — the manage_clientoctopus
+ * capability is already granted to the plugin owner and all team admin members,
+ * so no additional owner-resolution is needed.
+ *
+ * @return true|WP_Error
+ */
+function clientoctopus_rest_require_webhook_manage(): true|WP_Error {
+	return clientoctopus_rest_require_manage();
 }
 
 /**

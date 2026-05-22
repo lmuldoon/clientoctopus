@@ -80,7 +80,7 @@ function injectGlobalStyles() {
 
 // ─── API helper ───────────────────────────────────────────────────────────────
 export async function coFetch( path, options = {} ) {
-	const { apiUrl, nonce } = window.coData || {};
+	const { apiUrl, nonce } = window.clientoctopusData || {};
 	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
 
 	const res = await fetch( url, {

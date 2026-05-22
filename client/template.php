@@ -6,6 +6,12 @@
  * Completely bypasses the active WordPress theme — this is a self-contained
  * document viewer page.
  *
+ * CSS is loaded via raw <link> tags because this template is served through a
+ * custom WordPress rewrite rule and wp_head() / wp_enqueue_style() are never
+ * called — there is no WordPress page lifecycle at this URL. This is the same
+ * pattern used by other plugins that serve standalone front-end pages outside
+ * the normal theme rendering pipeline.
+ *
  * Variables injected by client-routing.php:
  *   $clientoctopus_proposal_token  string  Sanitised UUID token from the URL.
  *

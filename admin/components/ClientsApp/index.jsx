@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from '@wordpress/element';
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 async function coFetch( path, options = {} ) {
-	const { apiUrl, nonce } = window.coData || {};
+	const { apiUrl, nonce } = window.clientoctopusData || {};
 	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
 	const res = await fetch( url, {
 		headers: {
@@ -386,20 +386,21 @@ function StatusBadge( { client } ) {
 	);
 }
 
-function InviteButton( { client, userPlan, onInvite, sending, justSent } ) {
-	const isFree    = userPlan === 'free';
-	const noEmail   = ! client.email;
-	const disabled  = isFree || noEmail || sending;
-	const isResend  = !! client.portal_invited_at && ! justSent;
+function InviteButton( { client, onInvite, sending, justSent } ) {
+	if ( window.clientoctopusData?.featureAccess?.use_portal === false ) return null;
+
+	const noEmail  = ! client.email;
+	const disabled = noEmail || sending;
+	const isResend = !! client.portal_invited_at && ! justSent;
 
 	let label = 'Send Invite';
 	let btnClass = 'co-cl-invite-btn';
 
-	if ( justSent )    { label = '✓ Sent';    btnClass += ' sent'; }
-	else if ( isResend ) { label = 'Re-send';   btnClass += ' resend'; }
-	if ( sending )     { label = '…'; }
+	if ( justSent )      { label = '✓ Sent';  btnClass += ' sent'; }
+	else if ( isResend ) { label = 'Re-send'; btnClass += ' resend'; }
+	if ( sending )       { label = '…'; }
 
-	const btn = (
+	return (
 		<button
 			className={ btnClass }
 			disabled={ disabled }
@@ -408,25 +409,12 @@ function InviteButton( { client, userPlan, onInvite, sending, justSent } ) {
 			{ label }
 		</button>
 	);
-
-	if ( isFree ) {
-		return (
-			<div className="co-cl-tip-wrap">
-				{ btn }
-				<div className="co-cl-tip">Upgrade to Pro to send portal invitations</div>
-			</div>
-		);
-	}
-
-	return btn;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ClientsApp() {
 	injectStyles( 'co-clients-styles', CSS );
-
-	const userPlan = window.coData?.userPlan || 'free';
 
 	const [ clients,   setClients   ] = useState( [] );
 	const [ loading,   setLoading   ] = useState( true );
@@ -585,7 +573,6 @@ export default function ClientsApp() {
 										<td className="co-cl-td" style={ { textAlign:'right' } }>
 											<InviteButton
 												client={ client }
-												userPlan={ userPlan }
 												onInvite={ () => handleInvite( client ) }
 												sending={ sending === client.id }
 												justSent={ justSent === client.id }

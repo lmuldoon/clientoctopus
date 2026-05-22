@@ -21,7 +21,7 @@ import {
 	buildContentPayload,
 } from './utils';
 
-const canUseAi = window.coData?.featureAccess?.use_ai ?? false;
+const canUseAi = window.clientoctopusData?.featureAccess?.use_ai ?? false;
 
 // ─── Style injection ──────────────────────────────────────────────────────────
 

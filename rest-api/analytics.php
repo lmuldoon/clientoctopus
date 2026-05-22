@@ -29,7 +29,7 @@ add_action( 'rest_api_init', static function (): void {
 		[
 			'methods'             => 'GET',
 			'callback'            => 'clientoctopus_rest_analytics_overview',
-			'permission_callback' => 'clientoctopus_rest_require_auth',
+			'permission_callback' => 'clientoctopus_rest_require_manage',
 			'args'                => [
 				'range'  => [
 					'required'          => false,

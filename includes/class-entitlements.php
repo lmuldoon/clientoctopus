@@ -59,6 +59,7 @@ class ClientOctopus_Entitlements {
 	 * @return array<string, array<string, mixed>>
 	 */
 	private static function get_feature_matrix(): array {
+		//@fs_premium_only
 		return [
 			// ── Proposals ────────────────────────────────────────────────────
 			'create_proposal' => [
@@ -132,6 +133,8 @@ class ClientOctopus_Entitlements {
 				'agency' => [ 'limit' => 5, 'limit_type' => 'users' ],
 			],
 		];
+		//@end:fs_premium_only
+		return []; // WP.org free zip: no plan restrictions — can_user() returns true for all features.
 	}
 
 	// ── Core Check ────────────────────────────────────────────────────────────
@@ -152,9 +155,11 @@ class ClientOctopus_Entitlements {
 		$plan   = self::get_user_plan( $user_id );
 		$matrix = self::get_feature_matrix();
 
-		// Unknown feature → deny by default.
+		// Unknown feature → allow. The WP.org free zip ships with an empty matrix
+		// (the premium-only block is stripped by Freemius), so all features must
+		// default to accessible in that build.
 		if ( ! isset( $matrix[ $feature ] ) ) {
-			return false;
+			return true;
 		}
 
 		$access = $matrix[ $feature ][ $plan ];

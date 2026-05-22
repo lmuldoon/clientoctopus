@@ -23,13 +23,13 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/clients', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_clients',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	register_rest_route( $ns, '/clients/(?P<id>\d+)/invite', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_invite_client',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true ],
 		],

@@ -61,7 +61,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_projects',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'status'   => [ 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_key' ],
 			'search'   => [ 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
@@ -76,7 +76,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_project',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -84,7 +84,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/update', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_project',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'name'        => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
@@ -97,7 +97,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_project',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -105,7 +105,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/payments', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_project_payments',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -113,7 +113,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'title'       => [ 'type' => 'string',  'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
@@ -126,7 +126,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/update', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'mid'         => [ 'type' => 'integer', 'required' => true ],
@@ -141,7 +141,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'mid' => [ 'type' => 'integer', 'required' => true ],
@@ -152,7 +152,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/reorder', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_reorder_milestones',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'ordered_ids' => [ 'type' => 'array',   'required' => true ],
@@ -163,7 +163,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/submit', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_submit_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'mid' => [ 'type' => 'integer', 'required' => true ],

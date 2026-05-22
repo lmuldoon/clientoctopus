@@ -7,8 +7,8 @@
  */
 import { useState, useEffect } from '@wordpress/element';
 
-const API  = window.coData?.apiUrl  || '/wp-json/clientoctopus/v1/';
-const NONCE = window.coData?.nonce  || '';
+const API  = window.clientoctopusData?.apiUrl  || '/wp-json/clientoctopus/v1/';
+const NONCE = window.clientoctopusData?.nonce  || '';
 
 async function apiFetch( path, opts = {} ) {
 	const res = await fetch( API + path, {
@@ -757,7 +757,7 @@ export default function SetupWizard() {
 	const [ direction, setDirection ] = useState( 'forward' );
 	const [ saving,    setSaving    ] = useState( false );
 	const [ error,     setError     ] = useState( null );
-	const [ plan ] = useState( window.coData?.userPlan || '' );
+	const [ plan ] = useState( window.clientoctopusData?.userPlan || '' );
 	const isFree      = plan === 'free' || ! plan;
 	const steps       = isFree ? FREE_STEPS : ALL_STEPS;
 	const lastDataStep = isFree ? 1 : 2;

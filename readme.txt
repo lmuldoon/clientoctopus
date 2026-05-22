@@ -2,7 +2,7 @@
 Contributors: codievolt
 Tags: proposal, client portal, client management, freelancer, agency
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 8.0
 Stable tag: 0.1.2
 License: GPLv2 or later
@@ -107,6 +107,19 @@ Client Octopus's AI writing tools route requests through a relay service operate
 - Service: clientoctopus.com (operated by codievolt)
 - Data sent: the text prompt you submit (proposal content or instructions), your licence key for authentication, and your WordPress site URL for rate-limiting purposes. Your admin email address is also transmitted for account identification purposes.
 - Privacy Policy: https://clientoctopus.clientoctopus.com/privacy-policy/
+
+== Source Code ==
+
+The plugin's JavaScript source files (React components) are available in the public repository:
+
+https://github.com/lmuldoon/clientoctopus
+
+Build instructions:
+
+1. npm install
+2. npm run build
+
+The compiled files in the `build/` directory are generated from the source above.
 
 == Changelog ==
 

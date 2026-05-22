@@ -262,7 +262,19 @@ $upgrade_url = function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_u
                          <?php echo $tooltip ? 'data-tooltip="' . esc_attr( $tooltip ) . '"' : ''; ?>>
 
                         <div class="co-feature-icon">
-                            <?php echo $feat['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG defined as PHP string literal above, not user input. ?>
+                            <?php
+							echo wp_kses(
+								$feat['icon'],
+								[
+									'svg'      => [ 'viewBox' => [], 'fill' => [], 'stroke' => [], 'stroke-width' => [], 'stroke-linecap' => [], 'stroke-linejoin' => [], 'xmlns' => [] ],
+									'path'     => [ 'd' => [], 'fill' => [], 'stroke' => [], 'stroke-width' => [] ],
+									'circle'   => [ 'cx' => [], 'cy' => [], 'r' => [], 'fill' => [], 'stroke' => [] ],
+									'line'     => [ 'x1' => [], 'y1' => [], 'x2' => [], 'y2' => [] ],
+									'polyline' => [ 'points' => [] ],
+									'rect'     => [ 'x' => [], 'y' => [], 'width' => [], 'height' => [], 'rx' => [] ],
+								]
+							);
+							?>
                         </div>
 
                         <div class="co-feature-name"><?php echo esc_html( $feat['label'] ); ?></div>

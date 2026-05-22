@@ -757,7 +757,7 @@ function statusClass( status ) {
 // ── Agency upgrade panel ───────────────────────────────────────────────────────
 
 function AgencyUpgradePanel( { description } ) {
-	const settingsUrl = ( window.coData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
+	const settingsUrl = ( window.clientoctopusData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
 	return (
 		<div className="co-pd-upgrade-panel">
 			<div className="co-pd-upgrade-icon">
@@ -972,7 +972,7 @@ export default function ProjectDetail( { projectId, onBack } ) {
 		paymentData.remaining === null || paymentData.remaining <= 0
 	);
 
-	const isProPlan = window.coData?.userPlan === 'pro';
+	const isProPlan = window.clientoctopusData?.userPlan === 'pro';
 
 	// ── Render ───────────────────────────────────────────────────────────
 

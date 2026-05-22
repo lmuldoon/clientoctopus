@@ -24,14 +24,14 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/onboarding/status', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_onboarding_status',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// POST /onboarding/save
 	register_rest_route( $ns, '/onboarding/save', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_onboarding_save',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'step'                   => [ 'type' => 'integer', 'minimum' => 0, 'maximum' => 4 ],
 			'stripe_pk'              => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
@@ -49,7 +49,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/onboarding/complete', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_onboarding_complete',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 } );

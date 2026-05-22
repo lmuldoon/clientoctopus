@@ -719,12 +719,8 @@ export default function ProposalList( {
 } ) {
 	injectStyles( 'co-list-styles', CSS );
 
-	const proposalLimit         = window.coData?.planLimits?.proposals ?? null;
-	const proposalUsage         = window.coData?.proposalUsage ?? 0;
-	const proposalNextReset     = window.coData?.proposalNextReset ?? '';
-	const isAtLimit             = proposalLimit !== null && proposalUsage >= proposalLimit;
-	const settingsUrl           = ( window.coData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
-	const senderEmailConfigured = window.coData?.senderEmailConfigured ?? true;
+	const settingsUrl           = ( window.clientoctopusData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
+	const senderEmailConfigured = window.clientoctopusData?.senderEmailConfigured ?? true;
 
 	const [ activeTab, setActiveTab ]         = useState( 'all' );
 	const [ search, setSearch ]               = useState( '' );
@@ -740,7 +736,7 @@ export default function ProposalList( {
 	const [ previewingId, setPreviewingId ]   = useState( null );
 	const [ copiedId, setCopiedId ]           = useState( null );
 
-	const homeUrl = ( window.coData?.homeUrl || '' ).replace( /\/$/, '' );
+	const homeUrl = ( window.clientoctopusData?.homeUrl || '' ).replace( /\/$/, '' );
 
 	async function handleRefresh() {
 		setRefreshing( true );
@@ -939,10 +935,7 @@ export default function ProposalList( {
 					<button
 						type="button"
 						className="co-list-new-btn"
-						onClick={ isAtLimit ? undefined : onNewProposal }
-						disabled={ isAtLimit }
-						title={ isAtLimit ? `Limit reached — resets on ${ proposalNextReset }` : undefined }
-						style={ isAtLimit ? { opacity: 0.45, cursor: 'not-allowed' } : undefined }
+						onClick={ onNewProposal }
 					>
 						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
 							<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -961,27 +954,6 @@ export default function ProposalList( {
 				</div>
 			) }
 
-			{ isAtLimit && (
-				<div className="co-list-limit-banner">
-					<div className="co-list-limit-banner__left">
-						<div className="co-list-limit-banner__icon">
-							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-								<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
-							</svg>
-						</div>
-						<div className="co-list-limit-banner__text">
-							<div className="co-list-limit-banner__title">{ proposalUsage }/{ proposalLimit } proposals used this month</div>
-							<div className="co-list-limit-banner__sub">Resets on { proposalNextReset } — upgrade for unlimited proposals</div>
-						</div>
-					</div>
-					<a href={ settingsUrl } className="co-list-limit-banner__btn">
-						<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-							<polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
-						</svg>
-						Upgrade to Pro
-					</a>
-				</div>
-			) }
 
 			{/* Tabs + search */ }
 			<div className="co-list-controls">
@@ -1252,11 +1224,11 @@ export default function ProposalList( {
 							? `No proposals match "${ search }". Try a different search.`
 							: activeTab !== 'all'
 							? `You have no ${ activeTab } proposals yet.`
-							: window.coData?.onboardingComplete === false
+							: window.clientoctopusData?.onboardingComplete === false
 							? <>New to Client Octopus? <a href="admin.php?page=clientoctopus-setup" style={ { color: 'var(--co-indigo)' } }>Complete your setup</a> then create your first proposal.</>
 							: 'Create your first proposal to get started.' }
 					</p>
-					{ ! search && activeTab === 'all' && ! isAtLimit && (
+					{ ! search && activeTab === 'all' && (
 						<button type="button" className="co-list-new-btn" onClick={ onNewProposal } style={ { marginTop: 8 } }>
 							<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" style={ { width: 15, height: 15, stroke: 'currentColor', strokeWidth: 2.5 } }>
 								<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>

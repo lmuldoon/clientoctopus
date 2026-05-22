@@ -223,7 +223,6 @@ $now      = current_time( 'mysql' );
 		);
 
 		if ( null === $rows ) {
-			error_log( 'ClientOctopus proposals list error: ' . $wpdb->last_error );
 			$rows = [];
 		}
 

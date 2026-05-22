@@ -369,7 +369,7 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 	injectStyles( 'co-wiz-styles', CSS );
 
 	const isEdit   = !! initialProposal;
-	const userPlan = window.coData?.userPlan || 'free';
+	const userPlan = window.clientoctopusData?.userPlan || 'free';
 
 	// `content` is decoded to an object by the PHP API — use it directly.
 	// Guard against the rare case where it might still arrive as a string.

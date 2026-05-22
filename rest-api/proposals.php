@@ -31,6 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // API responses. Must fire before routes are registered so the no-cache flag
 // is set early enough in the request lifecycle.
 add_action( 'rest_api_init', static function (): void {
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling LiteSpeed Cache's own hook; name is intentionally unprefixed.
 	do_action( 'litespeed_control_set_nocache', 'clientoctopus-rest-api' );
 }, 1 );
 
@@ -69,14 +70,14 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/templates', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_templates',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── POST /proposals/create ────────────────────────────────────────────────
 	register_rest_route( $ns, '/proposals/create', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => clientoctopus_proposal_create_args(),
 	] );
 
@@ -84,7 +85,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_proposals',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'status'   => [
 				'type'              => 'string',
@@ -104,7 +105,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -112,7 +113,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => array_merge(
 			[ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 			clientoctopus_proposal_update_args()
@@ -123,7 +124,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/send', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_send_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'            => [ 'type' => 'integer', 'required' => true ],
 			'client_email'  => [
@@ -144,7 +145,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update-wizard', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_wizard_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => array_merge(
 			[ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 			clientoctopus_proposal_create_args()
@@ -155,7 +156,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/duplicate', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_duplicate_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -163,7 +164,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -171,7 +172,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_generate_preview_token',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -179,7 +180,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_revoke_preview_token',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 } );
@@ -264,6 +265,7 @@ function clientoctopus_rest_create_proposal( WP_REST_Request $request ): WP_REST
 	}
 
 	// Purge any cached version of the proposals list so fresh data is returned.
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling LiteSpeed Cache's own hook; name is intentionally unprefixed.
 	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
 
 	return new WP_REST_Response( [ 'proposal' => $result ], 201 );
@@ -407,6 +409,7 @@ function clientoctopus_rest_update_proposal( WP_REST_Request $request ): WP_REST
 		clientoctopus_maybe_send_balance_due_email( $id );
 	}
 
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling LiteSpeed Cache's own hook; name is intentionally unprefixed.
 	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
 
 	return new WP_REST_Response( [ 'proposal' => $proposal ], 200 );
@@ -491,6 +494,7 @@ function clientoctopus_rest_duplicate_proposal( WP_REST_Request $request ): WP_R
 		return new WP_REST_Response( [ 'duplicated' => true, 'id' => $new_id ], 201 );
 	}
 
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling LiteSpeed Cache's own hook; name is intentionally unprefixed.
 	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
 
 	return new WP_REST_Response( [ 'proposal' => $proposal ], 201 );
@@ -511,6 +515,7 @@ function clientoctopus_rest_delete_proposal( WP_REST_Request $request ): WP_REST
 		return $result;
 	}
 
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling LiteSpeed Cache's own hook; name is intentionally unprefixed.
 	do_action( 'litespeed_purge_url', rest_url( 'clientoctopus/v1/proposals' ) );
 
 	return new WP_REST_Response( [ 'deleted' => true, 'id' => $id ], 200 );

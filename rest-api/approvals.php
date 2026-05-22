@@ -47,7 +47,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/approvals", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_approvals',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -55,7 +55,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/approvals", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_approval',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'type'        => [ 'type' => 'string',  'required' => false, 'default' => 'other' ],
@@ -67,7 +67,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/approvals/{$approv_id}", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_approval',
-		'permission_callback' => 'clientoctopus_rest_require_auth',
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'aid' => [ 'type' => 'integer', 'required' => true ],

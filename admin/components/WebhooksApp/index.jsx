@@ -437,7 +437,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 // ── Main component ──────────────────────────────────────────────────────────────
 
 export default function WebhooksApp() {
-	const { featureAccess = {}, userPlan = 'free' } = window.coData || {};
+	const { featureAccess = {}, userPlan = 'free' } = window.clientoctopusData || {};
 	const canUse    = featureAccess.use_webhooks;
 	const hasProjects = featureAccess.use_projects;
 	const EVENTS    = ALL_EVENTS.filter( ev => hasProjects || ! ev.value.startsWith( 'project.' ) );

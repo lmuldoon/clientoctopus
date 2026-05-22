@@ -121,7 +121,7 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 			'clientoctopus_webhook_logs',
 		];
 		foreach ( $tables as $table ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are hardcoded strings, not user input.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall hook: drops plugin-owned tables only; table names are hardcoded, not user input.
 			$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}{$table}" );
 		}
 
@@ -349,7 +349,7 @@ function clientoctopus_email_html( array $args ): string {
 	// SVG images are not rendered by email clients (Gmail, Outlook, Apple Mail).
 	// Skip the logo block if the URL points to an SVG file.
 	$logo_is_svg = $logo_url && (
-		str_ends_with( strtolower( parse_url( $logo_url, PHP_URL_PATH ) ?? '' ), '.svg' )
+		str_ends_with( strtolower( wp_parse_url( $logo_url, PHP_URL_PATH ) ?? '' ), '.svg' )
 	);
 	if ( $logo_url && ! $logo_is_svg ) {
 		$safe_logo = esc_url( $logo_url );
@@ -433,20 +433,11 @@ echo $business_name;
           </tr>
           <tr>
             <td style="padding-bottom:32px;">
-              <?php // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- caller-supplied HTML
-echo $body;
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
-?>
+              <?php echo wp_kses_post( $body ); ?>
             </td>
           </tr>
-          <?php // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- built from esc_html/esc_url above
-echo $cta_html;
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
-?>
-          <?php // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- built from caller-supplied HTML
-echo $footer_html;
-// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
-?>
+          <?php echo wp_kses_post( $cta_html ); ?>
+          <?php echo wp_kses_post( $footer_html ); ?>
         </table>
         <?php if ( get_option( 'clientoctopus_show_powered_by' ) ) : ?>
         <table width="520" cellpadding="0" cellspacing="0" style="margin-top:24px;">
@@ -1232,7 +1223,7 @@ final class ClientOctopus {
 	 * Enqueue admin scripts and styles on Client Octopus pages.
 	 *
 	 * Loads the compiled React app (build/index.js + build/index.css) only on
-	 * the Proposals admin page. Provides window.coData for React ↔ PHP comms.
+	 * the Proposals admin page. Provides window.clientoctopusData for React ↔ PHP comms.
 	 *
 	 * @param string $hook Current admin page hook suffix.
 	 */
@@ -1297,7 +1288,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-admin', $build_url . 'index.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-admin', 'coData', $runtime_data );
+			wp_localize_script( 'co-admin', 'clientoctopusData', $runtime_data );
 
 		//@fs_premium_only
 		} elseif ( str_contains( $hook, 'clientoctopus-projects' ) ) {
@@ -1311,7 +1302,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-projects', $build_url . 'projects.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-projects', 'coData', $runtime_data );
+			wp_localize_script( 'co-projects', 'clientoctopusData', $runtime_data );
 
 		} elseif ( str_contains( $hook, 'clientoctopus-analytics' ) ) {
 			$asset_file = $build_dir . 'analytics.asset.php';
@@ -1324,7 +1315,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-analytics', $build_url . 'analytics.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-analytics', 'coData', $runtime_data );
+			wp_localize_script( 'co-analytics', 'clientoctopusData', $runtime_data );
 		//@end:fs_premium_only
 
 		} elseif ( str_contains( $hook, 'clientoctopus-clients' ) ) {
@@ -1338,7 +1329,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-clients', $build_url . 'clients.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-clients', 'coData', $runtime_data );
+			wp_localize_script( 'co-clients', 'clientoctopusData', $runtime_data );
 
 		} elseif ( str_contains( $hook, 'clientoctopus-setup' ) ) {
 			$asset_file = $build_dir . 'setup.asset.php';
@@ -1351,7 +1342,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-setup', $build_url . 'setup.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-setup', 'coData', $runtime_data );
+			wp_localize_script( 'co-setup', 'clientoctopusData', $runtime_data );
 
 		//@fs_premium_only
 		} elseif ( str_contains( $hook, 'clientoctopus-team' ) ) {
@@ -1365,7 +1356,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-team', $build_url . 'team.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-team', 'coData', $runtime_data );
+			wp_localize_script( 'co-team', 'clientoctopusData', $runtime_data );
 
 		} elseif ( str_contains( $hook, 'clientoctopus-webhooks' ) ) {
 			$asset_file = $build_dir . 'webhooks.asset.php';
@@ -1378,7 +1369,7 @@ final class ClientOctopus {
 			}
 
 			wp_enqueue_script( 'co-webhooks', $build_url . 'webhooks.js', $asset['dependencies'], $asset['version'], true );
-			wp_localize_script( 'co-webhooks', 'coData', $runtime_data );
+			wp_localize_script( 'co-webhooks', 'clientoctopusData', $runtime_data );
 		//@end:fs_premium_only
 
 		} elseif ( str_contains( $hook, 'clientoctopus-settings' ) ) {

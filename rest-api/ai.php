@@ -30,7 +30,7 @@ add_action( 'rest_api_init', static function (): void {
 		[
 			'methods'             => 'POST',
 			'callback'            => 'clientoctopus_rest_ai_process',
-			'permission_callback' => 'clientoctopus_rest_require_auth',
+			'permission_callback' => 'clientoctopus_rest_require_manage',
 			'args'                => [
 				'action' => [
 					'required'          => true,
@@ -60,7 +60,7 @@ add_action( 'rest_api_init', static function (): void {
 		[
 			'methods'             => 'POST',
 			'callback'            => 'clientoctopus_rest_ai_test_connection',
-			'permission_callback' => 'clientoctopus_rest_require_auth',
+			'permission_callback' => 'clientoctopus_rest_require_manage',
 		]
 	);
 } );

@@ -361,7 +361,7 @@ function injectStyles() {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function coFetch( endpoint, options = {} ) {
-	const { apiUrl, nonce } = window.coData || {};
+	const { apiUrl, nonce } = window.clientoctopusData || {};
 	return fetch( apiUrl + endpoint, {
 		headers: {
 			'Content-Type': 'application/json',
@@ -389,7 +389,7 @@ const ERROR_MESSAGES = {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function TeamApp() {
-	const { userPlan, teamSeats: initialSeats, teamLimit: initialLimit } = window.coData || {};
+	const { userPlan, teamSeats: initialSeats, teamLimit: initialLimit } = window.clientoctopusData || {};
 
 	const [ members,    setMembers    ] = useState( [] );
 	const [ seatsUsed,  setSeatsUsed  ] = useState( initialSeats || 1 );
@@ -640,7 +640,7 @@ export default function TeamApp() {
 					</div>
 					<button
 						className="co-tm-upgrade-btn"
-						onClick={ () => window.location.href = window.coData?.adminUrl + 'admin.php?page=clientoctopus' }
+						onClick={ () => window.location.href = window.clientoctopusData?.adminUrl + 'admin.php?page=clientoctopus' }
 					>
 						Upgrade to Agency
 					</button>

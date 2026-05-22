@@ -266,6 +266,16 @@ Never add `if ($plan === 'pro')` checks in module code — always call `clientoc
 
 ---
 
+## Source Code
+
+The plugin's JavaScript source (React components) is publicly available at:
+
+**https://github.com/lmuldoon/clientoctopus**
+
+The compiled files in the `build/` directory are generated from the source in this repository.
+
+---
+
 ## Local Development
 
 ```bash

@@ -440,7 +440,7 @@ function formatDate( dateStr ) {
 export default function ProjectFiles( { projectId } ) {
 	injectStyles( 'co-pf-styles', CSS );
 
-	const { apiUrl, nonce } = window.coData || {};
+	const { apiUrl, nonce } = window.clientoctopusData || {};
 
 	const [ files,     setFiles     ] = useState( [] );
 	const [ loading,   setLoading   ] = useState( true );
