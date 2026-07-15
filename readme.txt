@@ -4,7 +4,7 @@ Tags: proposal, client portal, client management, freelancer, agency
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.2
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,6 +44,8 @@ Create professional proposals, collect Stripe payments, manage milestones, autom
 * Approval workflows
 
 Client Octopus is designed specifically for WordPress freelancers and agencies who want to manage proposals and client delivery without relying on external SaaS platforms.
+
+**Source:** The plugin's JavaScript is compiled from React source. The full source is available at https://github.com/lmuldoon/clientoctopus — run `npm install && npm run build` to reproduce the compiled assets.
 
 == Installation ==
 
@@ -117,37 +119,8 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 - Terms of Service: https://freemius.com/terms/
 - Privacy Policy: https://freemius.com/privacy/
 
-== Source Code ==
-
-The plugin's JavaScript source files (React components) are available in the public repository:
-
-https://github.com/lmuldoon/clientoctopus
-
-Build instructions:
-
-1. npm install
-2. npm run build
-
-The compiled files in the `build/` directory are generated from the source above.
-
 == Changelog ==
 
-= 0.1.2 =
+= 1.0.0 =
 
-* Full rebrand to Client Octopus
-* Plan tier now syncs automatically from Freemius licence activation/deactivation
-* Licence key populated automatically from Freemius
-* Upgrade buttons now link to Freemius pricing page
-* Setup wizard simplified
-* AI relay improvements and webhook signature enforcement
-
-= 0.1.1 =
-
-* Freemius SDK integration
-* Fixed proposal completion logic
-* Fixed testimonial email timing issues
-* Fixed portal magic link behaviour
-
-= 0.1.0 =
-
-* Initial release
+* Initial public release.

@@ -3,7 +3,7 @@
  * Plugin Name: Client Octopus
  * Plugin URI:  https://clientoctopus.com
  * Description: All-in-one client workflow management for WordPress — proposals, payments, projects, and client portals.
- * Version:     0.1.2
+ * Version:     1.0.0
  * Author:      codievolt
  * Author URI:  https://codievolt.com
  * License:     GPL-2.0-or-later
@@ -199,7 +199,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '0.1.2' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.0.0' );
 define( 'CLIENTOCTOPUS_DB_VERSION',     '15' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '3' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
