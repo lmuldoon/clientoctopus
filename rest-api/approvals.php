@@ -133,7 +133,7 @@ function clientoctopus_rest_create_approval( WP_REST_Request $request ): WP_REST
 }
 
 function clientoctopus_rest_delete_approval( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$owner_id    = get_current_user_id();
+	$owner_id    = clientoctopus_get_owner_id( get_current_user_id() );
 	$approval_id = (int) $request->get_param( 'aid' );
 	$result      = ClientOctopus_Approval::delete( $approval_id, $owner_id );
 
@@ -147,9 +147,9 @@ function clientoctopus_rest_delete_approval( WP_REST_Request $request ): WP_REST
 // ── Portal handlers ───────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_approvals( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$client_id  = get_current_user_id();
+	$email      = ClientOctopus_Portal_Auth::get_current_email();
 	$project_id = (int) $request->get_param( 'id' );
-	$result     = ClientOctopus_Approval::get_for_client( $project_id, $client_id );
+	$result     = ClientOctopus_Approval::get_for_client_by_email( $project_id, $email );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;
@@ -161,7 +161,7 @@ function clientoctopus_portal_rest_list_approvals( WP_REST_Request $request ): W
 function clientoctopus_portal_rest_respond_approval( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 	global $wpdb;
 
-	$client_id   = get_current_user_id();
+	$email       = ClientOctopus_Portal_Auth::get_current_email();
 	$approval_id = (int) $request->get_param( 'aid' );
 	$status      = (string) $request->get_param( 'status' );
 	$comment     = (string) $request->get_param( 'comment' );
@@ -184,7 +184,7 @@ function clientoctopus_portal_rest_respond_approval( WP_REST_Request $request ):
 		);
 	}
 
-	$result = ClientOctopus_Approval::respond( $approval_id, $client_id, $status, $comment );
+	$result = ClientOctopus_Approval::respond_by_email( $approval_id, $email, $status, $comment );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;

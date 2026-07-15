@@ -198,34 +198,6 @@ class ClientOctopus_File {
 		return self::prepare_row( $row );
 	}
 
-	/**
-	 * List files for a project — client portal access.
-	 *
-	 * Verifies that the requesting WP user is the client assigned to the project.
-	 *
-	 * @param int $project_id
-	 * @param int $client_wp_user_id
-	 *
-	 * @return array|WP_Error
-	 */
-	public static function get_for_client( int $project_id, int $client_wp_user_id ): array|WP_Error {
-		global $wpdb;
-
-		if ( ! self::client_owns_project( $project_id, $client_wp_user_id ) ) {
-			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
-		}
-
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at DESC",
-				$project_id
-			),
-			ARRAY_A
-		);
-
-		return array_map( [ __CLASS__, 'prepare_row' ], $rows ?: [] );
-	}
-
 	// ── Delete ────────────────────────────────────────────────────────────────
 
 	/**
@@ -312,35 +284,16 @@ class ClientOctopus_File {
 	 *
 	 * Call this from a REST callback — it exits after streaming.
 	 *
-	 * @param int  $id
-	 * @param int  $accessor_id    WP user ID requesting the download.
-	 * @param bool $is_client      True when called from portal endpoint.
-	 * @param int  $project_id     Required when $is_client is true.
+	 * @param int $id
+	 * @param int $owner_id  WP user ID of the owner requesting the download.
 	 */
-	public static function stream( int $id, int $accessor_id, bool $is_client = false, int $project_id = 0 ): void {
-		global $wpdb;
-
-		if ( $is_client ) {
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT f.* FROM " . self::table() . " f WHERE f.id = %d AND f.project_id = %d",
-					$id,
-					$project_id
-				),
-				ARRAY_A
-			);
-			if ( ! $row || ! self::client_owns_project( $project_id, $accessor_id ) ) {
-				status_header( 403 );
-				exit( 'Access denied.' );
-			}
-		} else {
-			$result = self::get( $id, $accessor_id );
-			if ( is_wp_error( $result ) ) {
-				status_header( 404 );
-				exit( 'File not found.' );
-			}
-			$row = $result;
+	public static function stream( int $id, int $owner_id ): void {
+		$result = self::get( $id, $owner_id );
+		if ( is_wp_error( $result ) ) {
+			status_header( 404 );
+			exit( 'File not found.' );
 		}
+		$row = $result;
 
 		$upload_dir = wp_upload_dir();
 		$base       = $upload_dir['basedir'];
@@ -362,7 +315,7 @@ class ClientOctopus_File {
 		$name = $row['file_name'] ?: basename( $abs_path );
 
 		header( 'Content-Type: ' . $mime );
-		header( 'Content-Disposition: attachment; filename="' . addslashes( $name ) . '"' );
+		header( 'Content-Disposition: attachment; filename="' . esc_attr( $name ) . '"; filename*=UTF-8\'\'' . rawurlencode( $name ) );
 		header( 'Content-Length: ' . filesize( $abs_path ) );
 		header( 'Cache-Control: no-store' );
 
@@ -416,25 +369,100 @@ class ClientOctopus_File {
 	}
 
 	/**
-	 * Check whether a WP user is the client assigned to a project.
-	 * Matches by email (consistent with ClientOctopus_Portal_Data) so the check
-	 * works even before clientoctopus_clients.wp_user_id has been back-filled.
+	 * Return files for a project — client portal view, identified by email.
+	 *
+	 * @param int    $project_id
+	 * @param string $client_email
+	 * @return array|WP_Error
 	 */
-	private static function client_owns_project( int $project_id, int $client_wp_user_id ): bool {
+	public static function get_for_client_by_email( int $project_id, string $client_email ): array|WP_Error {
 		global $wpdb;
 
-		$count = (int) $wpdb->get_var(
+		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
+		}
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at DESC",
+				$project_id
+			),
+			ARRAY_A
+		);
+
+		return array_map( [ __CLASS__, 'prepare_row' ], $rows ?: [] );
+	}
+
+	/**
+	 * Stream a file download for a portal client identified by email.
+	 *
+	 * @param int    $id            File ID.
+	 * @param string $client_email
+	 * @param int    $project_id
+	 */
+	public static function stream_for_client_by_email( int $id, string $client_email, int $project_id ): void {
+		global $wpdb;
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT f.* FROM " . self::table() . " f WHERE f.id = %d AND f.project_id = %d",
+				$id,
+				$project_id
+			),
+			ARRAY_A
+		);
+
+		if ( ! $row || ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+			status_header( 403 );
+			exit( 'Access denied.' );
+		}
+
+		$upload_dir = wp_upload_dir();
+		$base       = $upload_dir['basedir'];
+		$base_url   = $upload_dir['baseurl'];
+		$rel        = str_replace( $base_url, '', $row['file_url'] );
+		$abs_path   = $base . $rel;
+
+		if ( ! file_exists( $abs_path ) ) {
+			status_header( 404 );
+			exit( 'File not found on disk.' );
+		}
+
+		if ( ob_get_level() ) {
+			ob_end_clean();
+		}
+
+		$mime = $row['file_mime'] ?: 'application/octet-stream';
+		$name = $row['file_name'] ?: basename( $abs_path );
+
+		header( 'Content-Type: ' . $mime );
+		header( 'Content-Disposition: attachment; filename="' . esc_attr( $name ) . '"; filename*=UTF-8\'\'' . rawurlencode( $name ) );
+		header( 'Content-Length: ' . filesize( $abs_path ) );
+		header( 'Cache-Control: no-store' );
+
+		readfile( $abs_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- direct output for file download, WP_Filesystem is not suitable here.
+		exit;
+	}
+
+	/**
+	 * Check whether the given email belongs to the client of a project.
+	 *
+	 * @param int    $project_id
+	 * @param string $client_email
+	 * @return bool
+	 */
+	private static function client_owns_project_by_email( int $project_id, string $client_email ): bool {
+		global $wpdb;
+
+		return (bool) (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
 				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 INNER JOIN {$wpdb->users} u ON u.user_email = c.email
-				 WHERE p.id = %d AND u.ID = %d",
+				 WHERE p.id = %d AND c.email = %s",
 				$project_id,
-				$client_wp_user_id
+				$client_email
 			)
 		);
-
-		return $count > 0;
 	}
 
 	private static function delete_from_disk( string $file_url ): void {

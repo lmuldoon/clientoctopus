@@ -137,8 +137,9 @@ class ClientOctopus_Project {
 		$page     = max( 1, (int) ( $args['page'] ?? 1 ) );
 		$per_page = min( 100, max( 1, (int) ( $args['per_page'] ?? 20 ) ) );
 		$offset   = ( $page - 1 ) * $per_page;
-		$orderby  = in_array( $args['orderby'] ?? 'created_at', [ 'created_at', 'updated_at', 'name', 'status' ], true )
-			? $args['orderby']
+		$orderby_input = $args['orderby'] ?? 'created_at';
+		$orderby       = in_array( $orderby_input, [ 'created_at', 'updated_at', 'name', 'status' ], true )
+			? $orderby_input
 			: 'created_at';
 		$order    = strtoupper( $args['order'] ?? 'DESC' ) === 'ASC' ? 'ASC' : 'DESC';
 

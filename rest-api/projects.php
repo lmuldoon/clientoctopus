@@ -545,33 +545,33 @@ function clientoctopus_rest_submit_milestone( WP_REST_Request $request ): WP_RES
 // ─────────────────────────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_projects( WP_REST_Request $request ): WP_REST_Response {
-	$user_id = clientoctopus_get_owner_id( get_current_user_id() );
-	$projects = ClientOctopus_Portal_Data::get_projects( $user_id );
+	$email    = ClientOctopus_Portal_Auth::get_current_email();
+	$projects = ClientOctopus_Portal_Data::get_projects( $email );
 	return new WP_REST_Response( [ 'projects' => $projects ], 200 );
 }
 
 function clientoctopus_portal_rest_get_project( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$user_id = clientoctopus_get_owner_id( get_current_user_id() );
+	$email   = ClientOctopus_Portal_Auth::get_current_email();
 	$id      = (int) $request->get_param( 'id' );
-	$project = ClientOctopus_Portal_Data::get_project( $user_id, $id );
+	$project = ClientOctopus_Portal_Data::get_project( $email, $id );
 	if ( is_wp_error( $project ) ) return $project;
 	return new WP_REST_Response( [ 'project' => $project ], 200 );
 }
 
 function clientoctopus_portal_rest_approve_milestone( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$user_id = clientoctopus_get_owner_id( get_current_user_id() );
+	$email      = ClientOctopus_Portal_Auth::get_current_email();
 	$project_id = (int) $request->get_param( 'id' );
 	$mid        = (int) $request->get_param( 'mid' );
 
-	// Ownership check — ensure this project belongs to the current portal user.
-	$project = ClientOctopus_Portal_Data::get_project( $user_id, $project_id );
+	// Ownership check — ensure this project belongs to the current portal client.
+	$project = ClientOctopus_Portal_Data::get_project( $email, $project_id );
 	if ( is_wp_error( $project ) ) return $project;
 
 	$result = ClientOctopus_Milestone::approve( $mid, $project_id );
 	if ( is_wp_error( $result ) ) return $result;
 
 	// Reload so the response has the updated milestone status.
-	$project = ClientOctopus_Portal_Data::get_project( $user_id, $project_id );
+	$project = ClientOctopus_Portal_Data::get_project( $email, $project_id );
 
 	// Notify the project owner.
 	$milestone_title = '';

@@ -114,18 +114,13 @@ function clientoctopus_rest_invite_client( WP_REST_Request $request ): WP_REST_R
 		return new WP_Error( 'no_email', __( 'This client has no email address.', 'clientoctopus' ), [ 'status' => 422 ] );
 	}
 
-	$user = ClientOctopus_Portal_Auth::get_or_create_wp_user( $client['email'], $client['name'] ?? null );
-	if ( is_wp_error( $user ) ) {
-		return $user;
-	}
-
-	$raw_token = ClientOctopus_Portal_Auth::generate_magic_token( $user->ID );
-	ClientOctopus_Portal_Auth::send_magic_link_email( $user, $raw_token );
+	$raw_token = ClientOctopus_Portal_Auth::generate_magic_token( $client_id );
+	ClientOctopus_Portal_Auth::send_magic_link_email( $client['email'], $client['name'] ?? '', $raw_token );
 
 	$now = current_time( 'mysql' );
 	$wpdb->update(
 		$wpdb->prefix . 'clientoctopus_clients',
-		[ 'portal_invited_at' => $now, 'wp_user_id' => $user->ID ],
+		[ 'portal_invited_at' => $now ],
 		[ 'id' => $client_id ]
 	);
 

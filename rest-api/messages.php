@@ -150,9 +150,9 @@ function clientoctopus_rest_messages_unread_count( WP_REST_Request $request ): W
 // ── Portal handlers ───────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_messages( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$client_id  = get_current_user_id();
+	$email      = ClientOctopus_Portal_Auth::get_current_email();
 	$project_id = (int) $request->get_param( 'id' );
-	$result     = ClientOctopus_Message::list_for_client( $project_id, $client_id );
+	$result     = ClientOctopus_Message::list_for_client_by_email( $project_id, $email );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;
@@ -162,17 +162,17 @@ function clientoctopus_portal_rest_list_messages( WP_REST_Request $request ): WP
 }
 
 function clientoctopus_portal_rest_send_message( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$client_id  = get_current_user_id();
+	$email      = ClientOctopus_Portal_Auth::get_current_email();
 	$project_id = (int) $request->get_param( 'id' );
 	$text       = (string) $request->get_param( 'message' );
 
-	$message_id = ClientOctopus_Message::send( $project_id, $client_id, 'client', $text );
+	$message_id = ClientOctopus_Message::send_as_client_by_email( $project_id, $email, $text );
 
 	if ( is_wp_error( $message_id ) ) {
 		return $message_id;
 	}
 
-	$result = ClientOctopus_Message::list_for_client( $project_id, $client_id );
+	$result = ClientOctopus_Message::list_for_client_by_email( $project_id, $email );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;

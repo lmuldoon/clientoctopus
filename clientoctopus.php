@@ -75,13 +75,14 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 
 	// ── Freemius licence key sync ────────────────────────────────────────────
 	clientoctopus_fs()->add_action( 'after_license_activation', static function (): void {
-		$license = clientoctopus_fs()->_get_license();
+		$license  = clientoctopus_fs()->_get_license();
+		$owner_id = (int) get_option( 'clientoctopus_owner_user_id', 0 );
 		if ( $license && ! empty( $license->secret_key ) ) {
 			update_option( 'clientoctopus_license_key', $license->secret_key );
 		}
 		$plan = strtolower( (string) clientoctopus_fs()->get_plan_name() );
-		if ( in_array( $plan, [ 'pro', 'agency' ], true ) ) {
-			ClientOctopus_Entitlements::set_user_plan( get_current_user_id(), $plan );
+		if ( $owner_id && in_array( $plan, [ 'pro', 'agency' ], true ) ) {
+			ClientOctopus_Entitlements::set_user_plan( $owner_id, $plan );
 		}
 		if ( $license && ! empty( $license->secret_key ) ) {
 			clientoctopus_push_license_to_relay( $license->secret_key, $plan );
@@ -89,14 +90,18 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 	} );
 
 	clientoctopus_fs()->add_action( 'after_license_deactivation', static function (): void {
+		$owner_id = (int) get_option( 'clientoctopus_owner_user_id', 0 );
 		update_option( 'clientoctopus_license_key', '' );
-		ClientOctopus_Entitlements::set_user_plan( get_current_user_id(), 'free' );
+		if ( $owner_id ) {
+			ClientOctopus_Entitlements::set_user_plan( $owner_id, 'free' );
+		}
 	} );
 
 	clientoctopus_fs()->add_action( 'after_license_change', static function ( $_plan_change, $plan ): void {
+		$owner_id  = (int) get_option( 'clientoctopus_owner_user_id', 0 );
 		$plan_name = strtolower( is_object( $plan ) ? (string) $plan->name : '' );
-		if ( in_array( $plan_name, [ 'pro', 'agency' ], true ) ) {
-			ClientOctopus_Entitlements::set_user_plan( get_current_user_id(), $plan_name );
+		if ( $owner_id && in_array( $plan_name, [ 'pro', 'agency' ], true ) ) {
+			ClientOctopus_Entitlements::set_user_plan( $owner_id, $plan_name );
 		}
 	}, 10, 2 );
 
@@ -195,7 +200,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // ─────────────────────────────────────────────────────────────────────────────
 
 define( 'CLIENTOCTOPUS_VERSION',        '0.1.2' );
-define( 'CLIENTOCTOPUS_DB_VERSION',     '12' );
+define( 'CLIENTOCTOPUS_DB_VERSION',     '15' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '3' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'CLIENTOCTOPUS_URL',        plugin_dir_url( __FILE__ ) );
@@ -556,25 +561,28 @@ final class ClientOctopus {
 				}
 			}
 
-			global $wpdb;
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names use $wpdb->users and $wpdb->prefix with hardcoded slugs, not user input.
-			$unauthorised = $wpdb->get_col(
-				$wpdb->prepare(
-					"SELECT u.ID
-					 FROM {$wpdb->users} u
-					 JOIN {$wpdb->usermeta} um ON um.user_id = u.ID
-					    AND um.meta_key = %s
-					    AND um.meta_value LIKE %s
-					 WHERE u.ID NOT IN (
-					     SELECT member_user_id FROM {$wpdb->prefix}clientoctopus_team_members
-					 )",
-					$wpdb->prefix . 'capabilities',
-					'%clientoctopus_member%'
-				)
-			);
-			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			foreach ( $unauthorised as $uid ) {
-				( new WP_User( (int) $uid ) )->remove_role( 'clientoctopus_member' );
+			if ( ! get_transient( 'clientoctopus_role_guard_ran' ) ) {
+				global $wpdb;
+				// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names use $wpdb->users and $wpdb->prefix with hardcoded slugs, not user input.
+				$unauthorised = $wpdb->get_col(
+					$wpdb->prepare(
+						"SELECT u.ID
+						 FROM {$wpdb->users} u
+						 JOIN {$wpdb->usermeta} um ON um.user_id = u.ID
+						    AND um.meta_key = %s
+						    AND um.meta_value LIKE %s
+						 WHERE u.ID NOT IN (
+						     SELECT member_user_id FROM {$wpdb->prefix}clientoctopus_team_members
+						 )",
+						$wpdb->prefix . 'capabilities',
+						'%clientoctopus_member%'
+					)
+				);
+				// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				foreach ( $unauthorised as $uid ) {
+					( new WP_User( (int) $uid ) )->remove_role( 'clientoctopus_member' );
+				}
+				set_transient( 'clientoctopus_role_guard_ran', true, DAY_IN_SECONDS );
 			}
 		} );
 
@@ -656,15 +664,7 @@ final class ClientOctopus {
 			require_once $routing;
 		}
 
-		// Block WP admin access for clientoctopus_client role.
-		add_action( 'admin_init', static function (): void {
-			if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
-				if ( ClientOctopus_Portal_Auth::is_authenticated() ) {
-					wp_safe_redirect( home_url( '/clientoctopus/dashboard' ) );
-					exit;
-				}
-			}
-		} );
+		// No WP admin block needed — portal clients no longer have WordPress accounts.
 
 		// When a WP user is deleted, remove their team member record and decrement
 		// the owner's seat counter so the count stays accurate.
@@ -737,41 +737,10 @@ final class ClientOctopus {
 		}, 10, 2 );
 
 		// Suppress admin bar for portal clients.
-		add_filter( 'show_admin_bar', static function ( bool $show ): bool {
-			if ( ClientOctopus_Portal_Auth::is_authenticated() ) {
-				return false;
-			}
-			return $show;
-		} );
+		// Portal clients use custom sessions — no WP login redirect needed.
 
-		// After WP login, send clients to the portal dashboard instead of WP admin.
-		add_filter( 'login_redirect', static function ( string $redirect_to, string $_requested_redirect_to, $user ): string {
-			if ( $user instanceof WP_User && in_array( 'clientoctopus_client', (array) $user->roles, true ) ) {
-				return home_url( '/clientoctopus/dashboard' );
-			}
-			return $redirect_to;
-		}, 10, 3 );
-
-		// Hook: when a proposal is sent, provision/update the client's portal account.
-		add_action( 'clientoctopus_proposal_sent', static function ( int $proposal_id, int $_owner_id ): void {
-			global $wpdb;
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT c.email AS client_email, c.name AS client_name
-					 FROM {$wpdb->prefix}clientoctopus_proposals p
-					 JOIN {$wpdb->prefix}clientoctopus_clients c ON c.id = p.client_id
-					 WHERE p.id = %d",
-					$proposal_id
-				),
-				ARRAY_A
-			);
-			if ( $row && ! empty( $row['client_email'] ) ) {
-				ClientOctopus_Portal_Auth::get_or_create_wp_user(
-					$row['client_email'],
-					$row['client_name'] ?? null
-				);
-			}
-		}, 10, 2 );
+		// No action needed on proposal send — portal clients authenticate via magic
+		// links and do not require a WordPress user account to be pre-created.
 
 		// Hook: auto-create project when a proposal is accepted (Agency tier only).
 		add_action( 'clientoctopus_proposal_accepted', static function ( int $proposal_id, int $owner_id ): void {
@@ -795,8 +764,7 @@ final class ClientOctopus {
 		}, 10, 2 );
 
 		// Hook: send portal invitation email when a proposal is accepted.
-		// On Free plan: create the WP account silently but skip the email —
-		// the owner can manually invite from the Clients page once they upgrade.
+		// Sends a magic link to the client without creating a WordPress user account.
 		add_action( 'clientoctopus_proposal_accepted', static function ( int $proposal_id, int $owner_id ): void {
 			global $wpdb;
 			$row = $wpdb->get_row(
@@ -812,40 +780,22 @@ final class ClientOctopus {
 			if ( ! $row || empty( $row['client_email'] ) ) {
 				return;
 			}
-			// Always create the WP account so it is ready if the owner upgrades.
-			$user = ClientOctopus_Portal_Auth::get_or_create_wp_user(
-				$row['client_email'],
-				$row['client_name'] ?? null
-			);
-			if ( is_wp_error( $user ) ) {
-				return;
-			}
 			// Only send the invite email when the owner has portal access.
 			if ( ! clientoctopus_can_user( $owner_id, 'use_portal' ) ) {
 				return;
 			}
-			$raw_token = ClientOctopus_Portal_Auth::generate_magic_token( $user->ID );
-			ClientOctopus_Portal_Auth::send_magic_link_email( $user, $raw_token );
+			$client_id = (int) $row['client_id'];
+			$raw_token = ClientOctopus_Portal_Auth::generate_magic_token( $client_id );
+			ClientOctopus_Portal_Auth::send_magic_link_email( $row['client_email'], $row['client_name'] ?? '', $raw_token );
 			$wpdb->update(
 				$wpdb->prefix . 'clientoctopus_clients',
 				[ 'portal_invited_at' => current_time( 'mysql' ) ],
-				[ 'id' => (int) $row['client_id'] ]
+				[ 'id' => $client_id ]
 			);
 		}, 20, 2 );
 
-		// When a WP admin changes a client user's password via the admin UI,
-		// automatically mark the portal password as set so password login works.
-		// Compares the old and new password hashes — if they differ, the password
-		// was changed and the client should be able to log in with the new one.
-		add_action( 'profile_update', static function ( int $user_id, WP_User $old_user ): void {
-			$user = get_user_by( 'ID', $user_id );
-			if ( ! $user || ! in_array( 'clientoctopus_client', (array) $user->roles, true ) ) {
-				return;
-			}
-			if ( $user->user_pass !== $old_user->user_pass ) {
-				ClientOctopus_Portal_Auth::mark_password_set( $user_id );
-			}
-		}, 10, 2 );
+		// Portal client passwords are now stored in clientoctopus_clients.portal_password_hash
+		// and managed entirely by the portal — no WordPress profile_update hook needed.
 
 		// ── Outbound webhook dispatch ─────────────────────────────────────────
 		//@fs_premium_only
@@ -944,6 +894,23 @@ final class ClientOctopus {
 		}, 99, 2 );
 		//@end:fs_premium_only
 
+		// Register custom cron intervals.
+		add_filter( 'cron_schedules', static function ( array $schedules ): array {
+			if ( ! isset( $schedules['monthly'] ) ) {
+				$schedules['monthly'] = [
+					'interval' => 30 * DAY_IN_SECONDS,
+					'display'  => __( 'Once a month', 'clientoctopus' ),
+				];
+			}
+			if ( ! isset( $schedules['clientoctopus_15min'] ) ) {
+				$schedules['clientoctopus_15min'] = [
+					'interval' => 15 * MINUTE_IN_SECONDS,
+					'display'  => __( 'Every 15 minutes', 'clientoctopus' ),
+				];
+			}
+			return $schedules;
+		} );
+
 		// Monthly usage reset — fires at start of each month.
 		add_action( 'clientoctopus_monthly_reset', [ ClientOctopus_Entitlements::class, 'reset_monthly_usage' ] );
 
@@ -954,6 +921,15 @@ final class ClientOctopus {
 					'monthly',
 					'clientoctopus_monthly_reset'
 				);
+			}
+		} );
+
+		// Sync pending Stripe payments every 15 minutes (webhook fallback).
+		add_action( 'clientoctopus_sync_pending_payments', 'clientoctopus_cron_sync_pending_payments' );
+
+		add_action( 'init', static function (): void {
+			if ( ! wp_next_scheduled( 'clientoctopus_sync_pending_payments' ) ) {
+				wp_schedule_event( time(), 'clientoctopus_15min', 'clientoctopus_sync_pending_payments' );
 			}
 		} );
 	}
@@ -1397,8 +1373,9 @@ function clientoctopus_activate(): void {
 	require_once CLIENTOCTOPUS_DIR . 'database/schema.php';
 	clientoctopus_create_tables();
 
-	add_option( 'clientoctopus_version',    CLIENTOCTOPUS_VERSION );
-	add_option( 'clientoctopus_db_version', CLIENTOCTOPUS_DB_VERSION );
+	add_option( 'clientoctopus_version',        CLIENTOCTOPUS_VERSION );
+	add_option( 'clientoctopus_db_version',     CLIENTOCTOPUS_DB_VERSION );
+	add_option( 'clientoctopus_owner_user_id',  get_current_user_id() );
 
 	if ( ! wp_next_scheduled( 'clientoctopus_monthly_reset' ) ) {
 		wp_schedule_event(
@@ -1407,13 +1384,6 @@ function clientoctopus_activate(): void {
 			'clientoctopus_monthly_reset'
 		);
 	}
-
-	// Register the clientoctopus_client role for portal users.
-	add_role(
-		'clientoctopus_client',
-		__( 'Client Octopus Client', 'clientoctopus' ),
-		[ 'read' => true ]
-	);
 
 	// Register the clientoctopus_member role for Agency team members.
 	// manage_clientoctopus is a custom capability checked by the plugin's admin menu pages.
@@ -1484,7 +1454,54 @@ function clientoctopus_activate(): void {
  */
 function clientoctopus_deactivate(): void {
 	wp_clear_scheduled_hook( 'clientoctopus_monthly_reset' );
+	wp_clear_scheduled_hook( 'clientoctopus_sync_pending_payments' );
 	flush_rewrite_rules();
+}
+
+/**
+ * Cron callback: sync all pending/processing Stripe payments.
+ *
+ * Runs every 15 minutes as a webhook fallback. Skips payments created within
+ * the last 5 minutes to avoid racing a Stripe webhook that may still be in flight.
+ */
+function clientoctopus_cron_sync_pending_payments(): void {
+	if ( ! function_exists( 'clientoctopus_handle_checkout_complete' ) ) {
+		$path = CLIENTOCTOPUS_DIR . 'rest-api/payments.php';
+		if ( file_exists( $path ) ) {
+			require_once $path;
+		}
+	}
+
+	if ( ! class_exists( 'ClientOctopus_Stripe' ) || ! ClientOctopus_Stripe::is_configured() ) {
+		return;
+	}
+
+	global $wpdb;
+
+	$cutoff = gmdate( 'Y-m-d H:i:s', time() - 5 * MINUTE_IN_SECONDS );
+
+	$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- cron callback, caching not appropriate.
+		$wpdb->prepare(
+			"SELECT id, stripe_session_id FROM {$wpdb->prefix}clientoctopus_payments
+			 WHERE status IN ('pending','processing')
+			   AND stripe_session_id IS NOT NULL
+			   AND stripe_session_id != ''
+			   AND created_at < %s",
+			$cutoff
+		),
+		ARRAY_A
+	);
+
+	if ( empty( $rows ) ) {
+		return;
+	}
+
+	foreach ( $rows as $row ) {
+		$session = ClientOctopus_Stripe::retrieve_session( $row['stripe_session_id'] );
+		if ( ! is_wp_error( $session ) && 'paid' === ( $session['payment_status'] ?? '' ) ) {
+			clientoctopus_handle_checkout_complete( $session );
+		}
+	}
 }
 
 register_activation_hook( __FILE__,   'clientoctopus_activate' );
@@ -1516,8 +1533,10 @@ add_action( 'admin_init', static function (): void {
 				<li>Client portal login tokens (temporary, expire after 24 hours)</li>
 			</ul>
 			<h2>External services</h2>
-			<p>When the AI writing assistant is used (Pro/Agency plans only), the text prompt and your site URL are sent to the Client Octopus relay server for processing. See the plugin readme for full details and links to the privacy policy of each third-party service.</p>
-			<p>Payment processing is handled by Stripe. No card details pass through or are stored by this plugin. See <a href="https://stripe.com/privacy">Stripe\'s Privacy Policy</a>.</p>'
+			<p>When the AI writing assistant is used (Pro/Agency plans only), the text prompt and your licence key are sent to the Client Octopus relay server for processing. No site URL or admin email is transmitted to the AI relay.</p>
+			<p>A daily licence check transmits your licence key and account email address to clientoctopus.com to verify plan status.</p>
+			<p>Licence management is handled by Freemius. When a licence is activated, your site URL, plugin version, and licence key are sent to Freemius. See <a href="https://freemius.com/privacy/">Freemius Privacy Policy</a>.</p>
+			<p>Payment processing is handled by Stripe. No card details pass through or are stored by this plugin. See <a href="https://stripe.com/privacy">Stripe Privacy Policy</a>.</p>'
 		)
 	);
 } );

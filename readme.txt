@@ -105,8 +105,17 @@ Client Octopus uses Stripe to process client payments. When a client pays an inv
 Client Octopus's AI writing tools route requests through a relay service operated by the plugin author (clientoctopus.com). This relay authenticates your licence and forwards requests to an AI model. AI features are only triggered when you explicitly use an AI writing action in the admin.
 
 - Service: clientoctopus.com (operated by codievolt)
-- Data sent: the text prompt you submit (proposal content or instructions), your licence key for authentication, and your WordPress site URL for rate-limiting purposes. Your admin email address is also transmitted for account identification purposes.
+- Data sent: the text prompt you submit (proposal content or instructions) and your licence key, which authenticates the request and is used to enforce your plan's monthly rate limit. No site URL or admin email is transmitted to this relay.
 - Privacy Policy: https://clientoctopus.clientoctopus.com/privacy-policy/
+
+**Freemius**
+
+Client Octopus uses Freemius to manage plan licensing, activation, and upgrades. When you activate a licence key, the site URL, plugin version, and licence key are sent to Freemius to verify your plan and enable the correct feature set.
+
+- Service: Freemius, Inc.
+- Data sent: site URL, plugin version, licence key, and basic activation/deactivation events.
+- Terms of Service: https://freemius.com/terms/
+- Privacy Policy: https://freemius.com/privacy/
 
 == Source Code ==
 

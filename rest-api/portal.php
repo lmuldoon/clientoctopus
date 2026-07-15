@@ -5,12 +5,19 @@
  * Public endpoints (no auth required):
  *   POST /clientoctopus/v1/portal/send-magic-link
  *   POST /clientoctopus/v1/portal/verify
+ *   POST /clientoctopus/v1/portal/login
  *
- * Authenticated endpoints (clientoctopus_client role):
+ * Authenticated endpoints (custom portal session cookie):
  *   GET  /clientoctopus/v1/portal/me
  *   GET  /clientoctopus/v1/portal/proposals
  *   GET  /clientoctopus/v1/portal/payments
  *   POST /clientoctopus/v1/portal/logout
+ *   POST /clientoctopus/v1/portal/set-password
+ *   GET  /clientoctopus/v1/portal/receipt/{id}
+ *
+ * Authentication uses a custom httpOnly cookie (co_portal_session) backed by
+ * the clientoctopus_portal_sessions table. No WordPress user account is
+ * created or required for portal clients.
  */
 
 declare( strict_types = 1 );
@@ -38,7 +45,7 @@ function clientoctopus_register_portal_routes(): void {
 		],
 	] );
 
-	// ── Public: verify token & set auth cookie ───────────────────────────────
+	// ── Public: verify token & create portal session ──────────────────────────
 	register_rest_route( $ns, '/portal/verify', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_verify',
@@ -79,7 +86,7 @@ function clientoctopus_register_portal_routes(): void {
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
-	// ── Authenticated: set password (first-time forced setup) ────────────────
+	// ── Authenticated: set password ──────────────────────────────────────────
 	register_rest_route( $ns, '/portal/set-password', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_set_password',
@@ -132,17 +139,35 @@ function clientoctopus_register_portal_routes(): void {
  * Always returns a generic success response to prevent email enumeration.
  */
 function clientoctopus_portal_send_magic_link( WP_REST_Request $request ): WP_REST_Response {
-	$email = $request->get_param( 'email' );
+	global $wpdb;
 
-	// We get-or-create silently; if the email isn't associated with any
-	// proposals we still return success (don't leak whether an account exists).
-	$user = ClientOctopus_Portal_Auth::get_or_create_wp_user( $email );
-
-	if ( ! is_wp_error( $user ) ) {
-		$raw_token = ClientOctopus_Portal_Auth::generate_magic_token( $user->ID );
-		ClientOctopus_Portal_Auth::send_magic_link_email( $user, $raw_token );
+	// Rate-limit per IP: 3 requests per 10 minutes. Return generic 200 to avoid revealing rate-limit state.
+	$ip     = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized immediately via sanitize_text_field.
+	$ip_key = abs( crc32( $ip ) );
+	if ( ! clientoctopus_rest_rate_limit( 'portal_magic_link', $ip_key, 3, 600 ) ) {
+		return new WP_REST_Response( [
+			'success' => true,
+			'message' => 'If an account exists for that email, a login link has been sent.',
+		], 200 );
 	}
 
+	$email = $request->get_param( 'email' );
+
+	// Look up the client in clientoctopus_clients — no WordPress user needed.
+	$client = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT id, name, owner_id FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
+			$email
+		),
+		ARRAY_A
+	);
+
+	if ( $client ) {
+		$raw_token = ClientOctopus_Portal_Auth::generate_magic_token( (int) $client['id'] );
+		ClientOctopus_Portal_Auth::send_magic_link_email( $email, $client['name'] ?? '', $raw_token );
+	}
+
+	// Generic response: never reveal whether the email is registered.
 	return new WP_REST_Response( [
 		'success' => true,
 		'message' => 'If an account exists for that email, a login link has been sent.',
@@ -153,11 +178,10 @@ function clientoctopus_portal_send_magic_link( WP_REST_Request $request ): WP_RE
  * POST /portal/verify
  *
  * Accepts: { token }
- * On success: sets WP auth cookie + returns redirect URL.
+ * On success: creates portal session (cookie) + returns redirect URL.
  */
 function clientoctopus_portal_verify( WP_REST_Request $request ): WP_REST_Response {
-	$token = $request->get_param( 'token' );
-
+	$token  = $request->get_param( 'token' );
 	$result = ClientOctopus_Portal_Auth::verify_magic_token( $token );
 
 	if ( is_wp_error( $result ) ) {
@@ -168,13 +192,12 @@ function clientoctopus_portal_verify( WP_REST_Request $request ): WP_REST_Respon
 		], 401 );
 	}
 
-	// First-time clients (no password set yet) go to the set-password screen.
-	// Returning clients who have already set a password go straight to the dashboard.
-	if ( ClientOctopus_Portal_Auth::has_set_password( $result->ID ) ) {
-		$redirect = home_url( '/clientoctopus/dashboard' );
-	} else {
-		$redirect = home_url( '/clientoctopus/set-password' );
-	}
+	// Clients who have set a password go straight to the dashboard.
+	// First-time clients (no password yet) go to the set-password screen.
+	$has_password = ! empty( $result['portal_password_hash'] );
+	$redirect     = $has_password
+		? home_url( '/clientoctopus/dashboard' )
+		: home_url( '/clientoctopus/set-password' );
 
 	return new WP_REST_Response( [
 		'success'      => true,
@@ -186,7 +209,8 @@ function clientoctopus_portal_verify( WP_REST_Request $request ): WP_REST_Respon
  * GET /portal/me
  */
 function clientoctopus_portal_me(): WP_REST_Response {
-	$client = ClientOctopus_Portal_Data::get_client( get_current_user_id() );
+	$email  = ClientOctopus_Portal_Auth::get_current_email();
+	$client = ClientOctopus_Portal_Data::get_client( $email );
 
 	return new WP_REST_Response( $client, 200 );
 }
@@ -195,7 +219,8 @@ function clientoctopus_portal_me(): WP_REST_Response {
  * GET /portal/proposals
  */
 function clientoctopus_portal_proposals(): WP_REST_Response {
-	$proposals = ClientOctopus_Portal_Data::get_proposals( get_current_user_id() );
+	$email     = ClientOctopus_Portal_Auth::get_current_email();
+	$proposals = ClientOctopus_Portal_Data::get_proposals( $email );
 
 	return new WP_REST_Response( $proposals, 200 );
 }
@@ -204,26 +229,8 @@ function clientoctopus_portal_proposals(): WP_REST_Response {
  * GET /portal/payments
  */
 function clientoctopus_portal_payments(): WP_REST_Response {
-	$payments = ClientOctopus_Portal_Data::get_payments( get_current_user_id() );
-
-	// For any payment that is still pending, check Stripe directly and write-through
-	// if it has been paid. This covers cases where the webhook didn't fire (e.g. local dev).
-	if ( ClientOctopus_Stripe::is_configured() ) {
-		$resolved = false;
-		foreach ( $payments as $pm ) {
-			if ( in_array( $pm['status'], [ 'pending', 'processing' ], true ) && ! empty( $pm['stripe_session_id'] ) ) {
-				$stripe_session = ClientOctopus_Stripe::retrieve_session( $pm['stripe_session_id'] );
-				if ( ! is_wp_error( $stripe_session ) && 'paid' === ( $stripe_session['payment_status'] ?? '' ) ) {
-					clientoctopus_handle_checkout_complete( $stripe_session );
-					$resolved = true;
-				}
-			}
-		}
-		// Re-fetch if any records were updated.
-		if ( $resolved ) {
-			$payments = ClientOctopus_Portal_Data::get_payments( get_current_user_id() );
-		}
-	}
+	$email    = ClientOctopus_Portal_Auth::get_current_email();
+	$payments = ClientOctopus_Portal_Data::get_payments( $email );
 
 	return new WP_REST_Response( $payments, 200 );
 }
@@ -232,7 +239,7 @@ function clientoctopus_portal_payments(): WP_REST_Response {
  * POST /portal/logout
  */
 function clientoctopus_portal_logout(): WP_REST_Response {
-	wp_logout();
+	ClientOctopus_Portal_Auth::destroy_session();
 
 	return new WP_REST_Response( [
 		'success'      => true,
@@ -258,8 +265,10 @@ function clientoctopus_validate_portal_password( string $password ): array {
  * POST /portal/set-password
  */
 function clientoctopus_portal_set_password( WP_REST_Request $request ): WP_REST_Response {
-	$user_id  = get_current_user_id();
-	$password = $request->get_param( 'password' );
+	global $wpdb;
+
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$password  = $request->get_param( 'password' );
 
 	$errors = clientoctopus_validate_portal_password( $password );
 
@@ -271,10 +280,13 @@ function clientoctopus_portal_set_password( WP_REST_Request $request ): WP_REST_
 		], 422 );
 	}
 
-	wp_set_password( $password, $user_id );
-	ClientOctopus_Portal_Auth::mark_password_set( $user_id );
-	// wp_set_password() destroys all sessions — re-issue the auth cookie.
-	wp_set_auth_cookie( $user_id, true );
+	$wpdb->update(
+		$wpdb->prefix . 'clientoctopus_clients',
+		[ 'portal_password_hash' => wp_hash_password( $password ) ],
+		[ 'id' => $client_id ],
+		[ '%s' ],
+		[ '%d' ]
+	);
 
 	return new WP_REST_Response( [
 		'success'      => true,
@@ -286,31 +298,48 @@ function clientoctopus_portal_set_password( WP_REST_Request $request ): WP_REST_
  * POST /portal/login
  */
 function clientoctopus_portal_password_login( WP_REST_Request $request ): WP_REST_Response {
+	global $wpdb;
+
+	// Rate-limit per IP: 5 attempts per 5 minutes.
+	$ip     = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized immediately via sanitize_text_field.
+	$ip_key = abs( crc32( $ip ) );
+	if ( ! clientoctopus_rest_rate_limit( 'portal_login', $ip_key, 5, 300 ) ) {
+		return new WP_REST_Response( [
+			'success' => false,
+			'message' => __( 'Too many login attempts. Please wait a few minutes before trying again.', 'clientoctopus' ),
+		], 429 );
+	}
+
 	$email    = $request->get_param( 'email' );
 	$password = $request->get_param( 'password' );
-	$user     = get_user_by( 'email', $email );
 
-	// Generic error — never reveal whether the email exists.
 	$invalid = new WP_REST_Response( [
 		'success' => false,
 		'message' => __( 'Invalid email or password.', 'clientoctopus' ),
 	], 401 );
 
-	if ( ! $user || ! in_array( 'clientoctopus_client', (array) $user->roles, true ) ) {
+	$client = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
+			$email
+		),
+		ARRAY_A
+	);
+
+	if ( ! $client ) {
 		return $invalid;
 	}
 
 	// Only allow password login after the client has set one.
-	if ( ! ClientOctopus_Portal_Auth::has_set_password( $user->ID ) ) {
+	if ( empty( $client['portal_password_hash'] ) ) {
 		return $invalid;
 	}
 
-	if ( ! wp_check_password( $password, $user->user_pass, $user->ID ) ) {
+	if ( ! wp_check_password( $password, $client['portal_password_hash'] ) ) {
 		return $invalid;
 	}
 
-	wp_set_auth_cookie( $user->ID, true );
-	wp_set_current_user( $user->ID );
+	ClientOctopus_Portal_Auth::create_session( (int) $client['id'], (int) $client['owner_id'] );
 
 	return new WP_REST_Response( [
 		'success'      => true,
@@ -328,8 +357,8 @@ function clientoctopus_portal_password_login( WP_REST_Request $request ): WP_RES
 function clientoctopus_portal_get_receipt( WP_REST_Request $request ): WP_REST_Response {
 	global $wpdb;
 
-	$payment_id = (int) $request->get_param( 'id' );
-	$user       = wp_get_current_user();
+	$payment_id   = (int) $request->get_param( 'id' );
+	$client_email = ClientOctopus_Portal_Auth::get_current_email();
 
 	$pm = $wpdb->prefix . 'clientoctopus_payments';
 	$pt = $wpdb->prefix . 'clientoctopus_proposals';
@@ -339,16 +368,16 @@ function clientoctopus_portal_get_receipt( WP_REST_Request $request ): WP_REST_R
 		$wpdb->prepare(
 			"SELECT pay.id, pay.proposal_id, pay.amount, pay.currency, pay.deposit_pct,
 			        pay.stripe_payment_intent_id, pay.completed_at, pay.created_at,
-			        pr.title AS proposal_title, pr.token AS proposal_token, pr.total_amount
+			        pr.title AS proposal_title, pr.token AS proposal_token, pr.total_amount,
+			        c.name AS client_name, c.email AS client_email
 			 FROM   {$pm} AS pay
-			 JOIN   {$pt} AS pr ON pr.id  = pay.proposal_id
-			 JOIN   {$ct} AS c  ON c.id   = pr.client_id
-			 JOIN   {$wpdb->users} u ON u.user_email = c.email
+			 JOIN   {$pt} AS pr ON pr.id = pay.proposal_id
+			 JOIN   {$ct} AS c  ON c.id  = pr.client_id
 			 WHERE  pay.id = %d
-			   AND  u.ID = %d
+			   AND  c.email = %s
 			   AND  pay.status = 'completed'",
 			$payment_id,
-			$user->ID
+			$client_email
 		),
 		ARRAY_A
 	);
@@ -357,7 +386,6 @@ function clientoctopus_portal_get_receipt( WP_REST_Request $request ): WP_REST_R
 		return new WP_REST_Response( [ 'success' => false ], 404 );
 	}
 
-	// Determine payment type label.
 	$prior_count = (int) $wpdb->get_var(
 		$wpdb->prepare(
 			"SELECT COUNT(*) FROM {$pm}
@@ -378,11 +406,11 @@ function clientoctopus_portal_get_receipt( WP_REST_Request $request ): WP_REST_R
 	}
 
 	return new WP_REST_Response( [
-		'success'       => true,
-		'payment'       => $payment,
-		'payment_type'  => $payment_type,
-		'client_name'   => $user->display_name,
-		'client_email'  => $user->user_email,
+		'success'        => true,
+		'payment'        => $payment,
+		'payment_type'   => $payment_type,
+		'client_name'    => $payment['client_name'],
+		'client_email'   => $payment['client_email'],
 		'business_name'  => get_option( 'clientoctopus_business_name' ) ?: get_option( 'blogname' ),
 		'business_logo'  => get_option( 'clientoctopus_logo_url', '' ),
 		'brand_color'    => get_option( 'clientoctopus_brand_color', '#6366F1' ),

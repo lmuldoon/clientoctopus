@@ -149,15 +149,15 @@ class ClientOctopus_Approval {
 	/**
 	 * List approvals for a project — client portal access.
 	 *
-	 * @param int $project_id
-	 * @param int $client_wp_user_id
+	 * @param int    $project_id
+	 * @param string $client_email
 	 *
 	 * @return array|WP_Error
 	 */
-	public static function get_for_client( int $project_id, int $client_wp_user_id ): array|WP_Error {
+	public static function get_for_client_by_email( int $project_id, string $client_email ): array|WP_Error {
 		global $wpdb;
 
-		if ( ! self::client_owns_project( $project_id, $client_wp_user_id ) ) {
+		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -177,14 +177,14 @@ class ClientOctopus_Approval {
 	/**
 	 * Client responds to an approval request.
 	 *
-	 * @param int    $id                  Approval ID.
-	 * @param int    $client_wp_user_id   WP user ID of the responding client.
-	 * @param string $status              'approved' or 'rejected'.
-	 * @param string $comment             Optional comment from client.
+	 * @param int    $id            Approval ID.
+	 * @param string $client_email  Email of the responding client.
+	 * @param string $status        'approved' or 'rejected'.
+	 * @param string $comment       Optional comment from client.
 	 *
 	 * @return array|WP_Error Updated approval row.
 	 */
-	public static function respond( int $id, int $client_wp_user_id, string $status, string $comment = '' ): array|WP_Error {
+	public static function respond_by_email( int $id, string $client_email, string $status, string $comment = '' ): array|WP_Error {
 		global $wpdb;
 
 		if ( ! in_array( $status, self::RESPONSE_STATUSES, true ) ) {
@@ -204,7 +204,7 @@ class ClientOctopus_Approval {
 			return new WP_Error( 'approval_not_found', __( 'Approval not found.', 'clientoctopus' ), [ 'status' => 404 ] );
 		}
 
-		if ( ! self::client_owns_project( (int) $row['project_id'], $client_wp_user_id ) ) {
+		if ( ! self::client_owns_project_by_email( (int) $row['project_id'], $client_email ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -216,12 +216,20 @@ class ClientOctopus_Approval {
 			);
 		}
 
+		// Use clientoctopus_clients.id as approved_by (no WP user needed).
+		$client_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
+				$client_email
+			)
+		);
+
 		$now     = current_time( 'mysql' );
 		$comment = sanitize_textarea_field( $comment );
 
 		$update = [
 			'status'         => $status,
-			'approved_by'    => $client_wp_user_id,
+			'approved_by'    => $client_id,
 			'responded_at'   => $now,
 		];
 
@@ -232,7 +240,9 @@ class ClientOctopus_Approval {
 		$wpdb->update(
 			self::table(),
 			$update,
-			[ 'id' => $id ]
+			[ 'id' => $id ],
+			array_fill( 0, count( $update ), '%s' ),
+			[ '%d' ]
 		);
 
 		// Notify the owner.
@@ -313,25 +323,20 @@ class ClientOctopus_Approval {
 	}
 
 	/**
-	 * Check whether a WP user is the client assigned to a project.
-	 * Matches by email (consistent with ClientOctopus_Portal_Data) so the check
-	 * works even before clientoctopus_clients.wp_user_id has been back-filled.
+	 * Check whether the given email is the client assigned to a project.
 	 */
-	private static function client_owns_project( int $project_id, int $client_wp_user_id ): bool {
+	private static function client_owns_project_by_email( int $project_id, string $client_email ): bool {
 		global $wpdb;
 
-		$count = (int) $wpdb->get_var(
+		return (bool) (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
 				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 INNER JOIN {$wpdb->users} u ON u.user_email = c.email
-				 WHERE p.id = %d AND u.ID = %d",
+				 WHERE p.id = %d AND c.email = %s",
 				$project_id,
-				$client_wp_user_id
+				$client_email
 			)
 		);
-
-		return $count > 0;
 	}
 
 	/**

@@ -53,15 +53,9 @@ class ClientOctopus_Message {
 		global $wpdb;
 
 		// Verify access.
-		if ( 'admin' === $sender_type ) {
-			$project = self::get_project( $project_id, $owner_id ?: $sender_id );
-			if ( is_wp_error( $project ) ) {
-				return $project;
-			}
-		} else {
-			if ( ! self::client_owns_project( $project_id, $sender_id ) ) {
-				return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
-			}
+		$project = self::get_project( $project_id, $owner_id ?: $sender_id );
+		if ( is_wp_error( $project ) ) {
+			return $project;
 		}
 
 		$message = sanitize_textarea_field( $message );
@@ -133,46 +127,6 @@ class ClientOctopus_Message {
 		];
 	}
 
-	/**
-	 * List messages for a project — client portal view.
-	 * Marks all unread admin messages as read.
-	 *
-	 * @param int $project_id
-	 * @param int $client_wp_user_id
-	 *
-	 * @return array|WP_Error { messages: array, unread_count: int }
-	 */
-	public static function list_for_client( int $project_id, int $client_wp_user_id ): array|WP_Error {
-		global $wpdb;
-
-		if ( ! self::client_owns_project( $project_id, $client_wp_user_id ) ) {
-			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
-		}
-
-		$unread = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM " . self::table() . "
-				 WHERE project_id = %d AND sender_type = 'admin' AND read_at IS NULL",
-				$project_id
-			)
-		);
-
-		self::mark_read_client( $project_id, $client_wp_user_id );
-
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at ASC",
-				$project_id
-			),
-			ARRAY_A
-		);
-
-		return [
-			'messages'     => array_map( [ __CLASS__, 'prepare_row' ], $rows ?: [] ),
-			'unread_count' => $unread,
-		];
-	}
-
 	// ── Delete ────────────────────────────────────────────────────────────────
 
 	/**
@@ -229,13 +183,105 @@ class ClientOctopus_Message {
 		);
 	}
 
+	// ── Email-based portal methods (no WP user required) ─────────────────────
+
 	/**
-	 * Mark all unread admin messages in a project as read (client opens section).
+	 * List messages for a project — client portal view, identified by email.
 	 *
-	 * @param int $project_id
-	 * @param int $client_wp_user_id
+	 * @param int    $project_id
+	 * @param string $client_email
+	 * @return array|WP_Error
 	 */
-	public static function mark_read_client( int $project_id, int $client_wp_user_id ): void {
+	public static function list_for_client_by_email( int $project_id, string $client_email ): array|WP_Error {
+		global $wpdb;
+
+		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
+		}
+
+		$unread = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM " . self::table() . "
+				 WHERE project_id = %d AND sender_type = 'admin' AND read_at IS NULL",
+				$project_id
+			)
+		);
+
+		self::mark_read_by_email( $project_id, $client_email );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at ASC",
+				$project_id
+			),
+			ARRAY_A
+		);
+
+		return [
+			'messages'     => array_map( [ __CLASS__, 'prepare_row' ], $rows ?: [] ),
+			'unread_count' => $unread,
+		];
+	}
+
+	/**
+	 * Send a message as a portal client identified by email.
+	 *
+	 * Uses clientoctopus_clients.id as the sender_id (not a WP user ID).
+	 *
+	 * @param int    $project_id
+	 * @param string $client_email
+	 * @param string $message
+	 * @return int|WP_Error New message ID.
+	 */
+	public static function send_as_client_by_email( int $project_id, string $client_email, string $message ): int|WP_Error {
+		global $wpdb;
+
+		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
+		}
+
+		$message = sanitize_textarea_field( $message );
+		if ( '' === $message ) {
+			return new WP_Error( 'empty_message', __( 'Message cannot be empty.', 'clientoctopus' ), [ 'status' => 400 ] );
+		}
+
+		// Use clientoctopus_clients.id as sender_id (no WP user needed).
+		$client_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
+				$client_email
+			)
+		);
+
+		$wpdb->insert(
+			self::table(),
+			[
+				'project_id'  => $project_id,
+				'sender_id'   => $client_id,
+				'sender_type' => 'client',
+				'message'     => $message,
+				'created_at'  => current_time( 'mysql' ),
+			],
+			[ '%d', '%d', '%s', '%s', '%s' ]
+		);
+
+		if ( ! $wpdb->insert_id ) {
+			return new WP_Error( 'db_insert_failed', __( 'Failed to send message.', 'clientoctopus' ), [ 'status' => 500 ] );
+		}
+
+		$id = (int) $wpdb->insert_id;
+		self::notify_recipient( $id );
+
+		return $id;
+	}
+
+	/**
+	 * Mark all unread admin messages as read for a client identified by email.
+	 *
+	 * @param int    $project_id
+	 * @param string $client_email
+	 */
+	private static function mark_read_by_email( int $project_id, string $client_email ): void {
 		global $wpdb;
 
 		$wpdb->query(
@@ -243,13 +289,33 @@ class ClientOctopus_Message {
 				"UPDATE " . self::table() . " m
 				 INNER JOIN {$wpdb->prefix}clientoctopus_projects p ON m.project_id = p.id
 				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 INNER JOIN {$wpdb->users} u ON u.user_email = c.email
 				 SET m.read_at = %s
-				 WHERE m.project_id = %d AND u.ID = %d
+				 WHERE m.project_id = %d AND c.email = %s
 				   AND m.sender_type = 'admin' AND m.read_at IS NULL",
 				current_time( 'mysql' ),
 				$project_id,
-				$client_wp_user_id
+				$client_email
+			)
+		);
+	}
+
+	/**
+	 * Check whether the given email belongs to the client of a project.
+	 *
+	 * @param int    $project_id
+	 * @param string $client_email
+	 * @return bool
+	 */
+	private static function client_owns_project_by_email( int $project_id, string $client_email ): bool {
+		global $wpdb;
+
+		return (bool) (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
+				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
+				 WHERE p.id = %d AND c.email = %s",
+				$project_id,
+				$client_email
 			)
 		);
 	}
@@ -323,12 +389,22 @@ class ClientOctopus_Message {
 			$user = get_userdata( $row['sender_id'] );
 			$row['sender_name'] = $user ? $user->display_name : __( 'Agency', 'clientoctopus' );
 		} else {
+			// Try by clientoctopus_clients.id first (new session-based auth),
+			// then fall back to wp_user_id for messages created before the refactor.
 			$name = $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT name FROM {$wpdb->prefix}clientoctopus_clients WHERE wp_user_id = %d",
+					"SELECT name FROM {$wpdb->prefix}clientoctopus_clients WHERE id = %d",
 					$row['sender_id']
 				)
 			);
+			if ( ! $name ) {
+				$name = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT name FROM {$wpdb->prefix}clientoctopus_clients WHERE wp_user_id = %d",
+						$row['sender_id']
+					)
+				);
+			}
 			$row['sender_name'] = $name ?: __( 'Client', 'clientoctopus' );
 		}
 
@@ -360,33 +436,6 @@ class ClientOctopus_Message {
 		}
 
 		return $row;
-	}
-
-	/**
-	 * Check whether a WP user is the client assigned to a project.
-	 * Matches by email (consistent with ClientOctopus_Portal_Data) so the check
-	 * works even before clientoctopus_clients.wp_user_id has been back-filled.
-	 *
-	 * @param int $project_id
-	 * @param int $client_wp_user_id
-	 *
-	 * @return bool
-	 */
-	private static function client_owns_project( int $project_id, int $client_wp_user_id ): bool {
-		global $wpdb;
-
-		$count = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
-				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 INNER JOIN {$wpdb->users} u ON u.user_email = c.email
-				 WHERE p.id = %d AND u.ID = %d",
-				$project_id,
-				$client_wp_user_id
-			)
-		);
-
-		return $count > 0;
 	}
 
 	/**

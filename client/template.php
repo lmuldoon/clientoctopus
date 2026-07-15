@@ -6,11 +6,10 @@
  * Completely bypasses the active WordPress theme — this is a self-contained
  * document viewer page.
  *
- * CSS is loaded via raw <link> tags because this template is served through a
- * custom WordPress rewrite rule and wp_head() / wp_enqueue_style() are never
- * called — there is no WordPress page lifecycle at this URL. This is the same
- * pattern used by other plugins that serve standalone front-end pages outside
- * the normal theme rendering pipeline.
+ * CSS is enqueued via wp_enqueue_style() before the HTML is output, then
+ * printed in the <head> via wp_print_styles(). Scripts are enqueued and
+ * printed via wp_print_scripts() in the <body>. This satisfies WordPress.org's
+ * requirement to use the built-in enqueue API even for standalone pages.
  *
  * Variables injected by client-routing.php:
  *   $clientoctopus_proposal_token  string  Sanitised UUID token from the URL.
@@ -80,6 +79,13 @@ if ( ! file_exists( $clientoctopus_build_dir . 'client.js' ) ) {
 
 // ── Favicon ───────────────────────────────────────────────────────────────────
 $clientoctopus_favicon_url = get_site_icon_url( 32 );
+
+// Enqueue styles before the HTML is output so wp_print_styles() can render them.
+wp_enqueue_style( 'co-client-base', plugins_url( 'client/client.css', CLIENTOCTOPUS_DIR . 'clientoctopus.php' ), [], CLIENTOCTOPUS_VERSION );
+if ( $clientoctopus_has_css ) {
+	wp_enqueue_style( 'co-client-bundle', $clientoctopus_style_url, [ 'co-client-base' ], $clientoctopus_script_ver );
+}
+wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fonts.css', [], CLIENTOCTOPUS_VERSION );
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo esc_attr( get_bloginfo( 'language' ) ); ?>">
@@ -94,13 +100,7 @@ $clientoctopus_favicon_url = get_site_icon_url( 32 );
 		<link rel="icon" href="<?php echo esc_url( $clientoctopus_favicon_url ); ?>">
 	<?php endif; ?>
 
-	<?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- standalone template, wp_enqueue_style() cannot be used outside WP head. ?>
-	<link rel="stylesheet" href="<?php echo esc_url( plugins_url( 'client/client.css', CLIENTOCTOPUS_DIR . 'clientoctopus.php' ) ); ?>?v=<?php echo esc_attr( CLIENTOCTOPUS_VERSION ); ?>">
-
-	<?php if ( $clientoctopus_has_css ) : ?>
-		<?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- standalone template, wp_enqueue_style() cannot be used outside WP head. ?>
-		<link rel="stylesheet" href="<?php echo esc_url( $clientoctopus_style_url ); ?>?v=<?php echo esc_attr( $clientoctopus_script_ver ); ?>">
-	<?php endif; ?>
+	<?php wp_print_styles(); ?>
 </head>
 <body>
 
@@ -118,7 +118,6 @@ $clientoctopus_favicon_url = get_site_icon_url( 32 );
 		$clientoctopus_script_deps[] = 'wp-element';
 	}
 
-	wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fonts.css', [], CLIENTOCTOPUS_VERSION );
 	wp_enqueue_script( 'co-client', $clientoctopus_script_url, $clientoctopus_script_deps, $clientoctopus_script_ver, false );
 
 	wp_add_inline_script(

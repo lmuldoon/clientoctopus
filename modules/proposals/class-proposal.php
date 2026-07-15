@@ -51,9 +51,6 @@ class ClientOctopus_Proposal {
 	/**
 	 * Create a new proposal.
 	 *
-	 * Enforces the free-tier 5-proposal limit via clientoctopus_can_user().
-	 * Increments the usage counter after a successful insert.
-	 *
 	 * @param int   $owner_id WordPress user ID of the creator.
 	 * @param array $data     Proposal fields (see $defaults).
 	 *
@@ -100,9 +97,6 @@ $now      = current_time( 'mysql' );
 		}
 
 		$id = (int) $wpdb->insert_id;
-
-		// ── Log usage ────────────────────────────────────────────────────────
-		ClientOctopus_Entitlements::log_usage( $owner_id, 'create_proposal' );
 
 		return $id;
 	}
@@ -178,8 +172,9 @@ $now      = current_time( 'mysql' );
 		$search   = $args['search']   ?? '';
 		$page     = max( 1, (int) ( $args['page'] ?? 1 ) );
 		$per_page = min( 100, max( 1, (int) ( $args['per_page'] ?? 20 ) ) );
-		$orderby  = in_array( $args['orderby'] ?? 'created_at', [ 'created_at', 'updated_at', 'title', 'status', 'total_amount' ], true )
-			? $args['orderby']
+		$orderby_input = $args['orderby'] ?? 'created_at';
+		$orderby       = in_array( $orderby_input, [ 'created_at', 'updated_at', 'title', 'status', 'total_amount' ], true )
+			? $orderby_input
 			: 'created_at';
 		$order    = strtoupper( $args['order'] ?? 'DESC' ) === 'ASC' ? 'ASC' : 'DESC';
 		$offset   = ( $page - 1 ) * $per_page;
@@ -337,9 +332,6 @@ $now      = current_time( 'mysql' );
 			[ 'id' => $id, 'owner_id' => $owner_id ]
 		);
 
-		// Log view event.
-		self::log_event( $id, 'sent' );
-
 		// Allow modules (e.g. portal) to react to a proposal being sent.
 		do_action( 'clientoctopus_proposal_sent', $id, $owner_id );
 
@@ -409,18 +401,6 @@ $now      = current_time( 'mysql' );
 			[ 'id' => $id, 'owner_id' => $owner_id ],
 			[ '%s' ],
 			[ '%d', '%d' ]
-		);
-
-		// Decrement the monthly plan-limit counter only — not the lifetime analytics total.
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$wpdb->prefix}clientoctopus_user_meta
-				 SET proposal_count_month = GREATEST(0, proposal_count_month - 1),
-				     updated_at           = %s
-				 WHERE user_id = %d",
-				current_time( 'mysql' ),
-				$owner_id
-			)
 		);
 
 		return true;
@@ -618,27 +598,4 @@ $now      = current_time( 'mysql' );
 		return $row;
 	}
 
-	/**
-	 * Log an event to clientoctopus_events.
-	 *
-	 * @param int    $proposal_id
-	 * @param string $event_type
-	 * @param array  $metadata
-	 */
-	private static function log_event( int $proposal_id, string $event_type, array $metadata = [] ): void {
-		global $wpdb;
-
-		$wpdb->insert(
-			$wpdb->prefix . 'clientoctopus_events',
-			[
-				'proposal_id' => $proposal_id,
-				'event_type'  => $event_type,
-				'user_ip'     => sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ),
-				'user_agent'  => sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ),
-				'timestamp'   => current_time( 'mysql' ),
-				'metadata'    => $metadata ? wp_json_encode( $metadata ) : null,
-			],
-			[ '%d', '%s', '%s', '%s', '%s', '%s' ]
-		);
-	}
 }

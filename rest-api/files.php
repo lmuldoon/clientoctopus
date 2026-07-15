@@ -117,13 +117,15 @@ function clientoctopus_rest_upload_file( WP_REST_Request $request ): WP_REST_Res
 	$owner_id   = clientoctopus_get_owner_id( get_current_user_id() );
 	$project_id = (int) $request->get_param( 'id' );
 
-	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- REST endpoint; authentication handled by permission_callback.
-	if ( empty( $_FILES['file'] ) ) {
+	// REST endpoint — authenticated via permission_callback (no nonce required for REST API).
+	if ( empty( $_FILES['file'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- REST endpoint; auth handled by permission_callback above.
 		return new WP_Error( 'no_file', __( 'No file provided.', 'clientoctopus' ), [ 'status' => 400 ] );
 	}
 
-	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- REST endpoint; authentication handled by permission_callback.
-	$result = ClientOctopus_File::upload( $project_id, $owner_id, $_FILES['file'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Missing -- $_FILES passed to wp_handle_upload(); REST auth handled by permission_callback.
+	// $_FILES is passed directly to wp_handle_upload() which performs all file
+	// type validation and sanitization internally — no additional sanitization needed.
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- REST endpoint; wp_handle_upload() validates and sanitizes $_FILES.
+	$result = ClientOctopus_File::upload( $project_id, $owner_id, $_FILES['file'] );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;
@@ -138,7 +140,7 @@ function clientoctopus_rest_download_file( WP_REST_Request $request ): void {
 	$owner_id = clientoctopus_get_owner_id( get_current_user_id() );
 	$file_id  = (int) $request->get_param( 'fid' );
 
-	ClientOctopus_File::stream( $file_id, $owner_id, false );
+	ClientOctopus_File::stream( $file_id, $owner_id );
 }
 
 function clientoctopus_rest_delete_file( WP_REST_Request $request ): WP_REST_Response|WP_Error {
@@ -156,9 +158,9 @@ function clientoctopus_rest_delete_file( WP_REST_Request $request ): WP_REST_Res
 // ── Portal handlers ───────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_files( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$client_id  = get_current_user_id();
+	$email      = ClientOctopus_Portal_Auth::get_current_email();
 	$project_id = (int) $request->get_param( 'id' );
-	$result     = ClientOctopus_File::get_for_client( $project_id, $client_id );
+	$result     = ClientOctopus_File::get_for_client_by_email( $project_id, $email );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;
@@ -168,9 +170,9 @@ function clientoctopus_portal_rest_list_files( WP_REST_Request $request ): WP_RE
 }
 
 function clientoctopus_portal_rest_download_file( WP_REST_Request $request ): void {
-	$client_id  = get_current_user_id();
+	$email      = ClientOctopus_Portal_Auth::get_current_email();
 	$project_id = (int) $request->get_param( 'id' );
 	$file_id    = (int) $request->get_param( 'fid' );
 
-	ClientOctopus_File::stream( $file_id, $client_id, true, $project_id );
+	ClientOctopus_File::stream_for_client_by_email( $file_id, $email, $project_id );
 }

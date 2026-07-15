@@ -20,7 +20,7 @@ $clientoctopus_portal_page = get_query_var( 'clientoctopus_portal_page', 'login'
 // Client data for authenticated pages.
 $clientoctopus_client_data = null;
 if ( ClientOctopus_Portal_Auth::is_authenticated() ) {
-	$clientoctopus_client_data = ClientOctopus_Portal_Data::get_client( get_current_user_id() );
+	$clientoctopus_client_data = ClientOctopus_Portal_Data::get_client( ClientOctopus_Portal_Auth::get_current_email() );
 }
 
 // Business identity.
@@ -40,24 +40,13 @@ if ( 'verify' === $clientoctopus_portal_page ) {
 // Determine if the admin owner has the agency plan (projects are agency-only).
 $clientoctopus_has_projects = false;
 if ( ClientOctopus_Portal_Auth::is_authenticated() ) {
-	global $wpdb;
-	$clientoctopus_owner_id = (int) $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT p.owner_id
-			 FROM {$wpdb->prefix}clientoctopus_proposals p
-			 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON c.id = p.client_id
-			 INNER JOIN {$wpdb->users} u ON u.user_email = c.email
-			 WHERE u.ID = %d
-			 LIMIT 1",
-			get_current_user_id()
-		)
-	);
+	$clientoctopus_owner_id = ClientOctopus_Portal_Auth::get_current_owner_id();
 	if ( $clientoctopus_owner_id ) {
 		$clientoctopus_has_projects = (bool) ClientOctopus_Entitlements::can_user( $clientoctopus_owner_id, 'use_projects' );
 	}
 }
 
-// Nonce for WP REST API calls.
+// Nonce for WP REST API calls (works for anonymous requests too).
 $clientoctopus_nonce = wp_create_nonce( 'wp_rest' );
 
 // Asset manifest.
@@ -89,7 +78,7 @@ wp_add_inline_script(
 		'verifyToken'     => $clientoctopus_verify_token,
 		'pluginUrl'       => CLIENTOCTOPUS_URL,
 		'hasProjects'     => $clientoctopus_has_projects,
-		'hasPassword'     => ClientOctopus_Portal_Auth::is_authenticated() && ClientOctopus_Portal_Auth::has_set_password( get_current_user_id() ),
+		'hasPassword'     => ClientOctopus_Portal_Auth::is_authenticated() && ClientOctopus_Portal_Auth::has_set_password(),
 	] ) . ';',
 	'before'
 );

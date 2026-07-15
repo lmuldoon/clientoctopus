@@ -435,6 +435,11 @@ class ClientOctopus_Entitlements {
 		$plan   = self::get_user_plan( $user_id );
 		$matrix = self::get_feature_matrix();
 
+		// Empty matrix = WP.org free build (premium block stripped). All features available.
+		if ( ! isset( $matrix[ $feature ] ) ) {
+			return true;
+		}
+
 		if ( ! isset( $matrix[ $feature ][ $plan ] ) ) {
 			return false;
 		}
@@ -537,22 +542,6 @@ class ClientOctopus_Entitlements {
 			return true;
 		}
 
-		if ( 'create_proposal' === $feature ) {
-			$wpdb->query(
-				$wpdb->prepare(
-					"UPDATE {$wpdb->prefix}clientoctopus_user_meta
-					 SET proposals_created_total = proposals_created_total + 1,
-					     proposal_count_month    = proposal_count_month + 1,
-					     updated_at              = %s
-					 WHERE user_id = %d",
-					$now,
-					$user_id
-				)
-			);
-
-			return true;
-		}
-
 		return false;
 	}
 
@@ -598,10 +587,9 @@ class ClientOctopus_Entitlements {
 		$wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$wpdb->prefix}clientoctopus_user_meta
-				 SET ai_usage_count      = 0,
-				     proposal_count_month = 0,
-				     ai_usage_month       = %s,
-				     updated_at           = NOW()",
+				 SET ai_usage_count = 0,
+				     ai_usage_month = %s,
+				     updated_at     = NOW()",
 				$month
 			)
 		);
@@ -637,18 +625,16 @@ class ClientOctopus_Entitlements {
 		$wpdb->insert(
 			$wpdb->prefix . 'clientoctopus_user_meta',
 			[
-				'user_id'                 => $user_id,
-				'plan'                    => 'free',
-				'ai_usage_count'          => 0,
-				'ai_usage_month'          => gmdate( 'Y-m' ),
-				'proposals_created_total' => 0,
-				'proposal_count_month'    => 0,
-				'team_seats_used'         => 1,
-				'storage_used_mb'         => 0,
-				'created_at'              => $now,
-				'updated_at'              => $now,
+				'user_id'        => $user_id,
+				'plan'           => 'free',
+				'ai_usage_count' => 0,
+				'ai_usage_month' => gmdate( 'Y-m' ),
+				'team_seats_used' => 1,
+				'storage_used_mb' => 0,
+				'created_at'     => $now,
+				'updated_at'     => $now,
 			],
-			[ '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d', '%s', '%s' ]
+			[ '%d', '%s', '%d', '%s', '%d', '%d', '%s', '%s' ]
 		);
 	}
 

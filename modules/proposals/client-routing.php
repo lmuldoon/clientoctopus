@@ -107,8 +107,10 @@ add_action( 'template_redirect', static function (): void {
 	// Pass sanitised variables to the template.
 	$clientoctopus_proposal_token  = sanitize_text_field( $token );
 	$clientoctopus_payment_result  = sanitize_key( get_query_var( 'clientoctopus_payment_result', '' ) );
-	// Stripe passes ?session_id=cs_xxx on the success redirect.
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only Stripe redirect parameter, no state change occurs here.
+	// Stripe passes ?session_id=cs_xxx on the success redirect — read-only
+	// parameter, no state change. Nonces are for form submissions, not external
+	// redirect parameters from payment providers.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Stripe redirect parameter, read-only, no state change.
 	$clientoctopus_session_id      = sanitize_text_field( wp_unslash( $_GET['session_id'] ?? '' ) );
 
 	// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable

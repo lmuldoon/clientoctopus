@@ -6,18 +6,20 @@
  * Safe to call multiple times — dbDelta only applies diffs.
  *
  * Tables:
- *   1.  clientoctopus_user_meta       — per-user plan, usage, billing
- *   2.  clientoctopus_ai_usage_logs   — AI request audit trail
- *   3.  clientoctopus_clients         — client records
- *   4.  clientoctopus_proposals       — proposal data
- *   5.  clientoctopus_projects        — post-acceptance project tracking
- *   6.  clientoctopus_milestones      — project milestone steps (Agency)
- *   7.  clientoctopus_payments        — Stripe payment records
- *   8.  clientoctopus_messages        — threaded messaging (Agency)
- *   9.  clientoctopus_files           — file uploads per project (Agency)
- *   10. clientoctopus_approvals       — approval workflows (Agency)
- *   11. clientoctopus_events          — analytics event log
- *   12. clientoctopus_team_members    — Agency team seats (member ↔ owner links)
+ *   1.  clientoctopus_user_meta          — per-user plan, usage, billing
+ *   2.  clientoctopus_ai_usage_logs      — AI request audit trail
+ *   3.  clientoctopus_clients            — client records
+ *   4.  clientoctopus_proposals          — proposal data
+ *   5.  clientoctopus_projects           — post-acceptance project tracking
+ *   6.  clientoctopus_milestones         — project milestone steps (Agency)
+ *   7.  clientoctopus_payments           — Stripe payment records
+ *   8.  clientoctopus_messages           — threaded messaging (Agency)
+ *   9.  clientoctopus_files              — file uploads per project (Agency)
+ *   10. clientoctopus_approvals          — approval workflows (Agency)
+ *   11. clientoctopus_team_members       — Agency team seats (member ↔ owner links)
+ *   12. clientoctopus_webhooks           — outbound webhook endpoints
+ *   13. clientoctopus_webhook_logs       — webhook delivery audit log
+ *   14. clientoctopus_portal_sessions    — custom portal auth sessions (no WP users)
  *
  * @package ClientOctopus
  * @since   0.1.0
@@ -57,9 +59,6 @@ function clientoctopus_create_tables(): void {
 		ai_usage_count INT NOT NULL DEFAULT 0,
 		ai_usage_month VARCHAR(7) DEFAULT NULL,
 
-		proposals_created_total INT NOT NULL DEFAULT 0,
-		proposal_count_month INT NOT NULL DEFAULT 0,
-
 		billing_cycle_start DATE DEFAULT NULL,
 		billing_cycle_end DATE DEFAULT NULL,
 		stripe_customer_id VARCHAR(255) DEFAULT NULL,
@@ -76,6 +75,10 @@ function clientoctopus_create_tables(): void {
 		KEY ai_usage_month (ai_usage_month),
 		KEY billing_cycle_start (billing_cycle_start)
 	) $charset_collate;" );
+
+	// Drop stale proposal counter columns removed in DB version 15.
+	$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_user_meta DROP COLUMN IF EXISTS proposals_created_total" );
+	$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_user_meta DROP COLUMN IF EXISTS proposal_count_month" );
 
 	// ────────────────────────────────────────────────────────────────────────
 	// Table 2: clientoctopus_ai_usage_logs
@@ -129,6 +132,15 @@ function clientoctopus_create_tables(): void {
 	// Ensure portal_invited_at exists on existing installations.
 	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_clients LIKE %s", 'portal_invited_at' ) ) ) {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN portal_invited_at DATETIME DEFAULT NULL" );
+	}
+	// Magic-link token stored on the client row (no WP user needed).
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_clients LIKE %s", 'portal_token_hash' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN portal_token_hash VARCHAR(64) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN portal_token_expires_at DATETIME DEFAULT NULL" );
+	}
+	// Optional portal password hash (bcrypt via wp_hash_password).
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_clients LIKE %s", 'portal_password_hash' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN portal_password_hash VARCHAR(255) DEFAULT NULL" );
 	}
 
 	// ────────────────────────────────────────────────────────────────────────
@@ -194,6 +206,14 @@ function clientoctopus_create_tables(): void {
 	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_proposals LIKE %s", 'preview_token' ) ) ) {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD COLUMN preview_token VARCHAR(64) DEFAULT NULL" );
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD UNIQUE KEY preview_token (preview_token)" );
+	}
+
+	// Composite index for admin proposal list (owner_id filtered, deleted_at checked, sorted by created_at).
+	if ( ! $wpdb->get_var( $wpdb->prepare(
+		"SHOW INDEX FROM {$wpdb->prefix}clientoctopus_proposals WHERE Key_name = %s",
+		'owner_deleted_created'
+	) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD KEY owner_deleted_created (owner_id, deleted_at, created_at)" );
 	}
 
 	// ────────────────────────────────────────────────────────────────────────
@@ -324,7 +344,8 @@ function clientoctopus_create_tables(): void {
 		PRIMARY KEY  (id),
 		KEY project_id (project_id),
 		KEY sender_id (sender_id),
-		KEY created_at (created_at)
+		KEY created_at (created_at),
+		KEY unread_lookup (project_id, sender_type, read_at)
 	) $charset_collate;" );
 
 	// ────────────────────────────────────────────────────────────────────────
@@ -373,28 +394,7 @@ function clientoctopus_create_tables(): void {
 	) $charset_collate;" );
 
 	// ────────────────────────────────────────────────────────────────────────
-	// Table 11: clientoctopus_events
-	// Analytics event log. All tiers. metadata column is JSON.
-	// ────────────────────────────────────────────────────────────────────────
-	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_events (
-		id INT NOT NULL AUTO_INCREMENT,
-		proposal_id INT DEFAULT NULL,
-		event_type VARCHAR(50) DEFAULT NULL,
-
-		user_ip VARCHAR(45) DEFAULT NULL,
-		user_agent TEXT DEFAULT NULL,
-
-		timestamp DATETIME DEFAULT NULL,
-		metadata JSON DEFAULT NULL,
-
-		PRIMARY KEY  (id),
-		KEY proposal_id (proposal_id),
-		KEY event_type (event_type),
-		KEY timestamp (timestamp)
-	) $charset_collate;" );
-
-	// ────────────────────────────────────────────────────────────────────────
-	// Table 12: clientoctopus_team_members
+	// Table 11: clientoctopus_team_members
 	// Agency-tier team seats. Links team members to the primary account owner.
 	// ────────────────────────────────────────────────────────────────────────
 	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_team_members (
@@ -445,6 +445,26 @@ function clientoctopus_create_tables(): void {
 		PRIMARY KEY  (id),
 		KEY webhook_id   (webhook_id),
 		KEY delivered_at (delivered_at)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 15: clientoctopus_portal_sessions
+	// Custom portal authentication sessions — replaces WordPress auth cookies
+	// for client (customer) access so no WordPress user account is required.
+	// One row per active session; expired rows are pruned on login.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_portal_sessions (
+		id         BIGINT NOT NULL AUTO_INCREMENT,
+		client_id  INT NOT NULL,
+		owner_id   INT NOT NULL,
+		session_token VARCHAR(64) NOT NULL,
+		expires_at DATETIME NOT NULL,
+		created_at DATETIME DEFAULT NULL,
+
+		PRIMARY KEY  (id),
+		UNIQUE KEY session_token (session_token),
+		KEY client_id (client_id),
+		KEY expires_at (expires_at)
 	) $charset_collate;" );
 
 	update_option( 'clientoctopus_db_version', defined( 'CLIENTOCTOPUS_DB_VERSION' ) ? CLIENTOCTOPUS_DB_VERSION : '1' );

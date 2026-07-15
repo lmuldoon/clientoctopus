@@ -1,289 +1,402 @@
 <?php
 /**
- * Portal authentication: magic link generation and verification.
+ * Portal authentication: custom session management.
  *
- * Flow:
- *   1. Client submits email → send_magic_link_email()
- *   2. Raw 32-byte token in email URL → stored as SHA-256 hash in user meta
- *   3. Client clicks link → verify_magic_token() hashes incoming token,
- *      finds matching user meta, checks expiry, deletes meta (one-time use),
- *      then calls wp_set_auth_cookie()
+ * Flow (magic link):
+ *   1. Client submits email → generate_magic_token() stores SHA-256 hash on
+ *      the clientoctopus_clients row (no WordPress user required).
+ *   2. Raw token in email URL → verify_magic_token() hashes it, finds the
+ *      matching client row, checks expiry, clears the token (one-time use),
+ *      creates a session row in clientoctopus_portal_sessions, and sets a
+ *      custom httpOnly cookie (co_portal_session).
+ *   3. Subsequent requests: rest_permission() reads the cookie, hashes it,
+ *      validates against the sessions table, and populates static context
+ *      properties so endpoint handlers can access the current client.
+ *
+ * No WordPress user account is created for portal clients.
+ * Team members (agency collaborators) continue to use standard WP auth.
  */
 
 declare( strict_types = 1 );
-// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Custom table queries and user meta lookups for portal auth.
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom table queries; all table names use $wpdb->prefix with trusted constants.
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 class ClientOctopus_Portal_Auth {
 
-	/** User meta key storing the hashed token. */
-	const META_TOKEN  = '_cf_portal_token_hash';
+	/** Cookie name for the portal session token. */
+	const COOKIE_NAME = 'co_portal_session';
 
-	/** User meta key storing the expiry timestamp. */
-	const META_EXPIRY = '_cf_portal_token_expiry';
-
-	/** User meta key linking WP user → client row. */
-	const META_CLIENT = '_cf_client_id';
-
-	/** User meta key flagging that the client has set their own password. */
-	const META_PASSWORD_SET = '_cf_portal_password_set';
-
-	/** Token lifetime in seconds (24 hours). */
+	/** Magic-link token lifetime in seconds (24 hours). */
 	const TOKEN_TTL = 86400;
 
-	// -------------------------------------------------------------------------
-	// User management
-	// -------------------------------------------------------------------------
+	/** Session lifetime in seconds (30 days). */
+	const SESSION_TTL = 2592000;
 
-	/**
-	 * Find an existing WP user by email that has the clientoctopus_client role.
-	 *
-	 * @param  string $email
-	 * @return WP_User|null
-	 */
-	public static function find_client_by_email( string $email ): ?WP_User {
-		$user = get_user_by( 'email', $email );
+	// ── Current-request context (populated by rest_permission()) ─────────────
 
-		if ( ! $user ) {
-			return null;
-		}
+	/** @var string|null Email of the authenticated portal client. */
+	private static ?string $current_email = null;
 
-		if ( ! in_array( 'clientoctopus_client', (array) $user->roles, true ) ) {
-			return null;
-		}
+	/** @var int|null clientoctopus_clients.id of the authenticated client. */
+	private static ?int $current_client_id = null;
 
-		return $user;
-	}
+	/** @var int|null Owner WP user ID for the authenticated client. */
+	private static ?int $current_owner_id = null;
 
-	/**
-	 * Get or create a WP user for the given email address.
-	 *
-	 * Created users receive the `clientoctopus_client` role and a generated
-	 * `_cf_client_id` meta value so the portal can filter data to their records.
-	 *
-	 * @param  string      $email
-	 * @param  string|null $name   Display name hint (e.g. from proposal data).
-	 * @return WP_User|WP_Error
-	 */
-	public static function get_or_create_wp_user( string $email, ?string $name = null ) {
-		global $wpdb;
-
-		$existing = get_user_by( 'email', $email );
-
-		if ( $existing ) {
-			// Ensure the role is set even for pre-existing users.
-			if ( ! in_array( 'clientoctopus_client', (array) $existing->roles, true ) ) {
-				$existing->add_role( 'clientoctopus_client' );
-			}
-
-			// Back-fill client ID if missing.
-			if ( ! get_user_meta( $existing->ID, self::META_CLIENT, true ) ) {
-				update_user_meta( $existing->ID, self::META_CLIENT, wp_generate_uuid4() );
-			}
-
-			// Link WP user back to clientoctopus_clients row if not already set.
-			$wpdb->query(
-				$wpdb->prepare(
-					"UPDATE {$wpdb->prefix}clientoctopus_clients SET wp_user_id = %d
-					 WHERE email = %s AND ( wp_user_id IS NULL OR wp_user_id = 0 )",
-					$existing->ID,
-					$email
-				)
-			);
-
-			return $existing;
-		}
-
-		// Create a new minimal WP user.
-		// Suppress WordPress's default new-user notification emails — the portal
-		// sends its own magic-link email instead.
-		$suppress = static fn() => false;
-		add_filter( 'wp_send_new_user_notification_to_admin', $suppress );
-		add_filter( 'wp_send_new_user_notification_to_user',  $suppress );
-
-		$username = self::unique_username_from_email( $email );
-
-		$user_id = wp_insert_user( [
-			'user_login'   => $username,
-			'user_email'   => $email,
-			'display_name' => $name ?: $username,
-			'role'         => 'clientoctopus_client',
-			// Random password — client never uses a password, only magic links.
-			'user_pass'    => wp_generate_password( 48, true, true ),
-		] );
-
-		remove_filter( 'wp_send_new_user_notification_to_admin', $suppress );
-		remove_filter( 'wp_send_new_user_notification_to_user',  $suppress );
-
-		if ( is_wp_error( $user_id ) ) {
-			return $user_id;
-		}
-
-		// Assign a stable client ID.
-		update_user_meta( $user_id, self::META_CLIENT, wp_generate_uuid4() );
-
-		// Link the new WP user to their clientoctopus_clients row.
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$wpdb->prefix}clientoctopus_clients SET wp_user_id = %d
-				 WHERE email = %s AND ( wp_user_id IS NULL OR wp_user_id = 0 )",
-				$user_id,
-				$email
-			)
-		);
-
-		return get_user_by( 'ID', $user_id );
-	}
-
-	// -------------------------------------------------------------------------
+	// ─────────────────────────────────────────────────────────────────────────
 	// Magic token
-	// -------------------------------------------------------------------------
+	// ─────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * Generate a magic login token for the given WP user.
+	 * Generate a magic login token for the given client.
 	 *
-	 * Stores `hash('sha256', $raw_token)` + expiry in user meta and returns
-	 * the raw token (to be embedded in the email URL).
+	 * Stores the SHA-256 hash + expiry directly on the clientoctopus_clients
+	 * row and returns the raw token (embedded in the email URL).
 	 *
-	 * @param  int $user_id
+	 * @param  int $client_id  clientoctopus_clients.id
 	 * @return string Raw token.
 	 */
-	public static function generate_magic_token( int $user_id ): string {
-		$raw_token = wp_generate_password( 32, true, false );
-		$hash      = hash( 'sha256', $raw_token );
-		$expiry    = time() + self::TOKEN_TTL;
+	public static function generate_magic_token( int $client_id ): string {
+		global $wpdb;
 
-		update_user_meta( $user_id, self::META_TOKEN,  $hash );
-		update_user_meta( $user_id, self::META_EXPIRY, $expiry );
+		$raw_token = wp_generate_password( 32, false, false );
+		$hash      = hash( 'sha256', $raw_token );
+		$expiry    = gmdate( 'Y-m-d H:i:s', time() + self::TOKEN_TTL );
+
+		$wpdb->update(
+			$wpdb->prefix . 'clientoctopus_clients',
+			[
+				'portal_token_hash'       => $hash,
+				'portal_token_expires_at' => $expiry,
+			],
+			[ 'id' => $client_id ],
+			[ '%s', '%s' ],
+			[ '%d' ]
+		);
 
 		return $raw_token;
 	}
 
 	/**
-	 * Verify a magic token received from the URL.
+	 * Verify a magic token from the URL.
 	 *
-	 * On success: deletes the token meta (one-time use), sets the WP auth
-	 * cookie, and returns the WP_User.
+	 * On success: clears the token (one-time use), creates a session, sets the
+	 * portal session cookie, and returns the client row.
 	 *
 	 * On failure: returns a WP_Error.
 	 *
-	 * @param  string $raw_token  Token from query string.
-	 * @return WP_User|WP_Error
+	 * @param  string $raw_token  Token from the query string.
+	 * @return array|WP_Error     Client row (ARRAY_A) or WP_Error.
 	 */
 	public static function verify_magic_token( string $raw_token ) {
+		global $wpdb;
+
 		if ( strlen( $raw_token ) < 10 ) {
 			return new WP_Error( 'invalid_token', 'Invalid token.' );
 		}
 
 		$hash = hash( 'sha256', $raw_token );
 
-		// Find the user whose stored hash matches.
-		$users = get_users( [
-			'meta_key'   => self::META_TOKEN,
-			'meta_value' => $hash,
-			'number'     => 1,
-			'fields'     => 'all',
-		] );
+		$client = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$wpdb->prefix}clientoctopus_clients
+				 WHERE portal_token_hash = %s
+				 LIMIT 1",
+				$hash
+			),
+			ARRAY_A
+		);
 
-		if ( empty( $users ) ) {
+		if ( ! $client ) {
 			return new WP_Error( 'invalid_token', 'This login link is invalid.' );
 		}
 
-		$user = $users[0];
-
 		// Check expiry.
-		$expiry = (int) get_user_meta( $user->ID, self::META_EXPIRY, true );
-
-		if ( time() > $expiry ) {
-			// Clean up expired token.
-			delete_user_meta( $user->ID, self::META_TOKEN );
-			delete_user_meta( $user->ID, self::META_EXPIRY );
-
+		if ( empty( $client['portal_token_expires_at'] ) || strtotime( $client['portal_token_expires_at'] ) < time() ) {
+			// Clear the expired token.
+			$wpdb->update(
+				$wpdb->prefix . 'clientoctopus_clients',
+				[ 'portal_token_hash' => null, 'portal_token_expires_at' => null ],
+				[ 'id' => (int) $client['id'] ],
+				[ '%s', '%s' ],
+				[ '%d' ]
+			);
 			return new WP_Error( 'expired_token', 'This login link has expired. Please request a new one.' );
 		}
 
-		// One-time use: delete before setting cookie.
-		delete_user_meta( $user->ID, self::META_TOKEN );
-		delete_user_meta( $user->ID, self::META_EXPIRY );
+		// One-time use: clear token before creating session.
+		$wpdb->update(
+			$wpdb->prefix . 'clientoctopus_clients',
+			[ 'portal_token_hash' => null, 'portal_token_expires_at' => null ],
+			[ 'id' => (int) $client['id'] ],
+			[ '%s', '%s' ],
+			[ '%d' ]
+		);
 
-		// Authenticate the user.
-		wp_set_auth_cookie( $user->ID, true );
-		wp_set_current_user( $user->ID );
+		self::create_session( (int) $client['id'], (int) $client['owner_id'] );
 
-		// Ensure clientoctopus_clients.wp_user_id is linked to this WP user.
+		return $client;
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Session management
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Create a new portal session for the given client and set the cookie.
+	 *
+	 * Prunes expired sessions for this client before inserting.
+	 *
+	 * @param  int $client_id  clientoctopus_clients.id
+	 * @param  int $owner_id   WP user ID of the account owner.
+	 * @return void
+	 */
+	public static function create_session( int $client_id, int $owner_id ): void {
 		global $wpdb;
+
+		// Prune expired sessions to keep the table tidy.
 		$wpdb->query(
 			$wpdb->prepare(
-				"UPDATE {$wpdb->prefix}clientoctopus_clients SET wp_user_id = %d
-				 WHERE email = %s AND ( wp_user_id IS NULL OR wp_user_id = 0 )",
-				$user->ID,
-				$user->user_email
+				"DELETE FROM {$wpdb->prefix}clientoctopus_portal_sessions
+				 WHERE client_id = %d AND expires_at < NOW()",
+				$client_id
 			)
 		);
 
-		return $user;
-	}
+		$raw_token = wp_generate_password( 32, false, false );
+		$hash      = hash( 'sha256', $raw_token );
+		$expires   = gmdate( 'Y-m-d H:i:s', time() + self::SESSION_TTL );
 
-	// -------------------------------------------------------------------------
-	// Password helpers
-	// -------------------------------------------------------------------------
+		$wpdb->insert(
+			$wpdb->prefix . 'clientoctopus_portal_sessions',
+			[
+				'client_id'     => $client_id,
+				'owner_id'      => $owner_id,
+				'session_token' => $hash,
+				'expires_at'    => $expires,
+				'created_at'    => current_time( 'mysql', true ),
+			],
+			[ '%d', '%d', '%s', '%s', '%s' ]
+		);
+
+		self::set_session_cookie( $raw_token );
+	}
 
 	/**
-	 * Whether the given user has explicitly set their own portal password.
+	 * Set the portal session cookie.
+	 *
+	 * @param  string $raw_token
 	 */
-	public static function has_set_password( int $user_id ): bool {
-		return (bool) get_user_meta( $user_id, self::META_PASSWORD_SET, true );
+	private static function set_session_cookie( string $raw_token ): void {
+		$secure   = is_ssl();
+		$samesite = 'Strict';
+		$expires  = time() + self::SESSION_TTL;
+
+		setcookie( self::COOKIE_NAME, $raw_token, [
+			'expires'  => $expires,
+			'path'     => '/',
+			'secure'   => $secure,
+			'httponly' => true,
+			'samesite' => $samesite,
+		] );
+
+		// Make the cookie available in the current request without a redirect.
+		$_COOKIE[ self::COOKIE_NAME ] = $raw_token;
 	}
 
 	/**
-	 * Mark that the given user has set their own portal password.
+	 * Destroy the current portal session (logout).
 	 */
-	public static function mark_password_set( int $user_id ): void {
-		update_user_meta( $user_id, self::META_PASSWORD_SET, '1' );
+	public static function destroy_session(): void {
+		global $wpdb;
+
+		$raw_token = isset( $_COOKIE[ self::COOKIE_NAME ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE_NAME ] ) ) : '';
+		if ( $raw_token ) {
+			$hash = hash( 'sha256', $raw_token );
+			$wpdb->delete(
+				$wpdb->prefix . 'clientoctopus_portal_sessions',
+				[ 'session_token' => $hash ],
+				[ '%s' ]
+			);
+		}
+
+		// Clear cookie.
+		if ( PHP_VERSION_ID >= 70300 ) {
+			setcookie( self::COOKIE_NAME, '', [
+				'expires'  => time() - 3600,
+				'path'     => '/',
+				'secure'   => is_ssl(),
+				'httponly' => true,
+				'samesite' => 'Strict',
+			] );
+		} else {
+			setcookie( self::COOKIE_NAME, '', time() - 3600, '/' );
+		}
+
+		unset( $_COOKIE[ self::COOKIE_NAME ] );
+		self::$current_email     = null;
+		self::$current_client_id = null;
+		self::$current_owner_id  = null;
 	}
 
-	// -------------------------------------------------------------------------
+	/**
+	 * Resolve the session cookie into a session row.
+	 *
+	 * Joins with clientoctopus_clients so the row includes client data.
+	 *
+	 * @return object|null Session row with client columns, or null.
+	 */
+	private static function resolve_session(): ?object {
+		global $wpdb;
+
+		$raw_token = isset( $_COOKIE[ self::COOKIE_NAME ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE_NAME ] ) ) : '';
+		if ( ! $raw_token ) {
+			return null;
+		}
+
+		$hash = hash( 'sha256', $raw_token );
+
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT s.id AS session_id, s.client_id, s.owner_id, s.expires_at,
+				        c.email, c.name, c.company
+				 FROM {$wpdb->prefix}clientoctopus_portal_sessions s
+				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON c.id = s.client_id
+				 WHERE s.session_token = %s
+				   AND s.expires_at > NOW()
+				 LIMIT 1",
+				$hash
+			)
+		);
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
 	// Auth checks
-	// -------------------------------------------------------------------------
+	// ─────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * Whether the current WP user is an authenticated portal client.
+	 * Whether the current request is an authenticated portal client.
 	 *
 	 * @return bool
 	 */
 	public static function is_authenticated(): bool {
-		if ( ! is_user_logged_in() ) {
+		// Use cached context if already set (e.g. by rest_permission()).
+		if ( null !== self::$current_email ) {
+			return true;
+		}
+
+		$session = self::resolve_session();
+		if ( ! $session ) {
 			return false;
 		}
 
-		$user = wp_get_current_user();
+		self::$current_email     = $session->email;
+		self::$current_client_id = (int) $session->client_id;
+		self::$current_owner_id  = (int) $session->owner_id;
 
-		return in_array( 'clientoctopus_client', (array) $user->roles, true );
+		return true;
 	}
 
 	/**
-	 * Return the `_cf_client_id` of the currently-logged-in client.
+	 * Email of the currently authenticated portal client.
 	 *
 	 * @return string|null
 	 */
-	public static function get_current_client_id(): ?string {
+	public static function get_current_email(): ?string {
+		self::is_authenticated();
+		return self::$current_email;
+	}
+
+	/**
+	 * clientoctopus_clients.id of the authenticated client.
+	 *
+	 * @return int|null
+	 */
+	public static function get_current_client_id(): ?int {
+		self::is_authenticated();
+		return self::$current_client_id;
+	}
+
+	/**
+	 * Owner WP user ID for the authenticated client.
+	 *
+	 * @return int|null
+	 */
+	public static function get_current_owner_id(): ?int {
+		self::is_authenticated();
+		return self::$current_owner_id;
+	}
+
+	/**
+	 * Return basic profile data for the current portal client.
+	 *
+	 * @return array{ id: int, name: string, email: string, company: string }|null
+	 */
+	public static function get_current_client_data(): ?array {
 		if ( ! self::is_authenticated() ) {
 			return null;
 		}
 
-		$id = get_user_meta( get_current_user_id(), self::META_CLIENT, true );
+		global $wpdb;
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, name, email, company FROM {$wpdb->prefix}clientoctopus_clients WHERE id = %d",
+				self::$current_client_id
+			),
+			ARRAY_A
+		);
 
-		return $id ?: null;
+		if ( ! $row ) {
+			return null;
+		}
+
+		return [
+			'id'      => (int) $row['id'],
+			'name'    => $row['name'] ?? '',
+			'email'   => $row['email'] ?? '',
+			'company' => $row['company'] ?? '',
+		];
 	}
+
+	/**
+	 * Whether the current portal client has set a custom password.
+	 *
+	 * @return bool
+	 */
+	public static function has_set_password(): bool {
+		if ( ! self::is_authenticated() ) {
+			return false;
+		}
+
+		global $wpdb;
+		$hash = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT portal_password_hash FROM {$wpdb->prefix}clientoctopus_clients WHERE id = %d",
+				self::$current_client_id
+			)
+		);
+
+		return ! empty( $hash );
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// REST permission callback
+	// ─────────────────────────────────────────────────────────────────────────
 
 	/**
 	 * REST permission callback for portal-authenticated endpoints.
 	 *
+	 * Validates the co_portal_session cookie against the sessions table and
+	 * populates the static context properties so endpoint handlers can call
+	 * get_current_email() / get_current_client_id() / get_current_owner_id().
+	 *
 	 * @return bool|WP_Error
 	 */
 	public static function rest_permission() {
-		if ( ! self::is_authenticated() ) {
+		$session = self::resolve_session();
+
+		if ( ! $session ) {
 			return new WP_Error(
 				'clientoctopus_portal_unauthorized',
 				'Authentication required.',
@@ -291,42 +404,35 @@ class ClientOctopus_Portal_Auth {
 			);
 		}
 
-		// Backfill wp_user_id on clientoctopus_clients if not yet set.
-		// Handles users who logged in before this link was stored.
-		global $wpdb;
-		$user = wp_get_current_user();
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$wpdb->prefix}clientoctopus_clients SET wp_user_id = %d
-				 WHERE email = %s AND ( wp_user_id IS NULL OR wp_user_id = 0 )",
-				$user->ID,
-				$user->user_email
-			)
-		);
+		self::$current_email     = $session->email;
+		self::$current_client_id = (int) $session->client_id;
+		self::$current_owner_id  = (int) $session->owner_id;
 
 		return true;
 	}
 
-	// -------------------------------------------------------------------------
+	// ─────────────────────────────────────────────────────────────────────────
 	// Email
-	// -------------------------------------------------------------------------
+	// ─────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * Send a magic login link email to the given WP user.
+	 * Send a magic login link email to the given client.
 	 *
-	 * @param  WP_User $user
-	 * @param  string  $raw_token
+	 * @param  string $email
+	 * @param  string $name      Display name hint (may be empty).
+	 * @param  string $raw_token Token to embed in the URL.
 	 * @return bool
 	 */
-	public static function send_magic_link_email( WP_User $user, string $raw_token ): bool {
-		$business_name = get_option( 'blogname', 'Client Octopus' );
+	public static function send_magic_link_email( string $email, string $name, string $raw_token ): bool {
+		$business_name = get_option( 'blogname', 'Client Portal' );
 		$portal_url    = home_url( '/clientoctopus/verify?token=' . rawurlencode( $raw_token ) );
 		$login_url     = home_url( '/clientoctopus/login' );
 		$subject       = sprintf( 'Your login link for %s', $business_name );
 		$expiry_hours  = (int) ( self::TOKEN_TTL / 3600 );
+		$display_name  = $name ?: $email;
 
 		$message = clientoctopus_email_html( [
-			'name'          => $user->display_name,
+			'name'          => $display_name,
 			'business_name' => $business_name,
 			'body'          => '<p style="margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;">Click the button below to securely log in to your client portal. This link expires in <strong style="color:#1A1A2E;">' . $expiry_hours . ' hours</strong> and can only be used once.</p>',
 			'cta_label'     => 'Access Your Portal',
@@ -334,31 +440,6 @@ class ClientOctopus_Portal_Auth {
 			'footer'        => 'Bookmark your portal for easy access: <a href="' . esc_url( $login_url ) . '" style="color:#6366F1;">' . esc_html( $login_url ) . '</a>',
 		] );
 
-		return wp_mail( $user->user_email, $subject, $message, [ 'Content-Type: text/html; charset=UTF-8' ] );
+		return wp_mail( $email, $subject, $message, [ 'Content-Type: text/html; charset=UTF-8' ] );
 	}
-
-	// -------------------------------------------------------------------------
-	// Private helpers
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Generate a unique WP username derived from an email address.
-	 *
-	 * @param  string $email
-	 * @return string
-	 */
-	private static function unique_username_from_email( string $email ): string {
-		$base     = sanitize_user( strstr( $email, '@', true ), true );
-		$base     = $base ?: 'client';
-		$username = $base;
-		$counter  = 1;
-
-		while ( username_exists( $username ) ) {
-			$username = $base . $counter;
-			$counter++;
-		}
-
-		return $username;
-	}
-
 }

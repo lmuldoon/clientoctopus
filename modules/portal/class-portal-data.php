@@ -2,8 +2,9 @@
 /**
  * Portal data retrieval: proposals and payments scoped to a client.
  *
- * Every public method takes a WP user ID and only returns records that
- * belong to that user's `_cf_client_id` meta value — no cross-client leakage.
+ * Every public method takes a client email address and only returns records
+ * that belong to that client — no cross-client leakage.
+ * Email is sourced from the custom portal session (no WordPress user needed).
  */
 
 declare( strict_types = 1 );
@@ -19,20 +20,27 @@ class ClientOctopus_Portal_Data {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Return basic profile data for the current portal user.
+	 * Return basic profile data for a portal client by email.
 	 *
-	 * @param  int $user_id WP user ID.
-	 * @return array{ id:string, name:string, email:string, company:string }
+	 * @param  string $email  Client email address (from portal session).
+	 * @return array{ id: int, name: string, email: string, company: string }
 	 */
-	public static function get_client( int $user_id ): array {
-		$user      = get_user_by( 'ID', $user_id );
-		$client_id = get_user_meta( $user_id, ClientOctopus_Portal_Auth::META_CLIENT, true );
+	public static function get_client( string $email ): array {
+		global $wpdb;
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, name, email, company FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
+				$email
+			),
+			ARRAY_A
+		);
 
 		return [
-			'id'      => $client_id ?: '',
-			'name'    => $user ? $user->display_name : '',
-			'email'   => $user ? $user->user_email   : '',
-			'company' => get_user_meta( $user_id, '_cf_company', true ) ?: '',
+			'id'      => $row ? (int) $row['id'] : 0,
+			'name'    => $row['name']    ?? '',
+			'email'   => $row['email']   ?? $email,
+			'company' => $row['company'] ?? '',
 		];
 	}
 
@@ -41,20 +49,13 @@ class ClientOctopus_Portal_Data {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Return all proposals where the client email matches the WP user's email.
+	 * Return all proposals where the client email matches.
 	 *
-	 * Proposals are stored with a `client_email` column; we join on that.
-	 *
-	 * @param  int $user_id
-	 * @return array[]  Array of proposal rows (associative arrays).
+	 * @param  string $email
+	 * @return array[]
 	 */
-	public static function get_proposals( int $user_id ): array {
+	public static function get_proposals( string $email ): array {
 		global $wpdb;
-
-		$user = get_user_by( 'ID', $user_id );
-		if ( ! $user ) {
-			return [];
-		}
 
 		$pt = $wpdb->prefix . 'clientoctopus_proposals';
 		$ct = $wpdb->prefix . 'clientoctopus_clients';
@@ -66,8 +67,9 @@ class ClientOctopus_Portal_Data {
 				 FROM   {$pt} p
 				 JOIN   {$ct} c ON c.id = p.client_id
 				 WHERE  c.email = %s
+				   AND  p.deleted_at IS NULL
 				 ORDER  BY p.created_at DESC",
-				$user->user_email
+				$email
 			),
 			ARRAY_A
 		);
@@ -80,18 +82,13 @@ class ClientOctopus_Portal_Data {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Return all completed/failed payments for the given client.
+	 * Return all payments for the given client email.
 	 *
-	 * @param  int $user_id
+	 * @param  string $email
 	 * @return array[]
 	 */
-	public static function get_payments( int $user_id ): array {
+	public static function get_payments( string $email ): array {
 		global $wpdb;
-
-		$user = get_user_by( 'ID', $user_id );
-		if ( ! $user ) {
-			return [];
-		}
 
 		$pt = $wpdb->prefix . 'clientoctopus_proposals';
 		$pm = $wpdb->prefix . 'clientoctopus_payments';
@@ -107,7 +104,7 @@ class ClientOctopus_Portal_Data {
 				 JOIN   {$ct}  AS c  ON c.id  = pr.client_id
 				 WHERE  c.email = %s
 				 ORDER  BY pm.created_at DESC",
-				$user->user_email
+				$email
 			),
 			ARRAY_A
 		);
@@ -120,25 +117,19 @@ class ClientOctopus_Portal_Data {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Return all projects where the client email matches the WP user's email.
+	 * Return all projects for the given client email.
 	 * Includes milestone counts for progress display.
 	 *
-	 * @param  int $user_id
+	 * @param  string $email
 	 * @return array[]
 	 */
-	public static function get_projects( int $user_id ): array {
+	public static function get_projects( string $email ): array {
 		global $wpdb;
 
-		$user = get_user_by( 'ID', $user_id );
-		if ( ! $user ) {
-			return [];
-		}
-
-		$pt = $wpdb->prefix . 'clientoctopus_projects';
-		$ct = $wpdb->prefix . 'clientoctopus_clients';
-		$mt = $wpdb->prefix . 'clientoctopus_milestones';
-		$pp = $wpdb->prefix . 'clientoctopus_proposals';
-
+		$pt  = $wpdb->prefix . 'clientoctopus_projects';
+		$ct  = $wpdb->prefix . 'clientoctopus_clients';
+		$mt  = $wpdb->prefix . 'clientoctopus_milestones';
+		$pp  = $wpdb->prefix . 'clientoctopus_proposals';
 		$pmt = $wpdb->prefix . 'clientoctopus_payments';
 
 		$rows = $wpdb->get_results(
@@ -159,9 +150,10 @@ class ClientOctopus_Portal_Data {
 				 LEFT JOIN {$pp}  p  ON p.id  = pr.proposal_id
 				 LEFT JOIN {$mt} m ON m.project_id = pr.id
 				 WHERE  c.email = %s
+				   AND  pr.deleted_at IS NULL
 				 GROUP  BY pr.id
-				 ORDER  BY pr.deleted_at IS NOT NULL ASC, pr.created_at DESC",
-				$user->user_email
+				 ORDER  BY pr.created_at DESC",
+				$email
 			),
 			ARRAY_A
 		);
@@ -183,17 +175,12 @@ class ClientOctopus_Portal_Data {
 	 *
 	 * Only returns the project if the client email matches.
 	 *
-	 * @param  int $user_id
-	 * @param  int $project_id
+	 * @param  string $email
+	 * @param  int    $project_id
 	 * @return array|WP_Error
 	 */
-	public static function get_project( int $user_id, int $project_id ): array|WP_Error {
+	public static function get_project( string $email, int $project_id ): array|WP_Error {
 		global $wpdb;
-
-		$user = get_user_by( 'ID', $user_id );
-		if ( ! $user ) {
-			return new WP_Error( 'not_found', __( 'Project not found.', 'clientoctopus' ), [ 'status' => 404 ] );
-		}
 
 		$pt  = $wpdb->prefix . 'clientoctopus_projects';
 		$ct  = $wpdb->prefix . 'clientoctopus_clients';
@@ -218,10 +205,10 @@ class ClientOctopus_Portal_Data {
 				 JOIN   {$ct}  c ON c.id  = pr.client_id
 				 JOIN   {$pp}  p ON p.id  = pr.proposal_id
 				 LEFT JOIN {$mt} m ON m.project_id = pr.id
-				 WHERE  pr.id = %d AND c.email = %s
+				 WHERE  pr.id = %d AND c.email = %s AND pr.deleted_at IS NULL
 				 GROUP  BY pr.id",
 				$project_id,
-				$user->user_email
+				$email
 			),
 			ARRAY_A
 		);
@@ -264,7 +251,7 @@ class ClientOctopus_Portal_Data {
 	/**
 	 * Return dashboard summary statistics for the client.
 	 *
-	 * @param  int $user_id
+	 * @param  string $email
 	 * @return array{
 	 *   active_proposals: int,
 	 *   in_progress:      int,
@@ -272,13 +259,13 @@ class ClientOctopus_Portal_Data {
 	 *   currency:         string
 	 * }
 	 */
-	public static function get_stats( int $user_id ): array {
-		$proposals = self::get_proposals( $user_id );
-		$payments  = self::get_payments( $user_id );
+	public static function get_stats( string $email ): array {
+		$proposals = self::get_proposals( $email );
+		$payments  = self::get_payments( $email );
 
-		$active_statuses   = [ 'sent', 'viewed', 'accepted' ];
-		$active_proposals  = 0;
-		$in_progress       = 0;
+		$active_statuses  = [ 'sent', 'viewed', 'accepted' ];
+		$active_proposals = 0;
+		$in_progress      = 0;
 
 		foreach ( $proposals as $p ) {
 			$status = $p['status'] ?? '';

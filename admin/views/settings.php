@@ -39,7 +39,9 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'
 		update_option( 'clientoctopus_show_powered_by',    ! empty( $_POST['clientoctopus_show_powered_by'] )    ? '1' : '' );
 
 		foreach ( $fields as $option => $sanitizer ) {
-			$value = isset( $_POST[ $option ] ) ? call_user_func( $sanitizer, wp_unslash( $_POST[ $option ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized via $sanitizer callback registered above.
+			// Each value is sanitized via the callback defined in the $fields whitelist above
+			// (sanitize_text_field, sanitize_email, sanitize_hex_color, or esc_url_raw).
+			$value = isset( $_POST[ $option ] ) ? call_user_func( $sanitizer, wp_unslash( $_POST[ $option ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via $sanitizer from the whitelist on line 30.
 			update_option( $option, $value );
 		}
 
@@ -177,9 +179,9 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 							value="1"
 							<?php checked( '1', $show_powered_by ); ?>
 						>
-						<?php esc_html_e( 'Show "Powered by Client Octopus" in emails', 'clientoctopus' ); ?>
+						<?php esc_html_e( 'Show "Powered by Client Octopus" in client-facing emails (opt-in, off by default)', 'clientoctopus' ); ?>
 					</label>
-					<p class="co-help"><?php esc_html_e( 'When enabled, a small "Powered by Client Octopus" badge is added to the footer of all outgoing emails.', 'clientoctopus' ); ?></p>
+					<p class="co-help"><?php esc_html_e( 'Off by default. When you check this box and save, a small "Powered by Client Octopus" badge will be added to the footer of outgoing emails sent to your clients.', 'clientoctopus' ); ?></p>
 				</div>
 
 				<div class="co-divider"></div>

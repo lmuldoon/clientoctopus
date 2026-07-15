@@ -297,26 +297,30 @@
 .co-feature-item.co-locked {
     opacity: 0.65;
 }
-.co-feature-icon {
-    width: 36px; height: 36px;
+#co-admin-wrap .co-feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
     border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
     margin-bottom: 10px;
 }
-.co-active .co-feature-icon {
+#co-admin-wrap .co-active .co-feature-icon {
     background: var(--indigo-bg);
 }
-.co-active .co-feature-icon svg {
+#co-admin-wrap .co-active .co-feature-icon svg {
     stroke: var(--indigo);
 }
-.co-locked .co-feature-icon {
+#co-admin-wrap .co-locked .co-feature-icon {
     background: var(--slate-100);
 }
-.co-locked .co-feature-icon svg {
+#co-admin-wrap .co-locked .co-feature-icon svg {
     stroke: var(--slate-400);
 }
-.co-feature-icon svg {
-    width: 18px; height: 18px;
+#co-admin-wrap .co-feature-icon svg {
+    display: block;
+    width: 24px;
+    height: 24px;
 }
 .co-feature-name {
     font-size: 13px;
