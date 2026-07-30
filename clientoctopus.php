@@ -3,7 +3,7 @@
  * Plugin Name: Client Octopus
  * Plugin URI:  https://clientoctopus.com
  * Description: All-in-one client workflow management for WordPress — proposals, payments, projects, and client portals.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      codievolt
  * Author URI:  https://codievolt.com
  * License:     GPL-2.0-or-later
@@ -199,7 +199,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '1.0.0' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.0.1' );
 define( 'CLIENTOCTOPUS_DB_VERSION',     '15' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '3' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
@@ -1109,14 +1109,13 @@ final class ClientOctopus {
 	 * Prepares variables and includes the view template.
 	 */
 	public function render_plan_overview(): void {
-		$user_id   = get_current_user_id();
-		$user_plan = ClientOctopus_Entitlements::get_user_plan( $user_id );
+		$user_id = get_current_user_id();
 
 		$usage_data = [
 			'proposals'        => ClientOctopus_Entitlements::get_total_count( $user_id, 'create_proposal' ),
 			'proposals_limit'  => ClientOctopus_Entitlements::get_feature_limit( $user_id, 'create_proposal' ),
 			'storage_mb'       => ClientOctopus_Entitlements::get_storage_used( $user_id ),
-			'storage_limit_mb' => 'agency' === $user_plan ? 1000 : 0,
+			'storage_limit_mb' => ClientOctopus_Entitlements::get_storage_limit( $user_id ),
 			'team_seats'       => ClientOctopus_Entitlements::get_team_seats_used( $user_id ),
 			'team_limit'       => ClientOctopus_Entitlements::get_team_limit( $user_id ),
 		];

@@ -19,21 +19,14 @@ rsync -a \
   --exclude='scripts' \
   --exclude='*.zip' \
   --exclude='.DS_Store' \
-  --exclude='package.json' \
+  --exclude='README.md' \
   --exclude='package-lock.json' \
-  --exclude='webpack.config.js' \
+  --exclude='screenshot-*.png' \
   --exclude='.env' \
   --exclude='.env.*' \
   --exclude='*.log' \
   --exclude='.idea' \
   --exclude='.vscode' \
-  --exclude='admin/components' \
-  --exclude='admin/*.jsx' \
-  --exclude='portal/components' \
-  --exclude='portal/index.jsx' \
-  --exclude='portal/portal-globals.js' \
-  --exclude='client/index.jsx' \
-  --exclude='client/components' \
   . "$TMP_DIR/$SLUG/"
 
 echo "Zipping..."

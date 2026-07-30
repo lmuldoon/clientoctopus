@@ -415,9 +415,29 @@ class ClientOctopus_Entitlements {
 	 * @return int
 	 */
 	public static function get_team_limit( int $user_id ): int {
+		if ( empty( self::get_feature_matrix() ) ) {
+			return PHP_INT_MAX;
+		}
 		return match ( self::get_user_plan( $user_id ) ) {
 			'agency' => 5,
 			default  => 1,
+		};
+	}
+
+	/**
+	 * Get the storage allowance in MB for a user's plan.
+	 *
+	 * @param int $user_id
+	 *
+	 * @return int PHP_INT_MAX when the feature matrix is absent (WP.org free build).
+	 */
+	public static function get_storage_limit( int $user_id ): int {
+		if ( empty( self::get_feature_matrix() ) ) {
+			return PHP_INT_MAX;
+		}
+		return match ( self::get_user_plan( $user_id ) ) {
+			'agency' => 1000,
+			default  => 0,
 		};
 	}
 

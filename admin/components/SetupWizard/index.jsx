@@ -11,7 +11,8 @@ const API  = window.clientoctopusData?.apiUrl  || '/wp-json/clientoctopus/v1/';
 const NONCE = window.clientoctopusData?.nonce  || '';
 
 async function apiFetch( path, opts = {} ) {
-	const res = await fetch( API + path, {
+	const url = API + path.replace( /\/?$/, '/' );
+	const res = await fetch( url, {
 		headers: { 'X-WP-Nonce': NONCE, 'Content-Type': 'application/json' },
 		...opts,
 	} );
