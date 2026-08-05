@@ -58,7 +58,7 @@ add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
 	// ── GET /projects ─────────────────────────────────────────────────────────
-	register_rest_route( $ns, '/projects', [
+	register_rest_route( $ns, '/projects/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_projects',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -73,7 +73,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /projects/{id} ────────────────────────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_project',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -81,7 +81,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /projects/{id}/update ────────────────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/update', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/update/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_project',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -94,7 +94,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── DELETE /projects/{id} ─────────────────────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_project',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -102,7 +102,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /projects/{id}/payments ───────────────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/payments', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/payments/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_project_payments',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -110,7 +110,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /projects/{id}/milestones ────────────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_milestone',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -123,7 +123,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /projects/{id}/milestones/{mid}/update ───────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/update', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/update/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_milestone',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -138,7 +138,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── DELETE /projects/{id}/milestones/{mid} ────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_milestone',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -149,7 +149,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /projects/{id}/milestones/reorder ────────────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/reorder', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/reorder/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_reorder_milestones',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -160,7 +160,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /projects/{id}/milestones/{mid}/submit ───────────────────────────
-	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/submit', [
+	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/submit/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_submit_milestone',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -171,14 +171,14 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: GET /portal/projects ──────────────────────────────────────────
-	register_rest_route( $ns, '/portal/projects', [
+	register_rest_route( $ns, '/portal/projects/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_rest_list_projects',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
 	// ── Portal: GET /portal/projects/{id} ─────────────────────────────────────
-	register_rest_route( $ns, '/portal/projects/(?P<id>\d+)', [
+	register_rest_route( $ns, '/portal/projects/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_rest_get_project',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -186,7 +186,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: POST /portal/projects/{id}/milestones/{mid}/approve ───────────
-	register_rest_route( $ns, '/portal/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/approve', [
+	register_rest_route( $ns, '/portal/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/approve/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_rest_approve_milestone',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -479,6 +479,7 @@ function clientoctopus_rest_update_milestone( WP_REST_Request $request ): WP_RES
 			}
 		}
 		clientoctopus_send_milestone_complete_email( $project, $milestone_title );
+		do_action( 'clientoctopus_milestone_completed', $user_id, $mid, $project_id );
 	}
 
 	return new WP_REST_Response( [ 'project' => $project ], 200 );
@@ -536,6 +537,7 @@ function clientoctopus_rest_submit_milestone( WP_REST_Request $request ): WP_RES
 		}
 	}
 	clientoctopus_send_milestone_submitted_email( $project, $milestone_title );
+	do_action( 'clientoctopus_milestone_submitted', $user_id, $mid, $project_id );
 
 	return new WP_REST_Response( [ 'project' => $project ], 200 );
 }
@@ -583,6 +585,7 @@ function clientoctopus_portal_rest_approve_milestone( WP_REST_Request $request )
 	}
 	if ( ! is_wp_error( $project ) ) {
 		clientoctopus_send_milestone_approved_email( $project, $milestone_title );
+		do_action( 'clientoctopus_milestone_approved', (int) $project['owner_id'], $mid, $project_id );
 	}
 
 	return new WP_REST_Response( [ 'project' => $project ], 200 );

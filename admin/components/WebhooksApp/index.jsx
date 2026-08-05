@@ -224,6 +224,10 @@ const ALL_EVENTS = [
 	{ value: 'proposal.accepted',  label: 'Proposal Accepted' },
 	{ value: 'proposal.declined',  label: 'Proposal Declined' },
 	{ value: 'payment.completed',  label: 'Payment Completed' },
+	{ value: 'invoice.sent',       label: 'Invoice Sent' },
+	{ value: 'invoice.paid',       label: 'Invoice Paid' },
+	{ value: 'invoice.overdue',    label: 'Invoice Overdue' },
+	{ value: 'invoice.cancelled',  label: 'Invoice Cancelled' },
 	{ value: 'project.created',    label: 'Project Created' },
 	{ value: 'project.completed',  label: 'Project Completed' },
 ];
@@ -330,7 +334,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleToggle = async ( enabled ) => {
 		setToggling( true );
 		try {
-			const res = await coFetch( `webhooks/${ webhook.id }`, {
+			const res = await coFetch( `webhooks/${ webhook.id }/`, {
 				method: 'PATCH',
 				body: JSON.stringify( { enabled } ),
 			} );
@@ -342,7 +346,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleSave = async ( data ) => {
 		setSaving( true );
 		try {
-			const res = await coFetch( `webhooks/${ webhook.id }`, {
+			const res = await coFetch( `webhooks/${ webhook.id }/`, {
 				method: 'PATCH',
 				body: JSON.stringify( data ),
 			} );
@@ -355,7 +359,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleTest = async () => {
 		setTestState( 'loading' );
 		try {
-			const res = await coFetch( `webhooks/${ webhook.id }/test`, { method: 'POST' } );
+			const res = await coFetch( `webhooks/${ webhook.id }/test/`, { method: 'POST' } );
 			setTestState( { ok: res.success, msg: res.message } );
 		} catch ( e ) {
 			setTestState( { ok: false, msg: e.message || 'Request failed.' } );
@@ -366,7 +370,7 @@ function WebhookCard( { webhook, onUpdate, onDelete, availableEvents } ) {
 	const handleDelete = async () => {
 		if ( ! confirming ) { setConfirming( true ); return; }
 		try {
-			await coFetch( `webhooks/${ webhook.id }`, { method: 'DELETE' } );
+			await coFetch( `webhooks/${ webhook.id }/`, { method: 'DELETE' } );
 			onDelete( webhook.id );
 		} catch {}
 		setConfirming( false );
@@ -462,7 +466,7 @@ export default function WebhooksApp() {
 	const load = useCallback( async () => {
 		setLoading( true );
 		try {
-			const res = await coFetch( 'webhooks' );
+			const res = await coFetch( 'webhooks/' );
 			setWebhooks( res.webhooks || [] );
 		} catch ( e ) {
 			setError( e.message || 'Failed to load webhooks.' );
@@ -476,7 +480,7 @@ export default function WebhooksApp() {
 		setSaving( true );
 		setNewWebhookSecret( null );
 		try {
-			const res = await coFetch( 'webhooks', {
+			const res = await coFetch( 'webhooks/', {
 				method: 'POST',
 				body: JSON.stringify( data ),
 			} );

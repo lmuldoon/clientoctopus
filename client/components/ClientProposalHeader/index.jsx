@@ -277,12 +277,12 @@ export default function ClientProposalHeader( { proposal, businessName, business
 	const { title, expiry_date, status, client_name, accepted_at } = proposal;
 	const initials    = ( businessName || 'CF' ).replace( /[^A-Za-z]/g, '' ).slice( 0, 2 ).toUpperCase() || 'CF';
 	const expiry      = expiryInfo( expiry_date, status );
-	const brandColor  = window.coClientData?.brandColor || '#6366F1';
+	const brandColor  = window.clientoctopusClientData?.brandColor || '#6366F1';
 
 	const fmtDate = iso =>
 		iso ? new Date( iso ).toLocaleDateString( 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' } ) : '';
 
-	const isPortalClient = window.coClientData?.isPortalClient;
+	const isPortalClient = window.clientoctopusClientData?.isPortalClient;
 
 	return (
 		<header className="cfh-header">

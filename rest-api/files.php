@@ -46,7 +46,7 @@ add_action( 'rest_api_init', static function (): void {
 	$file_id = '(?P<fid>\d+)';
 
 	// ── Admin: list ──────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/files", [
+	register_rest_route( $ns, "/projects/{$proj_id}/files/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_files',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -54,7 +54,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: upload ────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/files", [
+	register_rest_route( $ns, "/projects/{$proj_id}/files/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_upload_file',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -62,7 +62,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: download ──────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}/download", [
+	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}/download/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_download_file',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -73,7 +73,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: delete ────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}", [
+	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}/", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_file',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -84,7 +84,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: list ─────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/portal/projects/{$proj_id}/files", [
+	register_rest_route( $ns, "/portal/projects/{$proj_id}/files/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_rest_list_files',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -92,7 +92,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: download ─────────────────────────────────────────────────────
-	register_rest_route( $ns, "/portal/projects/{$proj_id}/files/{$file_id}/download", [
+	register_rest_route( $ns, "/portal/projects/{$proj_id}/files/{$file_id}/download/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_rest_download_file',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],

@@ -226,7 +226,7 @@ export default function PortalProposals() {
 	const [ filter,    setFilter    ] = useState( 'all' );
 
 	useEffect( () => {
-		apiFetch( '/portal/proposals' ).then( data => {
+		apiFetch( '/portal/proposals/' ).then( data => {
 			setProposals( Array.isArray( data ) ? data : [] );
 			setLoading( false );
 		} ).catch( () => setLoading( false ) );

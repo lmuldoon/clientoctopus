@@ -32,10 +32,10 @@ function clientoctopus_register_portal_routes(): void {
 	$ns = 'clientoctopus/v1';
 
 	// ── Public: request a magic link ─────────────────────────────────────────
-	register_rest_route( $ns, '/portal/send-magic-link', [
+	register_rest_route( $ns, '/portal/send-magic-link/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_send_magic_link',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Public endpoint; email rate-limiting in handler.
 		'args'                => [
 			'email' => [
 				'required'          => true,
@@ -46,10 +46,10 @@ function clientoctopus_register_portal_routes(): void {
 	] );
 
 	// ── Public: verify token & create portal session ──────────────────────────
-	register_rest_route( $ns, '/portal/verify', [
+	register_rest_route( $ns, '/portal/verify/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_verify',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Public endpoint; one-time token validated in handler.
 		'args'                => [
 			'token' => [
 				'required'          => true,
@@ -59,35 +59,35 @@ function clientoctopus_register_portal_routes(): void {
 	] );
 
 	// ── Authenticated: current client profile ────────────────────────────────
-	register_rest_route( $ns, '/portal/me', [
+	register_rest_route( $ns, '/portal/me/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_me',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
 	// ── Authenticated: client's proposals ───────────────────────────────────
-	register_rest_route( $ns, '/portal/proposals', [
+	register_rest_route( $ns, '/portal/proposals/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_proposals',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
 	// ── Authenticated: client's payments ────────────────────────────────────
-	register_rest_route( $ns, '/portal/payments', [
+	register_rest_route( $ns, '/portal/payments/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_payments',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
 	// ── Authenticated: logout ────────────────────────────────────────────────
-	register_rest_route( $ns, '/portal/logout', [
+	register_rest_route( $ns, '/portal/logout/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_logout',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
 	// ── Authenticated: set password ──────────────────────────────────────────
-	register_rest_route( $ns, '/portal/set-password', [
+	register_rest_route( $ns, '/portal/set-password/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_set_password',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -100,7 +100,7 @@ function clientoctopus_register_portal_routes(): void {
 	] );
 
 	// ── Authenticated: single payment receipt ───────────────────────────────
-	register_rest_route( $ns, '/portal/receipt/(?P<id>\d+)', [
+	register_rest_route( $ns, '/portal/receipt/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_get_receipt',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -110,10 +110,10 @@ function clientoctopus_register_portal_routes(): void {
 	] );
 
 	// ── Public: password login ───────────────────────────────────────────────
-	register_rest_route( $ns, '/portal/login', [
+	register_rest_route( $ns, '/portal/login/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_password_login',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Public endpoint; credentials validated in handler.
 		'args'                => [
 			'email'    => [
 				'required'          => true,

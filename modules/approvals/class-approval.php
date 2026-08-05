@@ -247,6 +247,7 @@ class ClientOctopus_Approval {
 
 		// Notify the owner.
 		self::notify_owner( $id, $status );
+		do_action( 'clientoctopus_approval_responded', (int) $row['requested_by'], $id, $status );
 
 		$updated = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM " . self::table() . " WHERE id = %d", $id ),

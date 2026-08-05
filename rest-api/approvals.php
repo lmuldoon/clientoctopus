@@ -44,7 +44,7 @@ add_action( 'rest_api_init', static function (): void {
 	$approv_id  = '(?P<aid>\d+)';
 
 	// ── Admin: list ──────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/approvals", [
+	register_rest_route( $ns, "/projects/{$proj_id}/approvals/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_approvals',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -52,7 +52,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: create ────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/approvals", [
+	register_rest_route( $ns, "/projects/{$proj_id}/approvals/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_approval',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -64,7 +64,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: delete ────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/approvals/{$approv_id}", [
+	register_rest_route( $ns, "/projects/{$proj_id}/approvals/{$approv_id}/", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_approval',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -75,7 +75,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: list ─────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/portal/projects/{$proj_id}/approvals", [
+	register_rest_route( $ns, "/portal/projects/{$proj_id}/approvals/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_rest_list_approvals',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -83,7 +83,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: respond ──────────────────────────────────────────────────────
-	register_rest_route( $ns, "/portal/approvals/{$approv_id}/respond", [
+	register_rest_route( $ns, "/portal/approvals/{$approv_id}/respond/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_rest_respond_approval',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],

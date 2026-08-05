@@ -231,7 +231,7 @@ export default function PortalPayments() {
 	const [ payments, setPayments ] = useState( [] );
 
 	useEffect( () => {
-		apiFetch( '/portal/payments' ).then( data => {
+		apiFetch( '/portal/payments/' ).then( data => {
 			setPayments( Array.isArray( data ) ? data : [] );
 			setLoading( false );
 		} ).catch( () => setLoading( false ) );

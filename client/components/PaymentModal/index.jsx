@@ -207,7 +207,7 @@ injectStyles( 'co-payment-modal-s', `
 }
 ` );
 
-const BASE = ( window.coClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
+const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
 
 function fmt( amount, currency ) {
 	return new Intl.NumberFormat( 'en-GB', { style: 'currency', currency: currency || 'GBP' } ).format( amount );
@@ -225,7 +225,7 @@ export default function PaymentModal( { proposal, onClose } ) {
 			const res = await fetch( BASE + 'payments/create-session', {
 				method:  'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body:    JSON.stringify( { token: ( window.coClientData || {} ).token || '' } ),
+				body:    JSON.stringify( { token: ( window.clientoctopusClientData || {} ).token || '' } ),
 			} );
 
 			const data = await res.json().catch( () => ( {} ) );

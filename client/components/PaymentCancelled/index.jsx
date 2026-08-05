@@ -166,8 +166,8 @@ injectStyles( 'co-pay-cancel-s', `
 ` );
 
 export default function PaymentCancelled( { token, proposal } ) {
-	const businessEmail  = ( window.coClientData || {} ).businessEmail || '';
-	const businessName   = ( window.coClientData || {} ).businessName  || '';
+	const businessEmail  = ( window.clientoctopusClientData || {} ).businessEmail || '';
+	const businessName   = ( window.clientoctopusClientData || {} ).businessName  || '';
 
 	const expiryDisplay = proposal?.expiry_date
 		? new Intl.DateTimeFormat( 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' } )

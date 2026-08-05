@@ -82,6 +82,13 @@ class ClientOctopus_Entitlements {
 				'agency' => true,
 			],
 
+			// ── E-signature on proposal acceptance ───────────────────────────
+			'use_esignature' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
+			],
+
 			// ── Outbound Webhooks ─────────────────────────────────────────────
 			'use_webhooks' => [
 				'free'   => false,
@@ -131,6 +138,21 @@ class ClientOctopus_Entitlements {
 				'free'   => [ 'limit' => 1, 'limit_type' => 'users' ],
 				'pro'    => [ 'limit' => 1, 'limit_type' => 'users' ],
 				'agency' => [ 'limit' => 5, 'limit_type' => 'users' ],
+			],
+
+			// ── Automated Reminders ────────────────────────────────────────────
+			'use_automations' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
+			],
+
+			// ── Standalone Invoices ───────────────────────────────────────────────
+			// Free: create/send/view/manual mark-paid. Pro: Stripe Pay Now button.
+			'use_invoices' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
 			],
 		];
 		//@end:fs_premium_only

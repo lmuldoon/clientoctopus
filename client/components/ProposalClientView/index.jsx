@@ -5,7 +5,7 @@
  * Fetches proposal by token, tracks the view, and wires up
  * accept / decline actions with toast feedback.
  *
- * Expects window.coClientData = { apiUrl, token, businessName, businessLogo }
+ * Expects window.clientoctopusClientData = { apiUrl, token, businessName, businessLogo }
  */
 
 const { useState, useEffect, useCallback, useRef } = wp.element;
@@ -291,6 +291,143 @@ const PAGE_CSS = `
 }
 `;
 
+/* ── Signature modal CSS ──────────────────────────────────────── */
+
+const SIGNATURE_MODAL_CSS = `
+.cfv-sig-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 400;
+	background: rgba(15, 23, 42, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	backdrop-filter: blur(3px);
+	-webkit-backdrop-filter: blur(3px);
+	animation: cfv-sig-fade 0.2s ease both;
+}
+@keyframes cfv-sig-fade {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+.cfv-sig-modal {
+	background: #fff;
+	border-radius: 14px;
+	padding: 32px;
+	width: 100%;
+	max-width: 480px;
+	box-shadow: 0 4px 6px rgba(15,23,42,.05), 0 20px 60px rgba(15,23,42,.18);
+	animation: cfv-sig-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cfv-sig-in {
+	from { opacity: 0; transform: scale(0.95) translateY(8px); }
+	to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+.cfv-sig-icon {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	background: #ECFDF5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 18px;
+}
+.cfv-sig-icon svg { width: 20px; height: 20px; stroke: #10B981; stroke-width: 2; }
+.cfv-sig-title {
+	font-family: 'Playfair Display', Georgia, serif;
+	font-size: 20px;
+	font-weight: 600;
+	color: #0F172A;
+	margin: 0 0 8px;
+	line-height: 1.3;
+}
+.cfv-sig-subtitle {
+	font-family: 'DM Sans', sans-serif;
+	font-size: 14px;
+	color: #64748B;
+	margin: 0 0 22px;
+	line-height: 1.55;
+}
+.cfv-sig-label {
+	font-family: 'DM Sans', sans-serif;
+	font-size: 13px;
+	font-weight: 600;
+	color: #374151;
+	margin-bottom: 8px;
+	display: block;
+}
+.cfv-sig-input {
+	width: 100%;
+	padding: 11px 14px;
+	border: 1.5px solid #E2E8F0;
+	border-radius: 8px;
+	font-family: 'DM Sans', sans-serif;
+	font-size: 14px;
+	color: #1E293B;
+	background: #F8FAFC;
+	outline: none;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	box-sizing: border-box;
+	margin-bottom: 18px;
+}
+.cfv-sig-input:focus {
+	border-color: #10B981;
+	box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+	background: #fff;
+}
+.cfv-sig-check {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	margin-bottom: 24px;
+	cursor: pointer;
+}
+.cfv-sig-check input[type="checkbox"] {
+	margin-top: 2px;
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	accent-color: #10B981;
+}
+.cfv-sig-check-label {
+	font-family: 'DM Sans', sans-serif;
+	font-size: 13.5px;
+	color: #374151;
+	line-height: 1.5;
+}
+.cfv-sig-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+}
+.cfv-sig-btn {
+	font-family: 'DM Sans', sans-serif;
+	font-size: 13.5px;
+	font-weight: 600;
+	border: none;
+	border-radius: 8px;
+	padding: 10px 20px;
+	cursor: pointer;
+	transition: background 0.15s, opacity 0.15s;
+}
+.cfv-sig-btn--cancel {
+	background: #F1F5F9;
+	color: #64748B;
+}
+.cfv-sig-btn--cancel:hover { background: #E2E8F0; }
+.cfv-sig-btn--sign {
+	background: #10B981;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+}
+.cfv-sig-btn--sign:hover:not(:disabled) { background: #059669; }
+.cfv-sig-btn--sign:disabled { opacity: 0.45; cursor: not-allowed; }
+`;
+
 /* ── Preview banner ───────────────────────────────────────────── */
 
 const PREVIEW_BANNER_CSS = `
@@ -477,7 +614,7 @@ function Toasts( { toasts } ) {
 }
 
 /* ── API helper ───────────────────────────────────────────────── */
-const BASE = ( window.coClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
+const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
 
 async function apiFetch( path, opts = {} ) {
 	const res  = await fetch( BASE + path, { headers: { 'Content-Type': 'application/json' }, ...opts } );
@@ -488,22 +625,26 @@ async function apiFetch( path, opts = {} ) {
 
 /* ── Main component ───────────────────────────────────────────── */
 export default function ProposalClientView( { isPreview = false } = {} ) {
-	injectStyles( 'co-global-s',  GLOBAL_CSS );
-	injectStyles( 'co-page-s',    PAGE_CSS );
+	injectStyles( 'co-global-s',    GLOBAL_CSS );
+	injectStyles( 'co-page-s',      PAGE_CSS );
+	injectStyles( 'co-sig-modal-s', SIGNATURE_MODAL_CSS );
 
-	const coData       = window.coClientData || {};
+	const coData       = window.clientoctopusClientData || {};
 	const token        = coData.token        || '';
 	const businessName      = coData.businessName      || '';
 	const businessLogo      = coData.businessLogo      || '';
 	const hideBusinessName  = coData.hideBusinessName  || false;
 	const pluginLogoUrl = coData.pluginLogoUrl || '';
 
-	const [ loadState,      setLoadState     ] = useState( 'loading' ); // 'loading' | 'loaded' | 'error'
-	const [ proposal,       setProposal      ] = useState( null );
-	const [ errorMsg,       setErrorMsg      ] = useState( '' );
-	const [ actionLoading,  setActionLoading ] = useState( false );
-	const [ toasts,         setToasts        ] = useState( [] );
-	const [ showPayment,    setShowPayment   ] = useState( false );
+	const [ loadState,          setLoadState         ] = useState( 'loading' ); // 'loading' | 'loaded' | 'error'
+	const [ proposal,           setProposal          ] = useState( null );
+	const [ errorMsg,           setErrorMsg          ] = useState( '' );
+	const [ actionLoading,      setActionLoading      ] = useState( false );
+	const [ toasts,             setToasts             ] = useState( [] );
+	const [ showPayment,        setShowPayment        ] = useState( false );
+	const [ showSigModal,       setShowSigModal       ] = useState( false );
+	const [ sigName,            setSigName            ] = useState( '' );
+	const [ sigAgreed,          setSigAgreed          ] = useState( false );
 	const viewTracked = useRef( false );
 
 	/* Toast helper */
@@ -532,14 +673,22 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 	useEffect( () => {
 		if ( isPreview || loadState !== 'loaded' || viewTracked.current ) return;
 		viewTracked.current = true;
-		apiFetch( `client/proposals/${ token }/view`, { method: 'POST' } ).catch( () => {} );
+		apiFetch( `client/proposals/${ token }/view/`, { method: 'POST' } ).catch( () => {} );
 	}, [ loadState ] );
 
-	/* Accept */
-	const handleAccept = useCallback( async () => {
+	/* Accept — always opens the signature modal before submitting */
+	const handleAccept = useCallback( () => {
+		setSigName( '' );
+		setSigAgreed( false );
+		setShowSigModal( true );
+	}, [] );
+
+	const doAccept = useCallback( async ( signedName ) => {
 		setActionLoading( true );
+		setShowSigModal( false );
 		try {
-			await apiFetch( `client/proposals/${ token }/accept`, { method: 'POST' } );
+			const body = signedName ? JSON.stringify( { signed_name: signedName } ) : undefined;
+			await apiFetch( `client/proposals/${ token }/accept/`, { method: 'POST', body } );
 			setProposal( p => ( { ...p, status: 'accepted', accepted_at: new Date().toISOString() } ) );
 			toast( 'Proposal accepted! We\'ll be in touch shortly.' );
 		} catch ( err ) {
@@ -554,7 +703,7 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 		setActionLoading( true );
 		try {
 			const body = reason ? JSON.stringify( { reason } ) : undefined;
-			await apiFetch( `client/proposals/${ token }/decline`, { method: 'POST', body } );
+			await apiFetch( `client/proposals/${ token }/decline/`, { method: 'POST', body } );
 			setProposal( p => ( { ...p, status: 'declined' } ) );
 			toast( 'Proposal declined. Thank you for letting us know.' );
 		} catch ( err ) {
@@ -569,7 +718,7 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 		setActionLoading( true );
 		try {
 			const body = JSON.stringify( { note } );
-			const data = await apiFetch( `client/proposals/${ token }/request-change`, { method: 'POST', body } );
+			const data = await apiFetch( `client/proposals/${ token }/request-change/`, { method: 'POST', body } );
 			setProposal( data.proposal );
 			toast( 'Your request has been sent. The sender will be in touch shortly.' );
 		} catch ( err ) {
@@ -703,6 +852,62 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 					proposal={ proposal }
 					onClose={ () => setShowPayment( false ) }
 				/>
+			) }
+
+			{ showSigModal && (
+				<div className="cfv-sig-overlay" role="dialog" aria-modal="true" aria-labelledby="cfv-sig-title">
+					<div className="cfv-sig-modal">
+						<div className="cfv-sig-icon">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+								<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+							</svg>
+						</div>
+						<p className="cfv-sig-title" id="cfv-sig-title">Sign to Accept</p>
+						<p className="cfv-sig-subtitle">By typing your full name below, you confirm you have read and agree to the terms of this proposal.</p>
+
+						<label className="cfv-sig-label" htmlFor="cfv-sig-name-input">Full legal name</label>
+						<input
+							id="cfv-sig-name-input"
+							type="text"
+							className="cfv-sig-input"
+							placeholder="e.g. Jane Smith"
+							value={ sigName }
+							onChange={ e => setSigName( e.target.value ) }
+							autoFocus
+							autoComplete="name"
+						/>
+
+						<label className="cfv-sig-check">
+							<input
+								type="checkbox"
+								checked={ sigAgreed }
+								onChange={ e => setSigAgreed( e.target.checked ) }
+							/>
+							<span className="cfv-sig-check-label">I confirm I have read and agree to accept this proposal</span>
+						</label>
+
+						<div className="cfv-sig-actions">
+							<button
+								type="button"
+								className="cfv-sig-btn cfv-sig-btn--cancel"
+								onClick={ () => setShowSigModal( false ) }
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="cfv-sig-btn cfv-sig-btn--sign"
+								disabled={ sigName.trim().length < 2 || ! sigAgreed }
+								onClick={ () => doAccept( sigName.trim() ) }
+							>
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+									<polyline points="20 6 9 17 4 12"/>
+								</svg>
+								Sign &amp; Accept
+							</button>
+						</div>
+					</div>
+				</div>
 			) }
 
 			<div className="cfv-powered" aria-hidden="true">

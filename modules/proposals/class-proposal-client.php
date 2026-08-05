@@ -146,11 +146,12 @@ class ClientOctopus_Proposal_Client {
 	 * Only proposals in draft / sent / viewed state can be accepted.
 	 * Logs an event and sends a notification email to the owner.
 	 *
-	 * @param string $token Public proposal token.
+	 * @param string $token       Public proposal token.
+	 * @param string $signed_name Client's typed full name for e-signature (optional).
 	 *
 	 * @return array|WP_Error Updated proposal row, or WP_Error on failure.
 	 */
-	public static function accept( string $token ): array|WP_Error {
+	public static function accept( string $token, string $signed_name = '' ): array|WP_Error {
 		global $wpdb;
 
 		$proposal = self::get_by_token( $token );
@@ -174,17 +175,30 @@ class ClientOctopus_Proposal_Client {
 			);
 		}
 
-		$now = current_time( 'mysql' );
+		$now        = current_time( 'mysql' );
+		$client_ip  = substr( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ), 0, 45 );
+
+		$update_data   = [
+			'status'      => 'accepted',
+			'accepted_at' => $now,
+			'updated_at'  => $now,
+		];
+		$update_format = [ '%s', '%s', '%s' ];
+
+		if ( '' !== $signed_name ) {
+			$update_data['signed_name'] = substr( sanitize_text_field( $signed_name ), 0, 255 );
+			$update_data['signed_at']   = $now;
+			$update_data['signed_ip']   = $client_ip;
+			$update_format[]            = '%s';
+			$update_format[]            = '%s';
+			$update_format[]            = '%s';
+		}
 
 		$wpdb->update(
 			$wpdb->prefix . 'clientoctopus_proposals',
-			[
-				'status'      => 'accepted',
-				'accepted_at' => $now,
-				'updated_at'  => $now,
-			],
+			$update_data,
 			[ 'id' => $proposal['id'] ],
-			[ '%s', '%s', '%s' ],
+			$update_format,
 			[ '%d' ]
 		);
 
@@ -193,7 +207,7 @@ class ClientOctopus_Proposal_Client {
 			[
 				'proposal_id' => $proposal['id'],
 				'event_type'  => 'accepted',
-				'user_ip'     => substr( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ), 0, 45 ),
+				'user_ip'     => $client_ip,
 				'user_agent'  => substr( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ?? '' ) ), 0, 500 ),
 				'timestamp'   => $now,
 				'metadata'    => null,

@@ -34,14 +34,14 @@ add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
 	// ── GET /user/plan ────────────────────────────────────────────────────────
-	register_rest_route( $ns, '/user/plan', [
+	register_rest_route( $ns, '/user/plan/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_user_plan',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── POST /user/can ────────────────────────────────────────────────────────
-	register_rest_route( $ns, '/user/can', [
+	register_rest_route( $ns, '/user/can/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_check_feature',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -63,14 +63,14 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /user/usage ───────────────────────────────────────────────────────
-	register_rest_route( $ns, '/user/usage', [
+	register_rest_route( $ns, '/user/usage/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_usage',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── POST /user/log-usage ──────────────────────────────────────────────────
-	register_rest_route( $ns, '/user/log-usage', [
+	register_rest_route( $ns, '/user/log-usage/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_log_usage',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -91,12 +91,10 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /admin/usage-report ───────────────────────────────────────────────
-	register_rest_route( $ns, '/admin/usage-report', [
+	register_rest_route( $ns, '/admin/usage-report/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_usage_report',
-		'permission_callback' => static function (): bool {
-			return current_user_can( 'manage_options' );
-		},
+		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
 			'month' => [
 				'required'          => false,

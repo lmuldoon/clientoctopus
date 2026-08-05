@@ -481,8 +481,8 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 
 		try {
 			const endpoint = isEdit
-				? `proposals/${ initialProposal.id }/update-wizard`
-				: 'proposals/create';
+				? `proposals/${ initialProposal.id }/update-wizard/`
+				: 'proposals/create/';
 
 			const result = await coFetch( endpoint, {
 				method: 'POST',

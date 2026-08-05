@@ -255,10 +255,10 @@ export default function PortalDashboard() {
 
 	useEffect( () => {
 		Promise.all( [
-			apiFetch( '/portal/me' ),
-			apiFetch( '/portal/proposals' ),
-			apiFetch( '/portal/payments' ),
-			apiFetch( '/portal/projects' ).catch( () => [] ),
+			apiFetch( '/portal/me/' ),
+			apiFetch( '/portal/proposals/' ),
+			apiFetch( '/portal/payments/' ),
+			apiFetch( '/portal/projects/' ).catch( () => [] ),
 		] ).then( ( [ me, props, pays, projs ] ) => {
 			setClient( me );
 			setProposals( Array.isArray( props  ) ? props  : [] );

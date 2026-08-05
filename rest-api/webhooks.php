@@ -32,8 +32,17 @@ if ( ! defined( 'CLIENTOCTOPUS_WEBHOOK_EVENTS' ) ) {
 		'proposal.declined',
 		'proposal.revision_requested',
 		'payment.completed',
+		'invoice.sent',
+		'invoice.paid',
+		'invoice.overdue',
+		'invoice.cancelled',
 		'project.created',
 		'project.completed',
+		'milestone.submitted',
+		'milestone.approved',
+		'milestone.completed',
+		'approval.responded',
+		'message.sent',
 	] );
 }
 
@@ -42,7 +51,7 @@ if ( ! defined( 'CLIENTOCTOPUS_WEBHOOK_EVENTS' ) ) {
 add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
-	register_rest_route( $ns, '/webhooks', [
+	register_rest_route( $ns, '/webhooks/', [
 		[
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => 'clientoctopus_rest_list_webhooks',
@@ -56,7 +65,7 @@ add_action( 'rest_api_init', static function (): void {
 		],
 	] );
 
-	register_rest_route( $ns, '/webhooks/(?P<id>\d+)', [
+	register_rest_route( $ns, '/webhooks/(?P<id>\d+)/', [
 		[
 			'methods'             => 'PATCH',
 			'callback'            => 'clientoctopus_rest_update_webhook',
@@ -74,7 +83,7 @@ add_action( 'rest_api_init', static function (): void {
 		],
 	] );
 
-	register_rest_route( $ns, '/webhooks/(?P<id>\d+)/test', [
+	register_rest_route( $ns, '/webhooks/(?P<id>\d+)/test/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_test_webhook',
 		'permission_callback' => 'clientoctopus_rest_require_webhook_manage',

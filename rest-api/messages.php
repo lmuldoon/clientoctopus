@@ -45,7 +45,7 @@ add_action( 'rest_api_init', static function (): void {
 	$msg_id  = '(?P<mid>\d+)';
 
 	// ── Admin: list ──────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/messages", [
+	register_rest_route( $ns, "/projects/{$proj_id}/messages/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_messages',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -53,7 +53,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: send ──────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/messages", [
+	register_rest_route( $ns, "/projects/{$proj_id}/messages/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_send_message',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -64,7 +64,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: delete ────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/projects/{$proj_id}/messages/{$msg_id}", [
+	register_rest_route( $ns, "/projects/{$proj_id}/messages/{$msg_id}/", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_message',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -75,14 +75,14 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Admin: global unread count ───────────────────────────────────────────
-	register_rest_route( $ns, '/messages/unread-count', [
+	register_rest_route( $ns, '/messages/unread-count/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_messages_unread_count',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── Portal: list ─────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/portal/projects/{$proj_id}/messages", [
+	register_rest_route( $ns, "/portal/projects/{$proj_id}/messages/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_portal_rest_list_messages',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
@@ -90,7 +90,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── Portal: send ─────────────────────────────────────────────────────────
-	register_rest_route( $ns, "/portal/projects/{$proj_id}/messages", [
+	register_rest_route( $ns, "/portal/projects/{$proj_id}/messages/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_portal_rest_send_message',
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],

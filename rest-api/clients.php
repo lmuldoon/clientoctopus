@@ -2,8 +2,7 @@
 /**
  * Clients REST API
  *
- * GET  /clientoctopus/v1/clients          — list all clients for the owner
- * POST /clientoctopus/v1/clients/{id}/invite — send portal magic link to a client
+ * GET  /clientoctopus/v1/clients/ — list all clients for the owner
  *
  * @package ClientOctopus
  * @since   0.1.0
@@ -20,13 +19,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
-	register_rest_route( $ns, '/clients', [
-		'methods'             => WP_REST_Server::READABLE,
-		'callback'            => 'clientoctopus_rest_list_clients',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+	register_rest_route( $ns, '/clients/', [
+		[
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => 'clientoctopus_rest_list_clients',
+			'permission_callback' => 'clientoctopus_rest_require_manage',
+		],
+		[
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'clientoctopus_rest_create_client',
+			'permission_callback' => 'clientoctopus_rest_require_manage',
+			'args'                => [
+				'name'    => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+				'email'   => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_email' ],
+				'company' => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
+				'phone'   => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
+			],
+		],
 	] );
 
-	register_rest_route( $ns, '/clients/(?P<id>\d+)/invite', [
+	//@fs_premium_only
+	register_rest_route( $ns, '/clients/(?P<id>\d+)/invite/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_invite_client',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -34,6 +47,7 @@ add_action( 'rest_api_init', static function (): void {
 			'id' => [ 'type' => 'integer', 'required' => true ],
 		],
 	] );
+	//@end:fs_premium_only
 } );
 
 function clientoctopus_rest_list_clients( WP_REST_Request $request ): WP_REST_Response {
@@ -78,6 +92,49 @@ function clientoctopus_rest_list_clients( WP_REST_Request $request ): WP_REST_Re
 	return new WP_REST_Response( [ 'clients' => $clients ], 200 );
 }
 
+function clientoctopus_rest_create_client( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+	global $wpdb;
+
+	$owner_id = clientoctopus_get_owner_id( get_current_user_id() );
+	$name     = $request->get_param( 'name' );
+
+	if ( ! $name ) {
+		return new WP_Error( 'missing_name', __( 'Client name is required.', 'clientoctopus' ), [ 'status' => 422 ] );
+	}
+
+	$now  = current_time( 'mysql' );
+	$data = [
+		'owner_id'   => $owner_id,
+		'name'       => $name,
+		'email'      => $request->get_param( 'email' ) ?: '',
+		'company'    => $request->get_param( 'company' ) ?: '',
+		'phone'      => $request->get_param( 'phone' ) ?: '',
+		'created_at' => $now,
+		'updated_at' => $now,
+	];
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	$wpdb->insert( $wpdb->prefix . 'clientoctopus_clients', $data );
+	$id = $wpdb->insert_id;
+
+	if ( ! $id ) {
+		return new WP_Error( 'db_error', __( 'Could not create client.', 'clientoctopus' ), [ 'status' => 500 ] );
+	}
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	$client = $wpdb->get_row(
+		$wpdb->prepare( "SELECT * FROM {$wpdb->prefix}clientoctopus_clients WHERE id = %d", $id ),
+		ARRAY_A
+	);
+
+	$client['id']         = (int) $client['id'];
+	$client['owner_id']   = (int) $client['owner_id'];
+	$client['wp_user_id'] = $client['wp_user_id'] ? (int) $client['wp_user_id'] : null;
+
+	return new WP_REST_Response( [ 'client' => $client ], 201 );
+}
+
+//@fs_premium_only
 function clientoctopus_rest_invite_client( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 	global $wpdb;
 
@@ -158,3 +215,4 @@ function clientoctopus_rest_invite_client( WP_REST_Request $request ): WP_REST_R
 
 	return new WP_REST_Response( [ 'client' => $updated ], 200 );
 }
+//@end:fs_premium_only

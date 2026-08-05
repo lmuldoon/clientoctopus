@@ -491,7 +491,7 @@ export default function PortalSidebar( { page } ) {
 	async function handleLogout() {
 		setLoggingOut( true );
 		try {
-			const res = await apiFetch( '/portal/logout', { method: 'POST' } );
+			const res = await apiFetch( '/portal/logout/', { method: 'POST' } );
 			window.location.href = res.redirect_url || '/clientoctopus/login';
 		} catch {
 			window.location.href = '/clientoctopus/login';

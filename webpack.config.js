@@ -16,15 +16,16 @@ module.exports = {
 	...defaultConfig,
 
 	entry: {
-		index:     './admin/index.jsx',
-		projects:  './admin/projects.jsx',
-		analytics: './admin/analytics.jsx',
-		setup:     './admin/setup.jsx',
-		clients:   './admin/clients.jsx',
-		team:      './admin/team.jsx',
-		webhooks:  './admin/webhooks.jsx',
-		client:    './client/index.jsx',
-		portal:    './portal/index.jsx',
+		index:    './admin/index.jsx',
+		projects: './admin/projects.jsx',
+		analytics:'./admin/analytics.jsx',
+		setup:    './admin/setup.jsx',
+		clients:  './admin/clients.jsx',
+		invoices: './admin/invoices.jsx',
+		team:     './admin/team.jsx',
+		webhooks: './admin/webhooks.jsx',
+		client:   './client/index.jsx',
+		portal:   './portal/index.jsx',
 	},
 
 	output: {

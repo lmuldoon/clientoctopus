@@ -63,6 +63,29 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'
 			update_option( 'clientoctopus_testimonial_enabled', '' );
 		}
 
+		// Automation reminders — available on all plans.
+		if ( ! class_exists( 'ClientOctopus_Automations' ) ) {
+			$_auto_path = CLIENTOCTOPUS_DIR . 'modules/automations/class-automations.php';
+			if ( file_exists( $_auto_path ) ) {
+				require_once $_auto_path;
+			}
+		}
+		if ( class_exists( 'ClientOctopus_Automations' ) ) {
+			$_auto_triggers = [ 'not_viewed', 'not_accepted', 'expiring_soon' ];
+			foreach ( $_auto_triggers as $_auto_trigger ) {
+				ClientOctopus_Automations::save(
+					$_save_owner_id,
+					$_auto_trigger,
+					[
+						'enabled'       => ! empty( $_POST[ 'clientoctopus_auto_' . $_auto_trigger . '_enabled' ] ),
+						'delay_days'    => absint( wp_unslash( $_POST[ 'clientoctopus_auto_' . $_auto_trigger . '_delay' ] ?? '3' ) ),
+						'email_subject' => sanitize_text_field( wp_unslash( $_POST[ 'clientoctopus_auto_' . $_auto_trigger . '_subject' ] ?? '' ) ),
+						'email_body'    => sanitize_textarea_field( wp_unslash( $_POST[ 'clientoctopus_auto_' . $_auto_trigger . '_body' ] ?? '' ) ),
+					]
+				);
+			}
+		}
+
 		$saved = true;
 	} else {
 		$errors[] = __( 'Security check failed. Please try again.', 'clientoctopus' );
@@ -94,6 +117,18 @@ $testimonial_cta_label  = get_option( 'clientoctopus_testimonial_cta_label', '' 
 $cf_owner_id        = clientoctopus_get_owner_id( get_current_user_id() );
 $cf_payments_locked = ! clientoctopus_can_user( $cf_owner_id, 'use_payments' );
 $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials' );
+
+// Load automation rows (seeded with defaults if first visit).
+$cf_automations = [];
+if ( ! class_exists( 'ClientOctopus_Automations' ) ) {
+	$_cf_auto_path = CLIENTOCTOPUS_DIR . 'modules/automations/class-automations.php';
+	if ( file_exists( $_cf_auto_path ) ) {
+		require_once $_cf_auto_path;
+	}
+}
+if ( class_exists( 'ClientOctopus_Automations' ) ) {
+	$cf_automations = ClientOctopus_Automations::get_all( $cf_owner_id );
+}
 
 ?>
 <div>
@@ -508,6 +543,145 @@ $cf_is_free         = ! clientoctopus_can_user( $cf_owner_id, 'use_testimonials'
 
 		</div><!-- /.co-settings-grid -->
 
+		<!-- ── Automated Reminders ─────────────────────────────────────────────── -->
+		<?php
+		$cf_auto_labels = [
+			'not_viewed'    => [
+				'title'       => __( 'Not Viewed', 'clientoctopus' ),
+				'description' => __( 'Send a follow-up when a proposal has been sent but not yet opened.', 'clientoctopus' ),
+				'delay_label' => __( 'Days after sending before reminder fires', 'clientoctopus' ),
+				'delay_hint'  => __( 'Counted from when the proposal was sent.', 'clientoctopus' ),
+				'icon'        => '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/>',
+			],
+			'not_accepted'  => [
+				'title'       => __( 'Not Accepted', 'clientoctopus' ),
+				'description' => __( 'Send a nudge when a proposal has been viewed but not accepted.', 'clientoctopus' ),
+				'delay_label' => __( 'Days after viewing before reminder fires', 'clientoctopus' ),
+				'delay_hint'  => __( 'Counted from when the client first opened the proposal.', 'clientoctopus' ),
+				'icon'        => '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
+			],
+			'expiring_soon' => [
+				'title'       => __( 'Expiring Soon', 'clientoctopus' ),
+				'description' => __( 'Warn the client before an open proposal expires. Only fires when an expiry date is set.', 'clientoctopus' ),
+				'delay_label' => __( 'Days before expiry to send reminder', 'clientoctopus' ),
+				'delay_hint'  => __( 'Counted back from the proposal expiry date.', 'clientoctopus' ),
+				'icon'        => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+			],
+		];
+		?>
+		<div class="co-auto-card">
+			<p class="co-card__title">
+				<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+					<path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+				</svg>
+				<?php esc_html_e( 'Automated Reminders', 'clientoctopus' ); ?>
+			</p>
+			<p class="co-card__desc">
+				<?php esc_html_e( 'Set-and-forget follow-up emails that fire automatically based on proposal activity. Enable any trigger below, customise the message, and Client Octopus handles the rest.', 'clientoctopus' ); ?>
+			</p>
+
+			<div style="display:flex;flex-direction:column;gap:12px;">
+			<?php foreach ( $cf_auto_labels as $cf_trigger_slug => $cf_trigger_meta ) :
+				$cf_auto_row  = $cf_automations[ $cf_trigger_slug ] ?? [];
+				$cf_enabled   = ! empty( $cf_auto_row['enabled'] );
+				$cf_delay     = (int) ( $cf_auto_row['delay_days'] ?? 3 );
+				$cf_subject   = $cf_auto_row['email_subject'] ?? '';
+				$cf_body      = $cf_auto_row['email_body'] ?? '';
+				$cf_field_id  = 'co-auto-' . esc_attr( str_replace( '_', '-', $cf_trigger_slug ) );
+				$cf_toggle_id = $cf_field_id . '-toggle';
+			?>
+			<div class="co-auto-trigger<?php echo $cf_enabled ? ' is-enabled' : ''; ?>" id="<?php echo esc_attr( $cf_field_id ); ?>-wrap">
+
+				<!-- Header / toggle row -->
+				<div class="co-auto-trigger-header">
+					<div class="co-auto-trigger-icon">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="<?php echo $cf_enabled ? '#6366F1' : '#9CA3AF'; ?>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<?php echo $cf_trigger_meta['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- hardcoded SVG path data from TRIGGERS constant above, no user input ?>
+						</svg>
+					</div>
+					<div class="co-auto-trigger-text">
+						<p class="co-auto-trigger-title"><?php echo esc_html( $cf_trigger_meta['title'] ); ?></p>
+						<p class="co-auto-trigger-desc"><?php echo esc_html( $cf_trigger_meta['description'] ); ?></p>
+					</div>
+					<label class="co-toggle" for="<?php echo esc_attr( $cf_toggle_id ); ?>" title="<?php esc_attr_e( 'Enable this reminder', 'clientoctopus' ); ?>">
+						<input
+							type="checkbox"
+							id="<?php echo esc_attr( $cf_toggle_id ); ?>"
+							name="clientoctopus_auto_<?php echo esc_attr( $cf_trigger_slug ); ?>_enabled"
+							value="1"
+							<?php checked( $cf_enabled ); ?>
+							onchange="(function(cb){
+								var wrap=document.getElementById('<?php echo esc_js( $cf_field_id ); ?>-wrap');
+								var body=document.getElementById('<?php echo esc_js( $cf_field_id ); ?>-body-wrap');
+								var icon=wrap.querySelector('.co-auto-trigger-icon svg');
+								wrap.classList.toggle('is-enabled',cb.checked);
+								body.style.display=cb.checked?'':'none';
+								icon.setAttribute('stroke',cb.checked?'#6366F1':'#9CA3AF');
+							})(this)"
+						>
+						<span class="co-toggle-slider"></span>
+					</label>
+				</div>
+
+				<!-- Fields body -->
+				<div class="co-auto-trigger-body" id="<?php echo esc_attr( $cf_field_id ); ?>-body-wrap" style="display:<?php echo $cf_enabled ? '' : 'none'; ?>;">
+
+					<div class="co-field">
+						<label class="co-label" for="<?php echo esc_attr( $cf_field_id ); ?>-delay">
+							<?php echo esc_html( $cf_trigger_meta['delay_label'] ); ?>
+						</label>
+						<div class="co-auto-delay-row">
+							<input
+								type="number"
+								id="<?php echo esc_attr( $cf_field_id ); ?>-delay"
+								name="clientoctopus_auto_<?php echo esc_attr( $cf_trigger_slug ); ?>_delay"
+								class="co-input"
+								value="<?php echo esc_attr( (string) $cf_delay ); ?>"
+								min="1"
+								max="30"
+							>
+							<span class="co-delay-unit"><?php esc_html_e( 'days', 'clientoctopus' ); ?></span>
+						</div>
+						<p class="co-hint"><?php echo esc_html( $cf_trigger_meta['delay_hint'] ); ?></p>
+					</div>
+
+					<div class="co-field">
+						<label class="co-label" for="<?php echo esc_attr( $cf_field_id ); ?>-subject">
+							<?php esc_html_e( 'Email subject', 'clientoctopus' ); ?>
+						</label>
+						<input
+							type="text"
+							id="<?php echo esc_attr( $cf_field_id ); ?>-subject"
+							name="clientoctopus_auto_<?php echo esc_attr( $cf_trigger_slug ); ?>_subject"
+							class="co-input"
+							value="<?php echo esc_attr( $cf_subject ); ?>"
+							spellcheck="false"
+						>
+					</div>
+
+					<div class="co-field">
+						<label class="co-label" for="<?php echo esc_attr( $cf_field_id ); ?>-body">
+							<?php esc_html_e( 'Email body', 'clientoctopus' ); ?>
+						</label>
+						<textarea
+							id="<?php echo esc_attr( $cf_field_id ); ?>-body"
+							name="clientoctopus_auto_<?php echo esc_attr( $cf_trigger_slug ); ?>_body"
+							class="co-input"
+							rows="5"
+						><?php echo esc_textarea( $cf_body ); ?></textarea>
+						<p class="co-hint">
+							<?php esc_html_e( 'Merge tags you can use:', 'clientoctopus' ); ?>
+							<code>{client_name}</code>&ensp;<code>{proposal_title}</code>&ensp;<code>{proposal_url}</code>
+						</p>
+					</div>
+
+				</div><!-- /.co-auto-trigger-body -->
+			</div><!-- /.co-auto-trigger -->
+			<?php endforeach; ?>
+			</div><!-- /triggers list -->
+
+		</div><!-- /.co-auto-card -->
 		<button type="submit" class="co-btn-save">
 			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
 			<?php esc_html_e( 'Save Settings', 'clientoctopus' ); ?>

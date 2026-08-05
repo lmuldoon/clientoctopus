@@ -639,9 +639,9 @@ function ProjectCard( { project } ) {
 		if ( opening && ! extrasLoaded ) {
 			setExtrasLoaded( true );
 			Promise.all( [
-				apiFetch( `portal/projects/${ project.id }/files` ).catch( () => ( { files: [] } ) ),
-				apiFetch( `portal/projects/${ project.id }/approvals` ).catch( () => ( { approvals: [] } ) ),
-				apiFetch( `portal/projects/${ project.id }/messages` ).catch( () => ( { messages: [] } ) ),
+				apiFetch( `portal/projects/${ project.id }/files/` ).catch( () => ( { files: [] } ) ),
+				apiFetch( `portal/projects/${ project.id }/approvals/` ).catch( () => ( { approvals: [] } ) ),
+				apiFetch( `portal/projects/${ project.id }/messages/` ).catch( () => ( { messages: [] } ) ),
 			] ).then( ( [ fd, ad, md ] ) => {
 				setFiles( fd.files || [] );
 				setApprovals( ad.approvals || [] );
@@ -655,7 +655,7 @@ function ProjectCard( { project } ) {
 		if ( ! trimmed || sendingMsg ) return;
 		setSendingMsg( true );
 		try {
-			const data = await apiFetch( `portal/projects/${ project.id }/messages`, {
+			const data = await apiFetch( `portal/projects/${ project.id }/messages/`, {
 				method: 'POST',
 				body:   JSON.stringify( { message: trimmed } ),
 			} );
@@ -673,7 +673,7 @@ function ProjectCard( { project } ) {
 		const comment = comments[ approvalId ] || '';
 		setResponding( approvalId );
 		try {
-			const data = await apiFetch( `/portal/approvals/${ approvalId }/respond`, {
+			const data = await apiFetch( `/portal/approvals/${ approvalId }/respond/`, {
 				method: 'POST',
 				body:   JSON.stringify( { status, comment } ),
 			} );
@@ -689,7 +689,7 @@ function ProjectCard( { project } ) {
 	async function handleApproveMilestone( milestoneId ) {
 		setApprovingId( milestoneId );
 		try {
-			const data = await apiFetch( `portal/projects/${ project.id }/milestones/${ milestoneId }/approve`, {
+			const data = await apiFetch( `portal/projects/${ project.id }/milestones/${ milestoneId }/approve/`, {
 				method: 'POST',
 			} );
 			// Update milestones from the refreshed project response.
@@ -1053,11 +1053,11 @@ export default function PortalProjects() {
 	const [ loading, setLoading ]   = useState( true );
 
 	useEffect( () => {
-		apiFetch( '/portal/projects' )
+		apiFetch( '/portal/projects/' )
 			.then( d => {
 				const ids = ( d.projects || [] ).map( p => p.id );
 				return Promise.all(
-					ids.map( id => apiFetch( `/portal/projects/${ id }` ).then( r => r.project ) )
+					ids.map( id => apiFetch( `/portal/projects/${ id }/` ).then( r => r.project ) )
 				);
 			} )
 			.then( full => setProjects( full.filter( Boolean ) ) )

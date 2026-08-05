@@ -84,6 +84,7 @@ class ClientOctopus_Message {
 		$id = (int) $wpdb->insert_id;
 
 		self::notify_recipient( $id );
+		do_action( 'clientoctopus_message_sent', $owner_id, $id, $project_id );
 
 		return $id;
 	}
@@ -271,6 +272,14 @@ class ClientOctopus_Message {
 
 		$id = (int) $wpdb->insert_id;
 		self::notify_recipient( $id );
+
+		$project_owner_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT owner_id FROM {$wpdb->prefix}clientoctopus_projects WHERE id = %d LIMIT 1",
+				$project_id
+			)
+		);
+		do_action( 'clientoctopus_message_sent', $project_owner_id, $id, $project_id );
 
 		return $id;
 	}

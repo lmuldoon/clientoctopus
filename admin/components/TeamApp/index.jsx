@@ -406,7 +406,7 @@ export default function TeamApp() {
 	const loadMembers = useCallback( async () => {
 		setLoading( true );
 		try {
-			const data = await coFetch( 'team/members' );
+			const data = await coFetch( 'team/members/' );
 			if ( data.members ) {
 				setMembers( data.members );
 				setSeatsUsed( data.seats_used );
@@ -431,7 +431,7 @@ export default function TeamApp() {
 		setInviting( true );
 		setNotice( null );
 		try {
-			const data = await coFetch( 'team/invite', {
+			const data = await coFetch( 'team/invite/', {
 				method: 'POST',
 				body: JSON.stringify( form ),
 			} );
@@ -454,7 +454,7 @@ export default function TeamApp() {
 		if ( removing ) return;
 		setRemoving( memberId );
 		try {
-			const data = await coFetch( `team/members/${ memberId }`, { method: 'DELETE' } );
+			const data = await coFetch( `team/members/${ memberId }/`, { method: 'DELETE' } );
 			if ( data.success ) {
 				showNotice( 'success', 'Team member removed.' );
 				await loadMembers();

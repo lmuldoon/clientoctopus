@@ -728,7 +728,8 @@ export default function ProposalList( {
 	const [ deletingId, setDeletingId ]       = useState( null );
 	const [ sendingId, setSendingId ]         = useState( null );
 	const [ refreshing, setRefreshing ]       = useState( false );
-	const [ declineReason, setDeclineReason ] = useState( null );
+	const [ declineReason, setDeclineReason ]     = useState( null );
+	const [ sigCertificate, setSigCertificate ]   = useState( null );
 	const [ sendModal, setSendModal ]         = useState( { open: false, proposal: null, email: '', subject: '', error: '' } );
 	const [ successMsg, setSuccessMsg ]       = useState( '' );
 	const [ sentUrl, setSentUrl ]             = useState( null );
@@ -794,7 +795,7 @@ export default function ProposalList( {
 		if ( ! window.confirm( 'Delete this proposal? This cannot be undone.' ) ) return;
 		setDeletingId( id );
 		try {
-			await coFetch( `proposals/${ id }`, { method: 'DELETE' } );
+			await coFetch( `proposals/${ id }/`, { method: 'DELETE' } );
 			onProposalDeleted( id );
 		} catch ( e ) {
 			alert( e.message || 'Delete failed.' );
@@ -822,7 +823,7 @@ export default function ProposalList( {
 		setSendModal( m => ( { ...m, error: '' } ) );
 		setSendingId( proposal.id );
 		try {
-			const result = await coFetch( `proposals/${ proposal.id }/send`, {
+			const result = await coFetch( `proposals/${ proposal.id }/send/`, {
 				method: 'POST',
 				body:   JSON.stringify( { client_email: email.trim(), email_subject: subject.trim() } ),
 			} );
@@ -844,7 +845,7 @@ export default function ProposalList( {
 
 	async function handleDuplicate( id ) {
 		try {
-			await coFetch( `proposals/${ id }/duplicate`, { method: 'POST' } );
+			await coFetch( `proposals/${ id }/duplicate/`, { method: 'POST' } );
 			setActiveTab( 'draft' );
 			setPage( 1 );
 			setSuccessMsg( '✓ Proposal cloned — it now appears in the Draft tab.' );
@@ -858,7 +859,7 @@ export default function ProposalList( {
 	async function handleMarkCompleted( id ) {
 		if ( ! window.confirm( 'Mark this proposal as completed? This cannot be undone.' ) ) return;
 		try {
-			await coFetch( `proposals/${ id }/update`, {
+			await coFetch( `proposals/${ id }/update/`, {
 				method: 'POST',
 				body:   JSON.stringify( { status: 'completed' } ),
 			} );
@@ -875,7 +876,7 @@ export default function ProposalList( {
 		}
 		setPreviewingId( proposal.id );
 		try {
-			const { preview_url } = await coFetch( `proposals/${ proposal.id }/preview-token`, { method: 'POST' } );
+			const { preview_url } = await coFetch( `proposals/${ proposal.id }/preview-token/`, { method: 'POST' } );
 			window.open( preview_url, '_blank' );
 		} catch ( e ) {
 			alert( e.message || 'Could not generate preview link.' );
@@ -1070,6 +1071,18 @@ export default function ProposalList( {
 							>
 								<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
 									<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+								</svg>
+							</button>
+						) }
+						{ proposal.status === 'accepted' && proposal.signed_name && (
+							<button
+								type="button"
+								className="co-list-action-btn"
+								title="View signing certificate"
+								onClick={ () => setSigCertificate( proposal ) }
+							>
+								<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+									<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
 								</svg>
 							</button>
 						) }
@@ -1363,6 +1376,52 @@ export default function ProposalList( {
 									<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
 								</svg>
 								Send Proposal
+							</button>
+						</div>
+					</div>
+				</div>
+			) }
+
+			{ sigCertificate && (
+				<div
+					className="co-decline-overlay"
+					onClick={ e => { if ( e.target === e.currentTarget ) setSigCertificate( null ); } }
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="co-sig-cert-title"
+				>
+					<div className="co-decline-modal" style={ { borderLeftColor: '#10B981' } }>
+						<div className="co-decline-modal-header">
+							<div className="co-decline-modal-icon" style={ { background: '#ECFDF5' } }>
+								<svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+									<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+								</svg>
+							</div>
+							<div className="co-decline-modal-titles">
+								<div className="co-decline-modal-title" id="co-sig-cert-title">Signing Certificate</div>
+								<div className="co-decline-modal-subtitle">{ sigCertificate.title }</div>
+							</div>
+						</div>
+						<dl style={ { margin: '0 0 24px', display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '8px 16px', fontSize: 13.5 } }>
+							<dt style={ { color: '#64748B', fontWeight: 600 } }>Signed by</dt>
+							<dd style={ { margin: 0, color: '#0F172A' } }>{ sigCertificate.signed_name }</dd>
+							<dt style={ { color: '#64748B', fontWeight: 600 } }>Signed at</dt>
+							<dd style={ { margin: 0, color: '#0F172A' } }>
+								{ sigCertificate.signed_at
+									? new Date( sigCertificate.signed_at.replace( ' ', 'T' ) + 'Z' ).toLocaleString( 'en-GB', { dateStyle: 'long', timeStyle: 'short', timeZone: 'UTC' } ) + ' UTC'
+									: '—'
+								}
+							</dd>
+							<dt style={ { color: '#64748B', fontWeight: 600 } }>IP address</dt>
+							<dd style={ { margin: 0, color: '#0F172A', fontFamily: 'monospace', fontSize: 13 } }>{ sigCertificate.signed_ip || '—' }</dd>
+						</dl>
+						<div className="co-decline-modal-close">
+							<button
+								type="button"
+								className="co-decline-modal-close-btn"
+								onClick={ () => setSigCertificate( null ) }
+							>
+								Close
 							</button>
 						</div>
 					</div>

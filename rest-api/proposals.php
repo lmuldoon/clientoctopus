@@ -67,14 +67,14 @@ add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
 	// ── GET /proposals/templates ──────────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/templates', [
+	register_rest_route( $ns, '/proposals/templates/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_templates',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
 	// ── POST /proposals/create ────────────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/create', [
+	register_rest_route( $ns, '/proposals/create/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -82,7 +82,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /proposals ────────────────────────────────────────────────────────
-	register_rest_route( $ns, '/proposals', [
+	register_rest_route( $ns, '/proposals/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_list_proposals',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -102,7 +102,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /proposals/{id} ───────────────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_get_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -110,7 +110,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /proposals/{id}/update ───────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -121,7 +121,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /proposals/{id}/send ─────────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)/send', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/send/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_send_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -142,7 +142,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /proposals/{id}/update-wizard ───────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update-wizard', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update-wizard/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_wizard_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -153,7 +153,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /proposals/{id}/duplicate ────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)/duplicate', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/duplicate/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_duplicate_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -161,7 +161,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── DELETE /proposals/{id} ────────────────────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_proposal',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -169,7 +169,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /proposals/{id}/preview-token ───────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_generate_preview_token',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -177,7 +177,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── DELETE /proposals/{id}/preview-token ─────────────────────────────────
-	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token', [
+	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_revoke_preview_token',
 		'permission_callback' => 'clientoctopus_rest_require_manage',

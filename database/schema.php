@@ -177,6 +177,10 @@ function clientoctopus_create_tables(): void {
 		revision_note TEXT DEFAULT NULL,
 		revision_requested_at DATETIME DEFAULT NULL,
 
+		signed_name VARCHAR(255) DEFAULT NULL,
+		signed_at   DATETIME     DEFAULT NULL,
+		signed_ip   VARCHAR(45)  DEFAULT NULL,
+
 		template_id VARCHAR(50) DEFAULT NULL,
 
 		PRIMARY KEY  (id),
@@ -206,6 +210,12 @@ function clientoctopus_create_tables(): void {
 	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_proposals LIKE %s", 'preview_token' ) ) ) {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD COLUMN preview_token VARCHAR(64) DEFAULT NULL" );
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD UNIQUE KEY preview_token (preview_token)" );
+	}
+
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_proposals LIKE %s", 'signed_name' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD COLUMN signed_name VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD COLUMN signed_at DATETIME DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_proposals ADD COLUMN signed_ip VARCHAR(45) DEFAULT NULL" );
 	}
 
 	// Composite index for admin proposal list (owner_id filtered, deleted_at checked, sorted by created_at).
@@ -465,6 +475,90 @@ function clientoctopus_create_tables(): void {
 		UNIQUE KEY session_token (session_token),
 		KEY client_id (client_id),
 		KEY expires_at (expires_at)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 16: clientoctopus_automations
+	// One row per trigger per owner. Auto-seeded on first settings page load.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_automations (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id      BIGINT UNSIGNED NOT NULL,
+		trigger_event VARCHAR(40) NOT NULL,
+		delay_days    TINYINT UNSIGNED NOT NULL DEFAULT 3,
+		enabled       TINYINT(1) NOT NULL DEFAULT 0,
+		email_subject VARCHAR(255) NOT NULL DEFAULT '',
+		email_body    TEXT DEFAULT NULL,
+		created_at    DATETIME NOT NULL,
+		updated_at    DATETIME NOT NULL,
+
+		PRIMARY KEY  (id),
+		UNIQUE KEY owner_trigger (owner_id, trigger_event)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 17: clientoctopus_reminder_log
+	// Duplicate-send guard — one row per proposal × trigger once a reminder
+	// has been dispatched. Prevents re-sending on subsequent cron runs.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_reminder_log (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		proposal_id   BIGINT UNSIGNED NOT NULL,
+		trigger_event VARCHAR(40) NOT NULL,
+		sent_at       DATETIME NOT NULL,
+
+		PRIMARY KEY  (id),
+		UNIQUE KEY proposal_trigger (proposal_id, trigger_event),
+		KEY proposal_id (proposal_id)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 18: clientoctopus_invoices
+	// Standalone invoices — not tied to proposals. Auto-numbered per owner.
+	// Free: create/send/view/manual-mark-paid. Pro: Stripe Pay Now button.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_invoices (
+		id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id                 BIGINT UNSIGNED NOT NULL,
+		client_id                BIGINT UNSIGNED DEFAULT NULL,
+
+		invoice_number           INT UNSIGNED NOT NULL DEFAULT 0,
+		token                    VARCHAR(64) NOT NULL DEFAULT '',
+
+		status                   ENUM('draft','sent','paid','overdue','cancelled') NOT NULL DEFAULT 'draft',
+
+		title                    VARCHAR(255) NOT NULL DEFAULT '',
+		currency                 VARCHAR(3) NOT NULL DEFAULT 'GBP',
+
+		line_items               LONGTEXT DEFAULT NULL,
+		discount_type            ENUM('percentage','fixed') NOT NULL DEFAULT 'percentage',
+		discount_value           DECIMAL(10,2) NOT NULL DEFAULT 0,
+		vat_pct                  DECIMAL(5,2) NOT NULL DEFAULT 0,
+		vat_number               VARCHAR(50) DEFAULT NULL,
+		notes                    TEXT DEFAULT NULL,
+
+		due_date                 DATE DEFAULT NULL,
+		issue_date               DATE NOT NULL,
+		payment_terms            VARCHAR(100) DEFAULT NULL,
+		po_number                VARCHAR(100) DEFAULT NULL,
+
+		total_amount             DECIMAL(12,2) NOT NULL DEFAULT 0,
+
+		stripe_session_id        VARCHAR(255) DEFAULT NULL,
+		stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
+
+		sent_at                  DATETIME DEFAULT NULL,
+		paid_at                  DATETIME DEFAULT NULL,
+		created_at               DATETIME DEFAULT NULL,
+		updated_at               DATETIME DEFAULT NULL,
+		deleted_at               DATETIME DEFAULT NULL,
+
+		PRIMARY KEY  (id),
+		UNIQUE KEY token (token),
+		KEY owner_id (owner_id),
+		KEY client_id (client_id),
+		KEY status (status),
+		KEY owner_status (owner_id, status, deleted_at)
 	) $charset_collate;" );
 
 	update_option( 'clientoctopus_db_version', defined( 'CLIENTOCTOPUS_DB_VERSION' ) ? CLIENTOCTOPUS_DB_VERSION : '1' );

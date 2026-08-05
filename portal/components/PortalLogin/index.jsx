@@ -489,7 +489,7 @@ export default function PortalLogin() {
 		if ( ! mlEmail ) return;
 		setMlPhase( 'loading' ); setMlErr( '' );
 		try {
-			const res = await apiFetch( '/portal/send-magic-link', {
+			const res = await apiFetch( '/portal/send-magic-link/', {
 				method: 'POST',
 				body:   JSON.stringify( { email: mlEmail } ),
 			} );

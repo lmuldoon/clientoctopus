@@ -1,7 +1,7 @@
 /**
  * Client Octopus — Client-facing entry point.
  *
- * Reads window.coClientData.pageType to decide which top-level component to
+ * Reads window.clientoctopusClientData.pageType to decide which top-level component to
  * mount:
  *   'proposal' (default) → <ProposalClientView />
  *   'success'            → <PaymentSuccess />
@@ -27,7 +27,7 @@ window.injectStyles = function ( id, css ) {
 const { render } = wp.element;
 
 const root       = document.getElementById( 'co-client-root' );
-const coData     = window.coClientData || {};
+const coData     = window.clientoctopusClientData || {};
 const pageType   = coData.pageType   || 'proposal';
 const token      = coData.token      || '';
 const sessionId  = coData.sessionId  || '';

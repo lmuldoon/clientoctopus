@@ -56,7 +56,7 @@ add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
 	// ── POST /payments/create-session ─────────────────────────────────────────
-	register_rest_route( $ns, '/payments/create-session', [
+	register_rest_route( $ns, '/payments/create-session/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_payment_create_session',
 		'permission_callback' => '__return_true', // Token-based auth in handler.
@@ -70,10 +70,10 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── GET /payments/status ──────────────────────────────────────────────────
-	register_rest_route( $ns, '/payments/status', [
+	register_rest_route( $ns, '/payments/status/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_payment_status',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Public endpoint; Stripe session_id validated in handler.
 		'args'                => [
 			'session_id' => [
 				'type'              => 'string',
@@ -90,7 +90,7 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /payments/webhook ────────────────────────────────────────────────
-	register_rest_route( $ns, '/payments/webhook', [
+	register_rest_route( $ns, '/payments/webhook/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_payment_webhook',
 		'permission_callback' => '__return_true', // Stripe signature check inside.
@@ -386,7 +386,25 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 	$metadata          = $session['metadata']        ?? [];
 	$proposal_id       = (int) ( $metadata['proposal_id'] ?? 0 );
 
-	if ( ! $session_id || ! $proposal_id ) {
+	if ( ! $session_id ) {
+		return;
+	}
+
+	// ── Invoice payment branch ────────────────────────────────────────────────
+	$invoice_id = (int) ( $metadata['invoice_id'] ?? 0 );
+	if ( $invoice_id && 'invoice' === ( $metadata['type'] ?? '' ) ) {
+		$invoice_class = CLIENTOCTOPUS_DIR . 'modules/invoices/class-invoice.php';
+		if ( ! class_exists( 'ClientOctopus_Invoice' ) && file_exists( $invoice_class ) ) {
+			require_once $invoice_class;
+		}
+		if ( class_exists( 'ClientOctopus_Invoice' ) ) {
+			ClientOctopus_Invoice::mark_paid( $invoice_id, $session_id, (string) $payment_intent_id );
+		}
+		return;
+	}
+
+	// ── Proposal payment branch (existing logic) ──────────────────────────────
+	if ( ! $proposal_id ) {
 		return;
 	}
 

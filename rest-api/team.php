@@ -20,13 +20,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_action( 'rest_api_init', static function (): void {
 	$ns = 'clientoctopus/v1';
 
-	register_rest_route( $ns, '/team/members', [
+	register_rest_route( $ns, '/team/members/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_team_list',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
 	] );
 
-	register_rest_route( $ns, '/team/invite', [
+	register_rest_route( $ns, '/team/invite/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_team_invite',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
@@ -42,7 +42,7 @@ add_action( 'rest_api_init', static function (): void {
 		],
 	] );
 
-	register_rest_route( $ns, '/team/members/(?P<id>\d+)', [
+	register_rest_route( $ns, '/team/members/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_team_remove',
 		'permission_callback' => 'clientoctopus_rest_require_manage',

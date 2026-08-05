@@ -78,7 +78,6 @@ if ( ! file_exists( $clientoctopus_build_dir . 'client.js' ) ) {
 }
 
 // ── Favicon ───────────────────────────────────────────────────────────────────
-$clientoctopus_favicon_url = get_site_icon_url( 32 );
 
 // Enqueue styles before the HTML is output so wp_print_styles() can render them.
 wp_enqueue_style( 'co-client-base', plugins_url( 'client/client.css', CLIENTOCTOPUS_DIR . 'clientoctopus.php' ), [], CLIENTOCTOPUS_VERSION );
@@ -96,9 +95,7 @@ wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fo
 
 	<title><?php echo esc_html( $clientoctopus_business_name ); ?> &mdash; <?php esc_html_e( 'Proposal', 'clientoctopus' ); ?></title>
 
-	<?php if ( $clientoctopus_favicon_url ) : ?>
-		<link rel="icon" href="<?php echo esc_url( $clientoctopus_favicon_url ); ?>">
-	<?php endif; ?>
+	<?php do_action( 'clientoctopus_template_head' ); ?>
 
 	<?php wp_print_styles(); ?>
 </head>
@@ -122,7 +119,7 @@ wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fo
 
 	wp_add_inline_script(
 		'co-client',
-		'window.coClientData = ' . wp_json_encode( [
+		'window.clientoctopusClientData = ' . wp_json_encode( [
 			'apiUrl'          => rest_url( 'clientoctopus/v1/' ),
 			'token'           => $clientoctopus_active_token,
 			'businessName'    => $clientoctopus_business_name,

@@ -3,7 +3,7 @@
  * Plugin Name: Client Octopus
  * Plugin URI:  https://clientoctopus.com
  * Description: All-in-one client workflow management for WordPress — proposals, payments, projects, and client portals.
- * Version:     1.0.1
+ * Version:     1.1.0
  * Author:      codievolt
  * Author URI:  https://codievolt.com
  * License:     GPL-2.0-or-later
@@ -124,6 +124,9 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 			'clientoctopus_team_members',
 			'clientoctopus_webhooks',
 			'clientoctopus_webhook_logs',
+			'clientoctopus_automations',
+			'clientoctopus_reminder_log',
+			'clientoctopus_invoices',
 		];
 		foreach ( $tables as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall hook: drops plugin-owned tables only; table names are hardcoded, not user input.
@@ -199,9 +202,9 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '1.0.1' );
-define( 'CLIENTOCTOPUS_DB_VERSION',     '15' );
-define( 'CLIENTOCTOPUS_REWRITE_VERSION', '3' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.1.0' );
+define( 'CLIENTOCTOPUS_DB_VERSION',     '18' );
+define( 'CLIENTOCTOPUS_REWRITE_VERSION', '4' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'CLIENTOCTOPUS_URL',        plugin_dir_url( __FILE__ ) );
 define( 'CLIENTOCTOPUS_BASENAME',   plugin_basename( __FILE__ ) );
@@ -494,6 +497,13 @@ function clientoctopus_rest_rate_limit( string $action, int $user_id, int $limit
 	return true;
 }
 
+function clientoctopus_output_template_favicon(): void {
+	$icon = get_site_icon_url( 32 );
+	if ( $icon ) {
+		printf( '<link rel="icon" href="%s">', esc_url( $icon ) );
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap
 // ─────────────────────────────────────────────────────────────────────────────
@@ -659,9 +669,20 @@ final class ClientOctopus {
 
 		// Load client-facing proposal routing (rewrite rules + template_redirect).
 		// Available on all plans — clients can view and sign proposals on free tier.
+		// Also registers invoice rewrite rules (invoices/{token}).
 		$routing = CLIENTOCTOPUS_DIR . 'modules/proposals/client-routing.php';
 		if ( file_exists( $routing ) ) {
 			require_once $routing;
+		}
+
+		// Output favicon on standalone client-facing templates (proposal + invoice).
+		// Raw <link> tags are not permitted by WP.org; a named action hook is used instead.
+		add_action( 'clientoctopus_template_head', 'clientoctopus_output_template_favicon' );
+
+		// Load invoice email + webhook handlers — fires on clientoctopus_invoice_* actions.
+		$invoice_handlers = CLIENTOCTOPUS_DIR . 'modules/invoices/handlers.php';
+		if ( file_exists( $invoice_handlers ) ) {
+			require_once $invoice_handlers;
 		}
 
 		// No WP admin block needed — portal clients no longer have WordPress accounts.
@@ -892,6 +913,46 @@ final class ClientOctopus {
 				'client_name' => $project['client_name'] ?? '',
 			] );
 		}, 99, 2 );
+
+		add_action( 'clientoctopus_milestone_submitted', static function ( int $owner_id, int $milestone_id, int $project_id ): void {
+			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
+			clientoctopus_webhook_dispatch( 'milestone.submitted', $owner_id, [
+				'milestone_id' => $milestone_id,
+				'project_id'   => $project_id,
+			] );
+		}, 99, 3 );
+
+		add_action( 'clientoctopus_milestone_approved', static function ( int $owner_id, int $milestone_id, int $project_id ): void {
+			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
+			clientoctopus_webhook_dispatch( 'milestone.approved', $owner_id, [
+				'milestone_id' => $milestone_id,
+				'project_id'   => $project_id,
+			] );
+		}, 99, 3 );
+
+		add_action( 'clientoctopus_milestone_completed', static function ( int $owner_id, int $milestone_id, int $project_id ): void {
+			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
+			clientoctopus_webhook_dispatch( 'milestone.completed', $owner_id, [
+				'milestone_id' => $milestone_id,
+				'project_id'   => $project_id,
+			] );
+		}, 99, 3 );
+
+		add_action( 'clientoctopus_approval_responded', static function ( int $owner_id, int $approval_id, string $status ): void {
+			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
+			clientoctopus_webhook_dispatch( 'approval.responded', $owner_id, [
+				'approval_id' => $approval_id,
+				'status'      => $status,
+			] );
+		}, 99, 3 );
+
+		add_action( 'clientoctopus_message_sent', static function ( int $owner_id, int $message_id, int $project_id ): void {
+			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
+			clientoctopus_webhook_dispatch( 'message.sent', $owner_id, [
+				'message_id' => $message_id,
+				'project_id' => $project_id,
+			] );
+		}, 99, 3 );
 		//@end:fs_premium_only
 
 		// Register custom cron intervals.
@@ -932,6 +993,23 @@ final class ClientOctopus {
 				wp_schedule_event( time(), 'clientoctopus_15min', 'clientoctopus_sync_pending_payments' );
 			}
 		} );
+
+		// Daily automation reminders — fires once per day to send follow-up emails.
+		add_action( 'clientoctopus_daily_automations', static function (): void {
+			$path = CLIENTOCTOPUS_DIR . 'modules/automations/class-automations.php';
+			if ( ! class_exists( 'ClientOctopus_Automations' ) && file_exists( $path ) ) {
+				require_once $path;
+			}
+			if ( class_exists( 'ClientOctopus_Automations' ) ) {
+				ClientOctopus_Automations::run_daily();
+			}
+		} );
+
+		add_action( 'init', static function (): void {
+			if ( ! wp_next_scheduled( 'clientoctopus_daily_automations' ) ) {
+				wp_schedule_event( time(), 'daily', 'clientoctopus_daily_automations' );
+			}
+		} );
 	}
 
 	// ── REST API ─────────────────────────────────────────────────────────────
@@ -951,6 +1029,8 @@ final class ClientOctopus {
 			CLIENTOCTOPUS_DIR . 'rest-api/client-proposals.php',
 			CLIENTOCTOPUS_DIR . 'rest-api/clients.php',
 			CLIENTOCTOPUS_DIR . 'rest-api/onboarding.php',
+			CLIENTOCTOPUS_DIR . 'rest-api/automations.php',
+			CLIENTOCTOPUS_DIR . 'rest-api/invoices.php',
 		];
 
 		// Premium-only routes: only loaded for paying users.
@@ -1024,6 +1104,16 @@ final class ClientOctopus {
 			'manage_clientoctopus',
 			'clientoctopus-clients',
 			[ $this, 'render_clients' ]
+		);
+
+		// Invoices: available on all plans (free, pro, agency).
+		add_submenu_page(
+			'clientoctopus',
+			__( 'Invoices', 'clientoctopus' ),
+			__( 'Invoices', 'clientoctopus' ),
+			'manage_clientoctopus',
+			'clientoctopus-invoices',
+			[ $this, 'render_invoices' ]
 		);
 
 		//@fs_premium_only
@@ -1109,7 +1199,8 @@ final class ClientOctopus {
 	 * Prepares variables and includes the view template.
 	 */
 	public function render_plan_overview(): void {
-		$user_id = get_current_user_id();
+		$user_id   = get_current_user_id();
+		$user_plan = ClientOctopus_Entitlements::get_user_plan( $user_id );
 
 		$usage_data = [
 			'proposals'        => ClientOctopus_Entitlements::get_total_count( $user_id, 'create_proposal' ),
@@ -1150,6 +1241,10 @@ final class ClientOctopus {
 
 	public function render_clients(): void {
 		require CLIENTOCTOPUS_DIR . 'admin/views/clients.php';
+	}
+
+	public function render_invoices(): void {
+		require CLIENTOCTOPUS_DIR . 'admin/views/invoices.php';
 	}
 
 	/**
@@ -1240,6 +1335,7 @@ final class ClientOctopus {
 				'use_files'       => clientoctopus_can_user( $user_id, 'use_files' ),
 				'team_access'     => clientoctopus_can_user( $user_id, 'team_access' ),
 				'use_webhooks'    => clientoctopus_can_user( $user_id, 'use_webhooks' ),
+				'use_invoices'    => clientoctopus_can_user( $user_id, 'use_invoices' ),
 			],
 			'teamSeats'            => ClientOctopus_Entitlements::get_team_seats_used( $user_id ),
 			'teamLimit'            => ClientOctopus_Entitlements::get_team_limit( $user_id ),
@@ -1305,6 +1401,19 @@ final class ClientOctopus {
 
 			wp_enqueue_script( 'co-clients', $build_url . 'clients.js', $asset['dependencies'], $asset['version'], true );
 			wp_localize_script( 'co-clients', 'clientoctopusData', $runtime_data );
+
+		} elseif ( str_contains( $hook, 'clientoctopus-invoices' ) ) {
+			$asset_file = $build_dir . 'invoices.asset.php';
+			$asset      = file_exists( $asset_file )
+				? require $asset_file
+				: [ 'dependencies' => [ 'wp-element', 'wp-i18n' ], 'version' => CLIENTOCTOPUS_VERSION ];
+
+			if ( file_exists( $build_dir . 'invoices.css' ) ) {
+				wp_enqueue_style( 'co-invoices', $build_url . 'invoices.css', [], $asset['version'] );
+			}
+
+			wp_enqueue_script( 'co-invoices', $build_url . 'invoices.js', $asset['dependencies'], $asset['version'], true );
+			wp_localize_script( 'co-invoices', 'clientoctopusData', $runtime_data );
 
 		} elseif ( str_contains( $hook, 'clientoctopus-setup' ) ) {
 			$asset_file = $build_dir . 'setup.asset.php';

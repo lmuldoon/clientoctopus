@@ -541,6 +541,19 @@ function WelcomeStep() {
 			icon: (
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
 					stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+					<rect x="2" y="3" width="20" height="18" rx="2"/>
+					<line x1="2" y1="9" x2="22" y2="9"/>
+					<line x1="8" y1="15" x2="16" y2="15"/>
+					<line x1="8" y1="18" x2="12" y2="18"/>
+				</svg>
+			),
+			title: 'Invoices',
+			desc:  'Send professional invoices, track payment status, and let clients pay online via Stripe.',
+		},
+		{
+			icon: (
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+					stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
 					<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
 					<circle cx="9" cy="7" r="4"/>
 					<path d="M23 21v-2a4 4 0 00-3-3.87"/>
@@ -557,7 +570,7 @@ function WelcomeStep() {
 			<p className="co-sw-step-num">Getting Started</p>
 			<h1 className="co-sw-heading">Welcome to Client Octopus</h1>
 			<p className="co-sw-sub">
-				The complete client management toolkit — proposals, payments, and projects in one WordPress plugin.
+				The complete client management toolkit — proposals, invoices, payments, and projects in one WordPress plugin.
 			</p>
 			<div className="co-sw-features">
 				{ features.map( f => (
@@ -775,7 +788,7 @@ export default function SetupWizard() {
 	useEffect( () => {
 		document.body.classList.add( 'co-setup-active' );
 
-		apiFetch( 'onboarding/status' ).then( status => {
+		apiFetch( 'onboarding/status/' ).then( status => {
 			if ( status.saved ) {
 				setData( prev => ( { ...prev, ...status.saved } ) );
 			}
@@ -800,13 +813,13 @@ export default function SetupWizard() {
 		setSaving( true );
 		try {
 			if ( step > 0 && step < steps.length - 1 ) {
-				await apiFetch( 'onboarding/save', {
+				await apiFetch( 'onboarding/save/', {
 					method: 'POST',
 					body:   JSON.stringify( { step, ...data } ),
 				} );
 			}
 			if ( step === lastDataStep ) {
-				await apiFetch( 'onboarding/complete', { method: 'POST', body: '{}' } );
+				await apiFetch( 'onboarding/complete/', { method: 'POST', body: '{}' } );
 			}
 			setDirection( 'forward' );
 			setStep( s => s + 1 );

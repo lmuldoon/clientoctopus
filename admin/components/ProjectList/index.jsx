@@ -230,7 +230,7 @@ export default function ProjectList( { onViewProject } ) {
 		setLoading( true );
 		setError( null );
 		try {
-			const data = await coFetch( 'projects' );
+			const data = await coFetch( 'projects/' );
 			setProjects( data.projects || [] );
 		} catch ( e ) {
 			setError( e.message );

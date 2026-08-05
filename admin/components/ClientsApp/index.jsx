@@ -423,7 +423,7 @@ export default function ClientsApp() {
 	const [ justSent,  setJustSent  ] = useState( null );  // client id just invited
 
 	useEffect( () => {
-		coFetch( 'clients' )
+		coFetch( 'clients/' )
 			.then( data => setClients( data.clients || [] ) )
 			.catch( () => {} )
 			.finally( () => setLoading( false ) );
@@ -443,7 +443,7 @@ export default function ClientsApp() {
 		if ( sending ) return;
 		setSending( client.id );
 		try {
-			const data = await coFetch( `clients/${ client.id }/invite`, { method: 'POST' } );
+			const data = await coFetch( `clients/${ client.id }/invite/`, { method: 'POST' } );
 			if ( data.client ) {
 				setClients( prev => prev.map( c => c.id === client.id ? data.client : c ) );
 			}

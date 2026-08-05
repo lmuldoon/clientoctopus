@@ -36,17 +36,17 @@ add_action( 'rest_api_init', static function (): void {
 
 	// ── GET /client/proposals/preview/{token} — must be registered before the
 	// generic /{token} route so WordPress matches the more specific path first.
-	register_rest_route( $ns, "/client/proposals/preview/{$token}", [
+	register_rest_route( $ns, "/client/proposals/preview/$token/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_client_get_preview_proposal',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Token in URL path is the credential — no WP auth required.
 		'args'                => [
 			'token' => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
 		],
 	] );
 
 	// ── GET /client/proposals/{token} ────────────────────────────────────────
-	register_rest_route( $ns, "/client/proposals/{$token}", [
+	register_rest_route( $ns, "/client/proposals/$token/", [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_client_get_proposal',
 		'permission_callback' => '__return_true', // Token is the credential.
@@ -56,30 +56,31 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /client/proposals/{token}/view ──────────────────────────────────
-	register_rest_route( $ns, "/client/proposals/{$token}/view", [
+	register_rest_route( $ns, "/client/proposals/$token/view/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_client_track_view',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Token in URL path is the credential — no WP auth required.
 		'args'                => [
 			'token' => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
 		],
 	] );
 
 	// ── POST /client/proposals/{token}/accept ────────────────────────────────
-	register_rest_route( $ns, "/client/proposals/{$token}/accept", [
+	register_rest_route( $ns, "/client/proposals/$token/accept/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_client_accept_proposal',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Token in URL path is the credential — no WP auth required.
 		'args'                => [
-			'token' => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+			'token'       => [ 'type' => 'string', 'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
+			'signed_name' => [ 'type' => 'string', 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
 		],
 	] );
 
 	// ── POST /client/proposals/{token}/decline ───────────────────────────────
-	register_rest_route( $ns, "/client/proposals/{$token}/decline", [
+	register_rest_route( $ns, "/client/proposals/$token/decline/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_client_decline_proposal',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Token in URL path is the credential — no WP auth required.
 		'args'                => [
 			'token'  => [ 'type' => 'string', 'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
 			'reason' => [ 'type' => 'string', 'required' => false, 'default' => '',     'sanitize_callback' => 'sanitize_textarea_field' ],
@@ -87,10 +88,10 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /client/proposals/{token}/request-change ────────────────────────
-	register_rest_route( $ns, "/client/proposals/{$token}/request-change", [
+	register_rest_route( $ns, "/client/proposals/$token/request-change/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_client_request_change',
-		'permission_callback' => '__return_true',
+		'permission_callback' => '__return_true', // Token in URL path is the credential — no WP auth required.
 		'args'                => [
 			'token' => [ 'type' => 'string', 'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
 			'note'  => [ 'type' => 'string', 'required' => false, 'default' => '',     'sanitize_callback' => 'sanitize_textarea_field' ],
@@ -180,6 +181,9 @@ function clientoctopus_rest_client_get_proposal( WP_REST_Request $request ): WP_
 		$result['payment_enabled'] = false;
 	}
 
+	// E-signature is enabled for all plans.
+	$result['require_signature'] = true;
+
 	return new WP_REST_Response( [ 'proposal' => $result ], 200 );
 }
 
@@ -205,8 +209,9 @@ function clientoctopus_rest_client_track_view( WP_REST_Request $request ): WP_RE
  * Client accepts the proposal.
  */
 function clientoctopus_rest_client_accept_proposal( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$token  = (string) $request->get_param( 'token' );
-	$result = ClientOctopus_Proposal_Client::accept( $token );
+	$token       = (string) $request->get_param( 'token' );
+	$signed_name = (string) $request->get_param( 'signed_name' );
+	$result      = ClientOctopus_Proposal_Client::accept( $token, $signed_name );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;

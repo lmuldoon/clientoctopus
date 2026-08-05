@@ -360,11 +360,11 @@ function fmt( amount, currency ) {
 	return new Intl.NumberFormat( 'en-GB', { style: 'currency', currency: currency || 'GBP' } ).format( amount );
 }
 
-const BASE = ( window.coClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
+const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
 
 export default function PaymentSuccess( { token, sessionId } ) {
 	const [ payment, setPayment ] = useState( null );
-	const { businessName = '', clientEmail = '' } = window.coClientData || {};
+	const { businessName = '', clientEmail = '' } = window.clientoctopusClientData || {};
 
 	// Poll payment status so we can show the confirmed amount.
 	useEffect( () => {

@@ -168,7 +168,7 @@ export default function PortalVerify() {
 			return;
 		}
 
-		apiFetch( '/portal/verify', {
+		apiFetch( '/portal/verify/', {
 			method: 'POST',
 			body:   JSON.stringify( { token } ),
 		} )

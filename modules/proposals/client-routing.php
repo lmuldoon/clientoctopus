@@ -35,6 +35,8 @@ add_action( 'init', static function (): void {
 	add_rewrite_tag( '%clientoctopus_payment_result%', '(success|cancel)' );
 	// Preview token — registered before the generic proposal rule so it matches first.
 	add_rewrite_tag( '%clientoctopus_preview_token%', '([a-zA-Z0-9\-]+)' );
+	// Invoice token — registered after proposal tags; separate query var namespace.
+	add_rewrite_tag( '%clientoctopus_invoice_token%', '([a-zA-Z0-9\-]+)' );
 
 	// /proposals/preview/{token}[/]  — internal preview viewer (read-only).
 	add_rewrite_rule(
@@ -63,7 +65,58 @@ add_action( 'init', static function (): void {
 		'index.php?clientoctopus_proposal_token=$matches[1]&clientoctopus_payment_result=cancel',
 		'top'
 	);
+
+	// /invoices/{token}[/]  — standalone invoice viewer.
+	add_rewrite_rule(
+		'^invoices/([a-zA-Z0-9\-]+)/?$',
+		'index.php?clientoctopus_invoice_token=$matches[1]',
+		'top'
+	);
+
+	// /invoices/{token}/success[/]  — Stripe payment success.
+	add_rewrite_rule(
+		'^invoices/([a-zA-Z0-9\-]+)/success/?$',
+		'index.php?clientoctopus_invoice_token=$matches[1]&clientoctopus_payment_result=success',
+		'top'
+	);
+
+	// /invoices/{token}/cancel[/]  — Stripe payment cancelled.
+	add_rewrite_rule(
+		'^invoices/([a-zA-Z0-9\-]+)/cancel/?$',
+		'index.php?clientoctopus_invoice_token=$matches[1]&clientoctopus_payment_result=cancel',
+		'top'
+	);
 }, 10 );
+
+// ── Serve the standalone invoice template ────────────────────────────────────
+
+add_action( 'template_redirect', static function (): void {
+	$invoice_token = get_query_var( 'clientoctopus_invoice_token' );
+
+	if ( ! $invoice_token ) {
+		return;
+	}
+
+	$template = CLIENTOCTOPUS_DIR . 'client/invoice-template.php';
+
+	if ( ! file_exists( $template ) ) {
+		wp_die(
+			esc_html__( 'Invoice viewer template not found.', 'clientoctopus' ),
+			esc_html__( 'Error', 'clientoctopus' ),
+			[ 'response' => 500 ]
+		);
+	}
+
+	$clientoctopus_invoice_token  = sanitize_text_field( $invoice_token );
+	$clientoctopus_payment_result = sanitize_key( get_query_var( 'clientoctopus_payment_result', '' ) );
+	// Stripe passes ?session_id=cs_xxx on success redirect — read-only, no state change.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Stripe redirect parameter, read-only, no state change.
+	$clientoctopus_session_id     = sanitize_text_field( wp_unslash( $_GET['session_id'] ?? '' ) );
+
+	// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+	include $template;
+	exit;
+}, 1 );
 
 // ── Serve the standalone client template ──────────────────────────────────────
 

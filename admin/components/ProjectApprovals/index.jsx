@@ -395,7 +395,7 @@ export default function ProjectApprovals( { projectId, isLocked = false } ) {
 
 	// ── Fetch on mount ────────────────────────────────────────────
 	useEffect( () => {
-		coFetch( `projects/${ projectId }/approvals` )
+		coFetch( `projects/${ projectId }/approvals/` )
 			.then( data => setApprovals( data.approvals || [] ) )
 			.catch( () => setError( 'Failed to load approval requests.' ) )
 			.finally( () => setLoading( false ) );
@@ -407,7 +407,7 @@ export default function ProjectApprovals( { projectId, isLocked = false } ) {
 		setCreating( true );
 		setError( null );
 		try {
-			const data = await coFetch( `projects/${ projectId }/approvals`, {
+			const data = await coFetch( `projects/${ projectId }/approvals/`, {
 				method: 'POST',
 				body:   JSON.stringify( form ),
 			} );
@@ -424,7 +424,7 @@ export default function ProjectApprovals( { projectId, isLocked = false } ) {
 	// ── Delete ────────────────────────────────────────────────────
 	async function handleDelete( approvalId ) {
 		try {
-			await coFetch( `projects/${ projectId }/approvals/${ approvalId }`, { method: 'DELETE' } );
+			await coFetch( `projects/${ projectId }/approvals/${ approvalId }/`, { method: 'DELETE' } );
 			setApprovals( prev => prev.filter( a => a.id !== approvalId ) );
 		} catch ( err ) {
 			setError( err.message || 'Delete failed.' );
