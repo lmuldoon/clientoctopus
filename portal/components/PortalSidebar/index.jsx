@@ -451,6 +451,19 @@ function IconPayments( { active } ) {
 	);
 }
 
+function IconInvoices( { active } ) {
+	const c = active ? '#6366F1' : '#6B7280';
+	return (
+		<svg className="cps-nav-icon" viewBox="0 0 20 20" fill="none"
+			stroke={ c } strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+			<rect x="2" y="2" width="16" height="16" rx="1.5"/>
+			<line x1="2" y1="7" x2="18" y2="7"/>
+			<line x1="6" y1="12" x2="14" y2="12"/>
+			<line x1="6" y1="15" x2="10" y2="15"/>
+		</svg>
+	);
+}
+
 function IconSignOut( { color = '#6B7280' } ) {
 	return (
 		<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -485,6 +498,7 @@ export default function PortalSidebar( { page } ) {
 		{ slug: 'dashboard', label: __( 'Dashboard', 'clientoctopus' ), Icon: IconDashboard },
 		{ slug: 'proposals', label: __( 'Proposals', 'clientoctopus' ), Icon: IconProposals },
 		...( hasProjects ? [ { slug: 'projects', label: __( 'Projects', 'clientoctopus' ), Icon: IconProjects } ] : [] ),
+		{ slug: 'invoices',  label: __( 'Invoices', 'clientoctopus' ),  Icon: IconInvoices  },
 		{ slug: 'payments',  label: __( 'Payments', 'clientoctopus' ),  Icon: IconPayments  },
 	];
 

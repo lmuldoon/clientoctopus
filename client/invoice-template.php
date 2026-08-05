@@ -39,9 +39,25 @@ if ( empty( $clientoctopus_invoice_token ) ) {
 
 // Load Invoice class if needed.
 if ( ! class_exists( 'ClientOctopus_Invoice' ) ) {
-	$_co_cls = CLIENTOCTOPUS_DIR . 'modules/invoices/class-invoice.php';
-	if ( file_exists( $_co_cls ) ) {
-		require_once $_co_cls;
+	$clientoctopus_invoice_cls = CLIENTOCTOPUS_DIR . 'modules/invoices/class-invoice.php';
+	if ( file_exists( $clientoctopus_invoice_cls ) ) {
+		require_once $clientoctopus_invoice_cls;
+	}
+}
+
+// ── Write-through: mark invoice paid if returning from successful Stripe checkout ─
+if ( 'success' === $clientoctopus_payment_result && $clientoctopus_session_id && class_exists( 'ClientOctopus_Invoice' ) ) {
+	$clientoctopus_stripe_cls = CLIENTOCTOPUS_DIR . 'modules/payments/class-stripe.php';
+	if ( ! class_exists( 'ClientOctopus_Stripe' ) && file_exists( $clientoctopus_stripe_cls ) ) {
+		require_once $clientoctopus_stripe_cls;
+	}
+	if ( class_exists( 'ClientOctopus_Stripe' ) && ClientOctopus_Stripe::is_configured() ) {
+		$clientoctopus_stripe_session = ClientOctopus_Stripe::retrieve_session( $clientoctopus_session_id );
+		if ( ! is_wp_error( $clientoctopus_stripe_session ) && 'paid' === ( $clientoctopus_stripe_session['payment_status'] ?? '' ) ) {
+			if ( function_exists( 'clientoctopus_handle_checkout_complete' ) ) {
+				clientoctopus_handle_checkout_complete( $clientoctopus_stripe_session );
+			}
+		}
 	}
 }
 

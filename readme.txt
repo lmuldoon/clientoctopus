@@ -27,7 +27,6 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Client-facing proposal signing and invoice pages
 * Automated proposal reminder emails (not viewed, not accepted, expiring soon)
 * REST API access
-* Outbound webhooks
 
 = Pro Features =
 

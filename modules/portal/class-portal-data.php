@@ -296,4 +296,81 @@ class ClientOctopus_Portal_Data {
 			'currency'         => $currency,
 		];
 	}
+
+	// -------------------------------------------------------------------------
+	// Invoices
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Return all non-draft invoices for a client identified by email.
+	 *
+	 * @param  string $email  Client email address (from portal session).
+	 * @return array
+	 */
+	public static function get_invoices( string $email ): array {
+		global $wpdb;
+
+		$it = $wpdb->prefix . 'clientoctopus_invoices';
+		$ct = $wpdb->prefix . 'clientoctopus_clients';
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT i.id, i.invoice_number, i.token, i.status, i.title,
+				        i.currency, i.total_amount, i.due_date, i.issue_date,
+				        i.sent_at, i.paid_at, i.created_at
+				 FROM   {$it} i
+				 JOIN   {$ct} c ON c.id = i.client_id
+				 WHERE  c.email = %s
+				   AND  i.deleted_at IS NULL
+				   AND  i.status != 'draft'
+				 ORDER  BY i.created_at DESC",
+				$email
+			),
+			ARRAY_A
+		);
+
+		return array_map( static function ( array $row ): array {
+			$row['id']             = (int) $row['id'];
+			$row['invoice_number'] = (int) $row['invoice_number'];
+			$row['total_amount']   = (float) $row['total_amount'];
+			$row['invoice_ref']    = 'INV-' . str_pad( (string) $row['invoice_number'], 4, '0', STR_PAD_LEFT );
+			return $row;
+		}, $rows ?: [] );
+	}
+
+	/**
+	 * Return paid invoices for use in the Payments tab invoice payments table.
+	 *
+	 * @param  string $email  Client email address (from portal session).
+	 * @return array
+	 */
+	public static function get_invoice_payments( string $email ): array {
+		global $wpdb;
+
+		$it = $wpdb->prefix . 'clientoctopus_invoices';
+		$ct = $wpdb->prefix . 'clientoctopus_clients';
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT i.id, i.invoice_number, i.token, i.title, i.currency,
+				        i.total_amount, i.paid_at, i.stripe_payment_intent_id
+				 FROM   {$it} i
+				 JOIN   {$ct} c ON c.id = i.client_id
+				 WHERE  c.email = %s
+				   AND  i.deleted_at IS NULL
+				   AND  i.status = 'paid'
+				 ORDER  BY i.paid_at DESC",
+				$email
+			),
+			ARRAY_A
+		);
+
+		return array_map( static function ( array $row ): array {
+			$row['id']             = (int) $row['id'];
+			$row['invoice_number'] = (int) $row['invoice_number'];
+			$row['total_amount']   = (float) $row['total_amount'];
+			$row['invoice_ref']    = 'INV-' . str_pad( (string) $row['invoice_number'], 4, '0', STR_PAD_LEFT );
+			return $row;
+		}, $rows ?: [] );
+	}
 }

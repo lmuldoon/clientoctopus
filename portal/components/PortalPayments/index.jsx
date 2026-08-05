@@ -230,9 +230,15 @@ export default function PortalPayments() {
 	const [ loading,  setLoading  ] = useState( true );
 	const [ payments, setPayments ] = useState( [] );
 
+	const [ invoicePayments, setInvoicePayments ] = useState( [] );
+
 	useEffect( () => {
-		apiFetch( '/portal/payments/' ).then( data => {
-			setPayments( Array.isArray( data ) ? data : [] );
+		Promise.all( [
+			apiFetch( '/portal/payments/' ),
+			apiFetch( '/portal/invoice-payments/' ),
+		] ).then( ( [ pData, iData ] ) => {
+			setPayments( Array.isArray( pData ) ? pData : [] );
+			setInvoicePayments( Array.isArray( iData ) ? iData : [] );
 			setLoading( false );
 		} ).catch( () => setLoading( false ) );
 	}, [] );
@@ -353,6 +359,80 @@ export default function PortalPayments() {
 						</tfoot>
 					) }
 				</table>
+			</div>
+
+			{ /* ── Invoice Payments ─────────────────────────────── */ }
+			<div style={{ marginTop: 40 }}>
+				<h2 style={{
+					fontFamily:    "'Playfair Display', serif",
+					fontSize:      '22px',
+					fontWeight:    '700',
+					color:         '#1A1A2E',
+					margin:        '0 0 16px',
+					letterSpacing: '-0.01em',
+				}}>Invoice Payments</h2>
+
+				{ invoicePayments.length > 0 && (
+					<div className="cppm-summary">
+						<span className="cppm-summary-label">Total paid</span>
+						<span className="cppm-summary-amount">
+							{ fmt(
+								invoicePayments.reduce( ( s, i ) => s + parseFloat( i.total_amount || 0 ), 0 ),
+								invoicePayments[0]?.currency || 'GBP'
+							) }
+						</span>
+					</div>
+				) }
+
+				<div className="cppm-table-wrap">
+					<table className="cppm-table">
+						<thead>
+							<tr>
+								<th>Invoice</th>
+								<th className="right">Amount</th>
+								<th className="col-date">Date Paid</th>
+							</tr>
+						</thead>
+						<tbody>
+							{ invoicePayments.length === 0 ? (
+								<tr>
+									<td colSpan="3">
+										<div className="cppm-empty">
+											<p className="cppm-empty-msg">No invoice payments yet.</p>
+											<p className="cppm-empty-sub">
+												Paid invoices will appear here.
+											</p>
+										</div>
+									</td>
+								</tr>
+							) : invoicePayments.map( inv => (
+								<tr
+									key={ inv.id }
+									onClick={ () => { window.location.href = `/invoices/${ inv.token }`; } }
+								>
+									<td>
+										<a
+											className="cppm-prop-link"
+											href={ `/invoices/${ inv.token }` }
+											onClick={ e => e.stopPropagation() }
+										>
+											<span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: '#9CA3AF', display: 'block' }}>
+												{ inv.invoice_ref }
+											</span>
+											{ inv.title || inv.invoice_ref }
+										</a>
+									</td>
+									<td className="mono right">
+										{ fmt( inv.total_amount, inv.currency || 'GBP' ) }
+									</td>
+									<td className="col-date" style={{ color: '#9CA3AF', fontSize: 13 }}>
+										{ formatDate( inv.paid_at ) }
+									</td>
+								</tr>
+							) ) }
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);

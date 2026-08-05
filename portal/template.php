@@ -89,6 +89,7 @@ $clientoctopus_page_titles = [
 	'verify'    => 'Verifying…',
 	'dashboard' => 'Dashboard',
 	'proposals' => 'Proposals',
+	'invoices'  => 'Invoices',
 	'projects'  => 'Projects',
 	'payments'  => 'Payments',
 ];

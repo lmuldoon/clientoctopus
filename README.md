@@ -12,6 +12,9 @@ Client Octopus gives freelancers and agencies everything they need to send propo
 |---|---|---|---|
 | Proposals | Unlimited | Unlimited | Unlimited |
 | Clients | ✓ | ✓ | ✓ |
+| Invoices | ✓ | ✓ | ✓ |
+| Stripe Pay Now on invoices | — | ✓ | ✓ |
+| Automated Reminders | ✓ | ✓ | ✓ |
 | Client Portal | — | ✓ | ✓ |
 | Stripe Payments | — | ✓ | ✓ |
 | AI Writing Tools | — | 100 req/mo | 500 req/mo |
@@ -65,6 +68,23 @@ Create professional proposals from the **Proposals** admin page. Choose a templa
 
 **Payments on proposals (Pro/Agency):**
 Set a deposit percentage to collect upfront, with the balance charged when the project completes. Or require full payment at acceptance. Client Octopus creates Stripe Checkout sessions automatically — you never handle card details.
+
+**E-signature:**
+When a client accepts, they type their full legal name and confirm a checkbox in a signing modal. The typed name and acceptance timestamp (`signed_name`, `signed_at`) are stored on the proposal record and visible in the admin.
+
+---
+
+## Invoices
+
+Standalone invoices are separate from proposals and available on **every plan**, including Free. Create one from the **Invoices** admin page: assign a client, add line items, and optionally apply a discount and VAT. Each invoice is auto-numbered (`INV-0001`, `INV-0002`, …). Send it directly by email — clients view it at a unique link, no WordPress account required.
+
+**Invoice statuses:** `draft → sent → paid`, with `overdue` applied automatically once the due date passes and `cancelled` available any time before payment.
+
+**Client-facing invoice page:** supports browser printing to a clean A4 layout.
+
+**Getting paid:**
+- **Free** — clients pay you directly (e.g. bank transfer); mark the invoice **Paid** manually from the admin.
+- **Pro/Agency** — a **Pay Now** button on the client-facing page creates a Stripe Checkout session on demand; the invoice auto-marks paid once Stripe confirms payment via webhook.
 
 ---
 
@@ -126,6 +146,15 @@ Connect Client Octopus to Zapier, Make, or any other automation tool using outgo
 | `payment.completed` | A Stripe payment is received |
 | `project.created` | A project is created from an accepted proposal |
 | `project.completed` | A project is marked complete |
+| `invoice.sent` | An invoice is emailed to a client |
+| `invoice.paid` | An invoice is marked paid (manually or via Stripe) |
+| `invoice.overdue` | An invoice passes its due date unpaid |
+| `invoice.cancelled` | An invoice is cancelled |
+| `milestone.submitted` | A milestone is submitted for client approval |
+| `milestone.approved` | A client approves a milestone |
+| `milestone.completed` | A milestone is marked complete |
+| `approval.responded` | A client responds to an approval request |
+| `message.sent` | A message is sent in a project thread |
 
 **Setting up a webhook:**
 
@@ -172,6 +201,22 @@ Client Octopus can automatically send a review request email when a project is c
 
 ---
 
+## Automated Reminders
+
+Available on **every plan**, including Free. Sends follow-up emails to clients on proposals that are stalling, so you don't have to chase manually.
+
+**Triggers:**
+
+| Trigger | Fires when |
+|---|---|
+| `not_viewed` | A sent proposal hasn't been opened by the client |
+| `not_accepted` | A viewed proposal hasn't been accepted, declined, or had revisions requested |
+| `expiring_soon` | The proposal's expiry date is approaching and it's still awaiting a response |
+
+Each trigger has a configurable delay (in days) under **Client Octopus → Settings → Automations**. Reminders run once daily via the `clientoctopus_daily_automations` cron event (`modules/automations/class-automations.php`).
+
+---
+
 ## Team Members (Agency)
 
 Invite team members under **Client Octopus → Team**. Assign one of three roles:
@@ -206,6 +251,12 @@ All endpoints are under `/wp-json/clientoctopus/v1/` and require a logged-in Wor
 | `POST` | `/webhooks` | Register a webhook |
 | `POST` | `/webhooks/{id}/test` | Send a test ping |
 | `GET` | `/user/usage` | Live usage stats (AI, proposals, storage, team) |
+| `GET` | `/invoices` | List invoices |
+| `POST` | `/invoices/create` | Create an invoice |
+| `POST` | `/invoices/{id}/send` | Send invoice to client |
+| `POST` | `/invoices/{id}/mark-paid` | Mark an invoice as paid manually |
+| `GET` | `/automations` | List automation reminder settings |
+| `POST` | `/automations/{trigger}` | Update a reminder trigger's settings |
 
 Client-facing portal routes (token or cookie auth, no WP login required):
 
@@ -216,6 +267,8 @@ Client-facing portal routes (token or cookie auth, no WP login required):
 | `POST` | `/portal/send-magic-link` | Request magic link |
 | `POST` | `/portal/verify` | Verify token and log in |
 | `GET` | `/portal/projects/{id}` | Client project view |
+| `GET` | `/invoices/public/{token}` | View an invoice |
+| `POST` | `/invoices/{id}/pay` | Create a Stripe checkout session for an invoice (Pro/Agency) |
 
 ---
 
@@ -244,6 +297,8 @@ Never add `if ($plan === 'pro')` checks in module code — always call `clientoc
 | `use_messaging` | `bool` |
 | `use_files` | `bool` |
 | `team_access` | `bool` |
+| `use_invoices` | `bool` |
+| `use_automations` | `bool` |
 
 ### Database tables
 
@@ -263,6 +318,9 @@ Never add `if ($plan === 'pro')` checks in module code — always call `clientoc
 | `clientoctopus_events` | Analytics event log |
 | `clientoctopus_ai_usage_logs` | AI request audit trail |
 | `clientoctopus_team_members` | Team member roles |
+| `clientoctopus_invoices` | Standalone invoice content and status |
+| `clientoctopus_automations` | Per-owner reminder trigger settings |
+| `clientoctopus_reminder_log` | Sent reminder history (prevents duplicate sends) |
 
 ---
 
@@ -294,6 +352,19 @@ npm run start
 ---
 
 ## Changelog
+
+### 1.1.0
+- New: Standalone invoices — auto-numbered, line items, discounts, VAT, printable client-facing page
+- New: Stripe "Pay Now" button on client-facing invoices (Pro), auto-marks paid via webhook
+- New: E-signature on proposal acceptance (typed name + timestamp recorded on the proposal)
+- New: Automated proposal reminder emails — not viewed / not accepted / expiring soon, cron-based
+- New: Expanded outbound webhook events — invoice and milestone/approval/message lifecycle events added
+
+### 1.0.1
+- Fix: Onboarding wizard failed on servers that redirect URLs to add a trailing slash, causing POST requests to be converted to GET requests
+
+### 1.0.0
+- Initial public release
 
 ### 0.1.2
 - Plan tier now syncs automatically from Freemius licence activation/deactivation

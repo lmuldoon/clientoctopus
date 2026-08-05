@@ -79,6 +79,20 @@ function clientoctopus_register_portal_routes(): void {
 		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
 	] );
 
+	// ── Authenticated: client's invoices ────────────────────────────────────
+	register_rest_route( $ns, '/portal/invoices/', [
+		'methods'             => WP_REST_Server::READABLE,
+		'callback'            => 'clientoctopus_portal_invoices',
+		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
+	] );
+
+	// ── Authenticated: client's invoice payments ─────────────────────────────
+	register_rest_route( $ns, '/portal/invoice-payments/', [
+		'methods'             => WP_REST_Server::READABLE,
+		'callback'            => 'clientoctopus_portal_invoice_payments',
+		'permission_callback' => [ 'ClientOctopus_Portal_Auth', 'rest_permission' ],
+	] );
+
 	// ── Authenticated: logout ────────────────────────────────────────────────
 	register_rest_route( $ns, '/portal/logout/', [
 		'methods'             => WP_REST_Server::CREATABLE,
@@ -231,6 +245,20 @@ function clientoctopus_portal_proposals(): WP_REST_Response {
 function clientoctopus_portal_payments(): WP_REST_Response {
 	$email    = ClientOctopus_Portal_Auth::get_current_email();
 	$payments = ClientOctopus_Portal_Data::get_payments( $email );
+
+	return new WP_REST_Response( $payments, 200 );
+}
+
+function clientoctopus_portal_invoices(): WP_REST_Response {
+	$email    = ClientOctopus_Portal_Auth::get_current_email();
+	$invoices = ClientOctopus_Portal_Data::get_invoices( $email );
+
+	return new WP_REST_Response( $invoices, 200 );
+}
+
+function clientoctopus_portal_invoice_payments(): WP_REST_Response {
+	$email    = ClientOctopus_Portal_Auth::get_current_email();
+	$payments = ClientOctopus_Portal_Data::get_invoice_payments( $email );
 
 	return new WP_REST_Response( $payments, 200 );
 }

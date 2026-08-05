@@ -75,6 +75,12 @@ function clientoctopus_add_portal_rewrite_rules(): void {
 	);
 
 	add_rewrite_rule(
+		'^clientoctopus/invoices/?$',
+		'index.php?clientoctopus_portal_page=invoices',
+		'top'
+	);
+
+	add_rewrite_rule(
 		'^clientoctopus/set-password/?$',
 		'index.php?clientoctopus_portal_page=set-password',
 		'top'
@@ -104,7 +110,7 @@ function clientoctopus_portal_template_redirect(): void {
 		return;
 	}
 
-	$authenticated_pages = [ 'dashboard', 'proposals', 'payments', 'projects', 'receipt' ];
+	$authenticated_pages = [ 'dashboard', 'proposals', 'payments', 'projects', 'receipt', 'invoices' ];
 	$public_pages        = [ 'login', 'verify' ];
 
 	// /portal/set-password — auth required; accessible for both first-time

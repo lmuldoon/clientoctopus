@@ -10,6 +10,7 @@
 import PortalSidebar   from '../PortalSidebar';
 import PortalDashboard from '../PortalDashboard';
 import PortalProposals from '../PortalProposals';
+import PortalInvoices  from '../PortalInvoices';
 import PortalPayments  from '../PortalPayments';
 import PortalProjects  from '../PortalProjects';
 
@@ -51,6 +52,7 @@ export default function PortalApp( { page } ) {
 			<main className="cpa-main">
 				{ 'dashboard'  === page && <PortalDashboard /> }
 				{ 'proposals'  === page && <PortalProposals /> }
+				{ 'invoices'   === page && <PortalInvoices /> }
 				{ 'projects'   === page && <PortalProjects /> }
 				{ 'payments'   === page && <PortalPayments /> }
 			</main>
