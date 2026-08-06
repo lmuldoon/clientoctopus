@@ -1,10 +1,10 @@
 === Client Octopus ===
 Contributors: codievolt
-Tags: proposal, invoices, client portal, client management, crm
+Tags: proposal, invoices, client portal, client management, payments
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,12 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 
 Client Octopus is designed specifically for WordPress freelancers and agencies who want to manage proposals, invoices, and client delivery without relying on external SaaS platforms.
 
+= Why Client Octopus? =
+
+Most freelancers juggle 4–5 tools to run their client workflow — a proposal tool, an invoicing app, a payment link, and email threads to hold it all together. Client Octopus replaces all of them with a single WordPress plugin.
+
+Unlike Proposify, HoneyBook, or Dubsado, your data never leaves your own server. No monthly SaaS subscription for a platform you don't control. Everything lives inside the WordPress site you already own.
+
 == Installation ==
 
 1. Upload the `clientoctopus` folder to `/wp-content/plugins/`
@@ -87,6 +93,10 @@ Yes. AI requests are included with Pro and Agency plans.
 
 Yes. When a client accepts a proposal, they are prompted to type their full legal name and confirm a checkbox in a signing modal. The signed certificate is saved to the proposal record and visible in the admin.
 
+= How is this different from Proposify or HoneyBook? =
+
+Client Octopus is a self-hosted WordPress plugin, not a SaaS platform. Your proposals, invoices, and client data are stored in your own WordPress database. You pay once per year rather than a monthly SaaS fee, and there are no per-user charges or storage limits imposed by a third party.
+
 = Can I send invoices without a proposal? =
 
 Yes. Standalone invoices are available on all plans. Create an invoice, assign a client, add line items with VAT and discount options, and send it directly. Free plan clients pay via bank transfer; Pro plan clients get a "Pay Now" Stripe button on their invoice page.
@@ -98,6 +108,7 @@ Yes. Standalone invoices are available on all plans. Create an invoice, assign a
 3. Client Octopus proposal builder pricing setup
 4. Client Octopus project milestones and approvals
 5. Client Octopus client portal projects interface
+6. Client Octopus invoice
 
 == External Services ==
 
@@ -130,6 +141,14 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 - Privacy Policy: https://freemius.com/privacy/
 
 == Changelog ==
+
+= 1.1.1 =
+
+* New: Client portal Invoices tab — authenticated clients can view all their sent, paid, and overdue invoices with status badges, amounts, and a direct link to the invoice page.
+* New: Invoice payments in portal Payment History — paid invoices now appear in a dedicated Invoice Payments table alongside proposal payments.
+* Fix: Invoice status not updating after Stripe payment — the invoice success page now triggers the paid status write-through immediately on return from Stripe Checkout.
+* Fix: Invoice client name showing as "—" in the admin invoices list — the query now JOINs the clients table correctly.
+* Fix: Re-send option for sent and overdue invoices — invoices can now be re-sent without being restricted to draft status only.
 
 = 1.1.0 =
 

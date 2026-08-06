@@ -35,7 +35,7 @@ body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, san
 .inv-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
 .inv-totals-row { display: flex; gap: 40px; width: 260px; justify-content: space-between; font-size: 14px; }
 .inv-totals-label { color: #64748B; }
-.inv-totals-value { font-weight: 600; color: #0F172A; }
+.inv-totals-value { font-weight: 600; color: #0F172A; text-align: right; }
 .inv-total-final { border-top: 2px solid #E2E8F0; padding-top: 10px; margin-top: 4px; }
 .inv-total-final .inv-totals-label { font-size: 16px; font-weight: 700; color: #0F172A; }
 .inv-total-final .inv-totals-value { font-size: 20px; font-weight: 900; color: var(--brand, #6366F1); }
