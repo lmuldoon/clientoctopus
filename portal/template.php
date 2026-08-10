@@ -27,6 +27,8 @@ if ( ClientOctopus_Portal_Auth::is_authenticated() ) {
 $clientoctopus_business_name        = get_option( 'blogname', '' );
 $clientoctopus_business_logo        = get_option( 'clientoctopus_logo_url', '' );
 $clientoctopus_brand_color          = get_option( 'clientoctopus_brand_color', '#6366F1' );
+$clientoctopus_button_color         = get_option( 'clientoctopus_button_color', '' );
+$clientoctopus_login_bg_url         = get_option( 'clientoctopus_login_bg_url', '' );
 $clientoctopus_hide_business_name   = (bool) get_option( 'clientoctopus_hide_business_name', '' );
 
 // For the verify page, pass the raw token from the query string so the
@@ -74,6 +76,8 @@ wp_add_inline_script(
 		'businessName'       => $clientoctopus_business_name,
 		'businessLogo'       => $clientoctopus_business_logo,
 		'brandColor'         => $clientoctopus_brand_color,
+		'buttonColor'        => $clientoctopus_button_color,
+		'loginBackgroundUrl' => $clientoctopus_login_bg_url,
 		'hideBusinessName'   => $clientoctopus_hide_business_name,
 		'verifyToken'     => $clientoctopus_verify_token,
 		'pluginUrl'       => CLIENTOCTOPUS_URL,

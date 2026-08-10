@@ -5,8 +5,15 @@
  * background with a subtle light-to-dark gradient. Business logo sits above
  * the card. No split panel.
  *
+ * When `loginBackgroundUrl` is set, the shell renders that image (with a
+ * stronger dark scrim for legibility) instead of the flat brand colour, the
+ * card becomes a frosted glass panel, and the logo moves inside the card
+ * (floating over an arbitrary photo the way it floats over a flat colour
+ * doesn't read well). With no background image set, behaviour/appearance is
+ * unchanged from before this option existed.
+ *
  * Reads: window.coPortalData.businessName, .businessLogo, .brandColor,
- *        .hideBusinessName
+ *        .loginBackgroundUrl, .hideBusinessName
  */
 
 const { useState } = wp.element;
@@ -34,6 +41,9 @@ injectStyles( 'cpl-s', `
 	justify-content: center;
 	padding: 48px 20px;
 	position: relative;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
 }
 
 .cpl-shell::before {
@@ -42,6 +52,12 @@ injectStyles( 'cpl-s', `
 	inset: 0;
 	background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.20) 100%);
 	pointer-events: none;
+}
+
+/* Background-image mode needs a stronger scrim than a flat brand colour does,
+   so the card and logo stay legible regardless of the photo chosen. */
+.cpl-shell.cpl-shell--image::before {
+	background: linear-gradient(180deg, rgba(15,23,42,.45) 0%, rgba(15,23,42,.68) 100%);
 }
 
 /* ── Content wrapper (logo + card stacked) ──────────────── */
@@ -61,6 +77,12 @@ injectStyles( 'cpl-s', `
 	flex-direction: column;
 	align-items: center;
 	margin-bottom: 2rem;
+}
+
+/* Tighter spacing when the logo sits inside the card (background-image mode)
+   rather than floating above it. */
+.cpl-logo-above.cpl-logo-above--incard {
+	margin-bottom: 22px;
 }
 
 .cpl-logo-wrap {
@@ -116,6 +138,24 @@ injectStyles( 'cpl-s', `
 	box-shadow:
 		0 2px 4px rgba(26,26,46,.06),
 		0 16px 48px rgba(26,26,46,.18);
+}
+
+/* Frosted glass treatment when the card sits over a background image. */
+.cpl-card.cpl-card--glass {
+	background: rgba(255,255,255,.60);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid rgba(255,255,255,.5);
+	box-shadow:
+		0 2px 4px rgba(15,23,42,.1),
+		0 20px 56px rgba(15,23,42,.35);
+}
+
+/* The glass card is translucent, so text sitting on it needs to stay legible
+   regardless of what's behind it in the photo — darker than the flat-card
+   default for reliable contrast. */
+.cpl-card.cpl-card--glass .cpl-fine-print {
+	color: #4B5563;
 }
 
 /* ── Typography ─────────────────────────────────────────── */
@@ -185,8 +225,8 @@ injectStyles( 'cpl-s', `
 	width: 100%;
 	height: 52px;
 	margin-top: 20px;
-	background: #6366F1;
-	color: #fff;
+	background: var(--cpl-btn-bg, #6366F1);
+	color: var(--cpl-btn-text, #fff);
 	border: none;
 	border-radius: 10px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -194,15 +234,15 @@ injectStyles( 'cpl-s', `
 	font-weight: 600;
 	cursor: pointer;
 	transition: background .15s, transform .15s, box-shadow .15s;
-	box-shadow: 0 3px 12px rgba(99,102,241,.3);
+	box-shadow: 0 3px 12px var(--cpl-btn-shadow, rgba(99,102,241,.3));
 	letter-spacing: 0.01em;
 	animation: cpl-fade-up .5s ease .24s both;
 }
 
 .cpl-btn:hover:not(:disabled) {
-	background: #4F46E5;
+	background: var(--cpl-btn-hover, #4F46E5);
 	transform: translateY(-1px);
-	box-shadow: 0 5px 18px rgba(99,102,241,.4);
+	box-shadow: 0 5px 18px var(--cpl-btn-shadow-strong, rgba(99,102,241,.4));
 }
 
 .cpl-btn:disabled {
@@ -286,7 +326,7 @@ injectStyles( 'cpl-s', `
 	margin-top: 28px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
-	color: #C0C0C8;
+	color: #9CA3AF;
 	text-align: center;
 	line-height: 1.6;
 	animation: cpl-fade-up .5s ease .3s both;
@@ -317,9 +357,9 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-tab--active {
-	background: #6366F1;
-	color: #fff;
-	box-shadow: 0 2px 8px rgba(99,102,241,.3);
+	background: var(--cpl-btn-bg, #6366F1);
+	color: var(--cpl-btn-text, #fff);
+	box-shadow: 0 2px 8px var(--cpl-btn-shadow, rgba(99,102,241,.3));
 }
 
 .cpl-tab:not(.cpl-tab--active):hover { color: #6366F1; }
@@ -372,6 +412,7 @@ injectStyles( 'cpl-s', `
 	.cpl-heading { font-size: 26px; }
 	.cpl-logo-wrap { width: 60px; height: 60px; border-radius: 14px; }
 	.cpl-logo-initials { font-size: 22px; }
+	.cpl-logo-above.cpl-logo-above--incard { margin-bottom: 16px; }
 }
 ` );
 
@@ -398,10 +439,38 @@ function getContrastColor( hex ) {
 	return L > 0.35 ? '#1A1A2E' : '#ffffff';
 }
 
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 export default function PortalLogin() {
-	const { businessName, businessLogo, brandColor, hideBusinessName } = window.coPortalData || {};
+	const { businessName, businessLogo, brandColor, buttonColor, loginBackgroundUrl, hideBusinessName } = window.coPortalData || {};
 	const brandBg        = brandColor || '#6366F1';
 	const brandTextColor = getContrastColor( brandBg );
+	const hasBgImage      = !! loginBackgroundUrl;
+	const btnColors       = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars    = {
+		'--cpl-btn-bg': btnColors.bg,
+		'--cpl-btn-hover': btnColors.hover,
+		'--cpl-btn-text': btnColors.text,
+		'--cpl-btn-shadow': btnColors.shadow,
+		'--cpl-btn-shadow-strong': btnColors.shadowStrong,
+	};
 
 	const initials = ( businessName || 'CO' )
 		.split( ' ' )
@@ -470,26 +539,49 @@ export default function PortalLogin() {
 		}
 	}
 
+	// When a logo image isn't set, the badge falls back to the business's
+	// initials. In background-image mode that badge sits inside the light
+	// glass card rather than over the flat brand colour, so it needs its own
+	// solid brand-colour fill (via inline style) to stay meaningfully branded
+	// and legible against the card instead of the near-invisible translucent
+	// tile used in the flat-colour mode.
+	const logoBadgeStyle = ( ! businessLogo && hasBgImage )
+		? { background: brandBg, color: brandTextColor }
+		: undefined;
+
+	const logoBlock = (
+		<div className={ `cpl-logo-above${ hasBgImage ? ' cpl-logo-above--incard' : '' }` }>
+			<div
+				className={ `cpl-logo-wrap${ businessLogo ? ' cpl-logo-wrap--image' : '' }` }
+				style={ logoBadgeStyle }
+			>
+				{ businessLogo
+					? <img src={ businessLogo } alt={ businessName } />
+					: <span className="cpl-logo-initials">{ initials }</span>
+				}
+			</div>
+			{ businessName && ! hideBusinessName && (
+				<p className="cpl-brand-name" style={ { color: hasBgImage ? '#1A1A2E' : brandTextColor } }>{ businessName }</p>
+			) }
+		</div>
+	);
+
 	return (
-		<div className="cpl-shell" style={ { background: brandBg } }>
+		<div
+			className={ `cpl-shell${ hasBgImage ? ' cpl-shell--image' : '' }` }
+			style={ hasBgImage ? { backgroundImage: `url(${ loginBackgroundUrl })` } : { background: brandBg } }
+		>
 
 			<div className="cpl-login-wrap">
 
-				{ /* Logo above card */ }
-				<div className="cpl-logo-above">
-					<div className={ `cpl-logo-wrap${ businessLogo ? ' cpl-logo-wrap--image' : '' }` }>
-						{ businessLogo
-							? <img src={ businessLogo } alt={ businessName } />
-							: <span className="cpl-logo-initials">{ initials }</span>
-						}
-					</div>
-					{ businessName && ! hideBusinessName && (
-						<p className="cpl-brand-name" style={ { color: brandTextColor } }>{ businessName }</p>
-					) }
-				</div>
+				{ /* Logo above card (flat-colour mode only — see cpl-card for image mode) */ }
+				{ ! hasBgImage && logoBlock }
 
 				{ /* Login card */ }
-				<div className="cpl-card">
+				<div className={ `cpl-card${ hasBgImage ? ' cpl-card--glass' : '' }` } style={ btnStyleVars }>
+
+					{ /* Logo inside card (background-image mode only) */ }
+					{ hasBgImage && logoBlock }
 
 					<h1 className="cpl-heading">Welcome back</h1>
 					<p className="cpl-sub" style={ { marginBottom: 20 } }>

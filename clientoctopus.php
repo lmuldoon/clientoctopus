@@ -3,7 +3,7 @@
  * Plugin Name: Client Octopus
  * Plugin URI:  https://clientoctopus.com
  * Description: All-in-one client workflow management for WordPress — proposals, invoices, payments, projects, and client portals.
- * Version:     1.1.1
+ * Version:     1.1.2
  * Author:      codievolt
  * Author URI:  https://codievolt.com
  * License:     GPL-2.0-or-later
@@ -202,7 +202,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '1.1.1' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.1.2' );
 define( 'CLIENTOCTOPUS_DB_VERSION',     '18' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '4' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
@@ -325,6 +325,36 @@ function clientoctopus_accessible_text_color( string $hex ): string {
 	};
 	$luminance = 0.2126 * $linearise( $r ) + 0.7152 * $linearise( $g ) + 0.0722 * $linearise( $b );
 	return $luminance > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+/**
+ * Return $hex as-is if it's dark enough to read as TEXT on a white background,
+ * otherwise return $fallback.
+ *
+ * Uses relative luminance (WCAG 2.1) with a threshold of 0.55 — looser than
+ * clientoctopus_accessible_text_color()'s 0.35 since this is checking a colour
+ * against a fixed white background, not picking between black/white.
+ *
+ * @param string $hex      Hex color with or without leading #. Three- or six-digit.
+ * @param string $fallback Hex color to use when $hex is too light to read.
+ * @return string
+ */
+function clientoctopus_readable_on_white( string $hex, string $fallback ): string {
+	$clean = ltrim( $hex, '#' );
+	if ( 3 === strlen( $clean ) ) {
+		$clean = $clean[0] . $clean[0] . $clean[1] . $clean[1] . $clean[2] . $clean[2];
+	}
+	if ( 6 !== strlen( $clean ) ) {
+		return $fallback;
+	}
+	$r = hexdec( substr( $clean, 0, 2 ) ) / 255;
+	$g = hexdec( substr( $clean, 2, 2 ) ) / 255;
+	$b = hexdec( substr( $clean, 4, 2 ) ) / 255;
+	$linearise = static function ( float $c ): float {
+		return $c <= 0.04045 ? $c / 12.92 : ( ( $c + 0.055 ) / 1.055 ) ** 2.4;
+	};
+	$luminance = 0.2126 * $linearise( $r ) + 0.7152 * $linearise( $g ) + 0.0722 * $linearise( $b );
+	return $luminance > 0.55 ? $fallback : $hex;
 }
 
 /**
@@ -1457,6 +1487,7 @@ final class ClientOctopus {
 		//@end:fs_premium_only
 
 		} elseif ( str_contains( $hook, 'clientoctopus-settings' ) ) {
+			wp_enqueue_media();
 			wp_enqueue_style( 'co-settings', $admin_css . 'settings.css', [], CLIENTOCTOPUS_VERSION );
 			wp_enqueue_script( 'co-settings', $admin_js . 'settings.js', [], CLIENTOCTOPUS_VERSION, true );
 

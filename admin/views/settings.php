@@ -32,7 +32,9 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'
 			'clientoctopus_from_name'     => 'sanitize_text_field',
 			'clientoctopus_from_email'    => 'sanitize_email',
 			'clientoctopus_brand_color'   => 'sanitize_hex_color',
+			'clientoctopus_button_color'  => 'sanitize_hex_color',
 			'clientoctopus_logo_url'      => 'esc_url_raw',
+			'clientoctopus_login_bg_url'  => 'esc_url_raw',
 		];
 
 		update_option( 'clientoctopus_hide_business_name', ! empty( $_POST['clientoctopus_hide_business_name'] ) ? '1' : '' );
@@ -107,7 +109,9 @@ $show_powered_by      = get_option( 'clientoctopus_show_powered_by',    '' );
 $from_name            = get_option( 'clientoctopus_from_name', '' );
 $from_email    = get_option( 'clientoctopus_from_email', '' );
 $brand_color   = get_option( 'clientoctopus_brand_color', '#6366f1' );
+$button_color  = get_option( 'clientoctopus_button_color', '' );
 $logo_url      = get_option( 'clientoctopus_logo_url', '' );
+$login_bg_url  = get_option( 'clientoctopus_login_bg_url', '' );
 
 $testimonial_enabled    = get_option( 'clientoctopus_testimonial_enabled', '' );
 $testimonial_body       = get_option( 'clientoctopus_testimonial_body', '' );
@@ -283,6 +287,39 @@ if ( class_exists( 'ClientOctopus_Automations' ) ) {
 				</div>
 
 				<div class="co-field">
+					<label class="co-label" for="co-button-color-hex">
+						<?php esc_html_e( 'Portal Button Colour', 'clientoctopus' ); ?>
+					</label>
+					<input
+						type="hidden"
+						id="co-button-color-value"
+						name="clientoctopus_button_color"
+						value="<?php echo esc_attr( $button_color ); ?>"
+					>
+					<div class="co-color-row">
+						<input
+							type="color"
+							id="co-button-color-picker"
+							value="<?php echo esc_attr( $button_color ?: $brand_color ); ?>"
+						>
+						<input
+							type="text"
+							id="co-button-color-hex"
+							class="co-input"
+							value="<?php echo esc_attr( $button_color ); ?>"
+							placeholder="<?php echo esc_attr( $brand_color ); ?> (brand colour)"
+							maxlength="7"
+							spellcheck="false"
+							autocomplete="off"
+						>
+						<button type="button" class="co-btn-text" id="co-button-color-clear" style="<?php echo esc_attr( $button_color ? '' : 'display:none;' ); ?>">
+							<?php esc_html_e( 'Use brand colour', 'clientoctopus' ); ?>
+						</button>
+					</div>
+					<p class="co-help"><?php esc_html_e( 'Optional. Leave blank to use your Brand Colour for portal buttons. Set this if your brand colour doesn\'t work well as a solid button fill — button text colour is chosen automatically for contrast.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<div class="co-field">
 					<label class="co-label" for="co-logo-url-input">
 						<?php esc_html_e( 'Logo URL', 'clientoctopus' ); ?>
 					</label>
@@ -301,6 +338,31 @@ if ( class_exists( 'ClientOctopus_Automations' ) ) {
 						<img id="co-logo-preview" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Logo preview', 'clientoctopus' ); ?>">
 					</div>
 					<p class="co-help"><?php esc_html_e( 'Displayed in proposal headers and portal. Use PNG or JPG — SVG files are not supported by email clients and will not appear in sent proposal emails. Max 180×48px recommended.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-login-bg-url-input">
+						<?php esc_html_e( 'Login Background Image', 'clientoctopus' ); ?>
+					</label>
+					<input
+						type="hidden"
+						id="co-login-bg-url-input"
+						name="clientoctopus_login_bg_url"
+						value="<?php echo esc_attr( $login_bg_url ); ?>"
+					>
+					<div class="co-media-picker-row">
+						<button type="button" class="co-btn-secondary" id="co-login-bg-select-btn">
+							<?php echo $login_bg_url ? esc_html__( 'Change Image', 'clientoctopus' ) : esc_html__( 'Select Image', 'clientoctopus' ); ?>
+						</button>
+						<button type="button" class="co-btn-text" id="co-login-bg-remove-btn" style="<?php echo esc_attr( $login_bg_url ? '' : 'display:none;' ); ?>">
+							<?php esc_html_e( 'Remove', 'clientoctopus' ); ?>
+						</button>
+					</div>
+					<div class="co-logo-preview-wrap" id="co-login-bg-preview-wrap" style="<?php echo esc_attr( $login_bg_url ? '' : 'display:none;' ); ?>">
+						<span class="co-logo-preview-label"><?php esc_html_e( 'Preview', 'clientoctopus' ); ?></span>
+						<img id="co-login-bg-preview" src="<?php echo esc_url( $login_bg_url ); ?>" alt="<?php esc_attr_e( 'Login background preview', 'clientoctopus' ); ?>" class="co-login-bg-preview-img">
+					</div>
+					<p class="co-help"><?php esc_html_e( 'Optional. When set, the portal login screen uses this image as a full-bleed background with a frosted glass login card, instead of your solid brand colour. At least 1920×1080px, landscape recommended.', 'clientoctopus' ); ?></p>
 				</div>
 			</div>
 

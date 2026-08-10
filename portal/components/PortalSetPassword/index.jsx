@@ -202,8 +202,8 @@ injectStyles( 'cpsp-s', `
 	width: 100%;
 	height: 52px;
 	margin-top: 8px;
-	background: #6366F1;
-	color: #fff;
+	background: var(--cpsp-btn-bg, #6366F1);
+	color: var(--cpsp-btn-text, #fff);
 	border: none;
 	border-radius: 10px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -211,14 +211,14 @@ injectStyles( 'cpsp-s', `
 	font-weight: 600;
 	cursor: pointer;
 	transition: background .15s, transform .15s, box-shadow .15s;
-	box-shadow: 0 3px 12px rgba(99,102,241,.3);
+	box-shadow: 0 3px 12px var(--cpsp-btn-shadow, rgba(99,102,241,.3));
 	letter-spacing: 0.01em;
 }
 
 .cpsp-btn:hover:not(:disabled) {
-	background: #4F46E5;
+	background: var(--cpsp-btn-hover, #4F46E5);
 	transform: translateY(-1px);
-	box-shadow: 0 5px 18px rgba(99,102,241,.4);
+	box-shadow: 0 5px 18px var(--cpsp-btn-shadow-strong, rgba(99,102,241,.4));
 }
 
 .cpsp-btn:disabled {
@@ -271,6 +271,35 @@ const EyeIcon = ( { open } ) => open ? (
 	</svg>
 );
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 const CheckIcon = () => (
 	<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
 		<polyline points="20 6 9 17 4 12"/>
@@ -279,6 +308,15 @@ const CheckIcon = () => (
 
 export default function PortalSetPassword() {
 	const isChange = !! ( window.coPortalData || {} ).hasPassword;
+	const { brandColor, buttonColor } = window.coPortalData || {};
+	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars = {
+		'--cpsp-btn-bg': btnColors.bg,
+		'--cpsp-btn-hover': btnColors.hover,
+		'--cpsp-btn-text': btnColors.text,
+		'--cpsp-btn-shadow': btnColors.shadow,
+		'--cpsp-btn-shadow-strong': btnColors.shadowStrong,
+	};
 
 	const [ password,       setPassword      ] = useState( '' );
 	const [ confirm,        setConfirm       ] = useState( '' );
@@ -377,7 +415,7 @@ export default function PortalSetPassword() {
 
 	return (
 		<div className="cpsp-page">
-			<div className="cpsp-card">
+			<div className="cpsp-card" style={ btnStyleVars }>
 				<div className="cpsp-icon">
 					<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
 						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>

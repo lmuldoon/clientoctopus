@@ -408,12 +408,14 @@ export default function PortalPayments() {
 							) : invoicePayments.map( inv => (
 								<tr
 									key={ inv.id }
-									onClick={ () => { window.location.href = `/invoices/${ inv.token }`; } }
+									onClick={ () => { window.open( `/invoices/${ inv.token }`, '_blank', 'noopener,noreferrer' ); } }
 								>
 									<td>
 										<a
 											className="cppm-prop-link"
 											href={ `/invoices/${ inv.token }` }
+											target="_blank"
+											rel="noopener noreferrer"
 											onClick={ e => e.stopPropagation() }
 										>
 											<span style={{ fontFamily: "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: 12, color: '#9CA3AF', display: 'block' }}>

@@ -45,8 +45,8 @@ injectStyles( 'cprc-s', `
 	align-items: center;
 	gap: 7px;
 	padding: 10px 20px;
-	background: #6366F1;
-	color: #fff;
+	background: var(--cprc-btn-bg, #6366F1);
+	color: var(--cprc-btn-text, #fff);
 	border: none;
 	border-radius: 8px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -55,7 +55,7 @@ injectStyles( 'cprc-s', `
 	cursor: pointer;
 	transition: background .15s;
 }
-.cprc-print-btn:hover { background: #4F46E5; }
+.cprc-print-btn:hover { background: var(--cprc-btn-hover, #4F46E5); }
 
 .cprc-card {
 	background: #fff;
@@ -75,9 +75,9 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-logo {
-	height: 36px;
+	max-height: 36px;
 	width: auto;
-	object-fit: contain;
+	display:block;
 }
 
 .cprc-biz-name {
@@ -95,6 +95,7 @@ injectStyles( 'cprc-s', `
 	font-weight: 700;
 	color: #fff;
 	letter-spacing: -0.01em;
+	margin: 0;
 }
 
 /* ── Meta row ────────────────────────────────────────── */
@@ -130,25 +131,50 @@ injectStyles( 'cprc-s', `
 	margin: 0;
 }
 
-/* ── Line items ──────────────────────────────────────── */
+/* ── Line items (styled to match the proposal's pricing table) ── */
 .cprc-items {
 	padding: 32px 44px;
 	border-bottom: 1px solid #F3F4F6;
 }
 
+.cprc-items-table {
+	border: 1.5px solid #EAECEF;
+	border-radius: 12px;
+	overflow: hidden;
+}
+
+.cprc-items-thead {
+	display: grid;
+	grid-template-columns: 1fr 130px;
+	gap: 8px;
+	padding: 13px 20px;
+	background: #F8F7F5;
+	border-bottom: 1.5px solid #EAECEF;
+}
+.cprc-items-th {
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+	font-size: 10px;
+	font-weight: 800;
+	color: #9CA3AF;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+.cprc-items-th--r { text-align: right; }
+
 .cprc-item-row {
-	display: flex;
-	justify-content: space-between;
-	align-items: baseline;
-	padding: 12px 0;
+	display: grid;
+	grid-template-columns: 1fr 130px;
+	gap: 8px;
+	align-items: center;
+	padding: 13px 20px;
+	border-bottom: 1px solid #F3F4F6;
 }
-.cprc-item-row + .cprc-item-row {
-	border-top: 1px solid #F3F4F6;
-}
+.cprc-item-row:last-child { border-bottom: none; }
+.cprc-item-row:nth-child(even) { background: #FAFAFA; }
 
 .cprc-item-name {
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
-	font-size: 15px;
+	font-size: 14px;
 	color: #1A1A2E;
 	font-weight: 500;
 }
@@ -162,11 +188,11 @@ injectStyles( 'cprc-s', `
 
 .cprc-item-amount {
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
-	font-size: 15px;
+	font-size: 13.5px;
 	color: #1A1A2E;
-	font-weight: 400;
+	font-weight: 600;
 	white-space: nowrap;
-	margin-left: 24px;
+	text-align: right;
 }
 
 /* ── Total ───────────────────────────────────────────── */
@@ -192,7 +218,7 @@ injectStyles( 'cprc-s', `
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 26px;
 	color: #059669;
-	font-weight: 400;
+	font-weight: 700;
 }
 
 /* ── Payment details ─────────────────────────────────── */
@@ -284,6 +310,25 @@ function getContrastColor( hex ) {
 	return L > 0.35 ? '#1A1A2E' : '#ffffff';
 }
 
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 export default function PortalReceipt() {
 	const [ state,   setState   ] = useState( 'loading' ); // 'loading' | 'loaded' | 'error'
 	const [ data,    setData    ] = useState( null );
@@ -328,9 +373,17 @@ export default function PortalReceipt() {
 	const receiptNum = pad( payment.id );
 	const paidDate   = formatDate( payment.completed_at || payment.created_at );
 
+	const buttonColor = window.coPortalData?.buttonColor;
+	const btnColors = getBrandButtonColors( buttonColor || brand_color || '#6366F1' );
+	const btnStyleVars = {
+		'--cprc-btn-bg': btnColors.bg,
+		'--cprc-btn-hover': btnColors.hover,
+		'--cprc-btn-text': btnColors.text,
+	};
+
 	return (
 		<div className="cprc-page">
-			<div className="cprc-print-btn-wrap">
+			<div className="cprc-print-btn-wrap" style={ btnStyleVars }>
 				<button className="cprc-print-btn" onClick={ () => window.print() }>
 					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
 						<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
@@ -374,14 +427,20 @@ export default function PortalReceipt() {
 
 				{ /* Line item */ }
 				<div className="cprc-items">
-					<div className="cprc-item-row">
-						<div>
-							<p className="cprc-item-name">{ payment.proposal_title || 'Proposal' }</p>
-							<p className="cprc-item-type">{ payment_type }</p>
+					<div className="cprc-items-table">
+						<div className="cprc-items-thead">
+							<span className="cprc-items-th">Description</span>
+							<span className="cprc-items-th cprc-items-th--r">Amount</span>
 						</div>
-						<p className="cprc-item-amount">
-							{ fmt( payment.amount, payment.currency || 'GBP' ) }
-						</p>
+						<div className="cprc-item-row">
+							<div>
+								<p className="cprc-item-name">{ payment.proposal_title || 'Proposal' }</p>
+								<p className="cprc-item-type">{ payment_type }</p>
+							</div>
+							<p className="cprc-item-amount">
+								{ fmt( payment.amount, payment.currency || 'GBP' ) }
+							</p>
+						</div>
 					</div>
 				</div>
 

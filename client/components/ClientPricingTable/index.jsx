@@ -20,6 +20,18 @@ const injectStyles = ( id, css ) => {
 	document.head.appendChild( s );
 };
 
+// For using an arbitrary brand colour as TEXT on a fixed white background —
+// falls back to a safe default when the brand colour is too light to read.
+function getReadableOnWhite( hex, fallback ) {
+	const c = ( hex || fallback ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.55 ? fallback : ( '#' + c );
+}
+
 const CSS = `
 .cfp-wrap {
 	margin: 40px 0 88px;
@@ -124,6 +136,7 @@ const CSS = `
 .cfp-total-val {
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
+	font-weight: 600;
 	color: #374151;
 }
 
@@ -190,6 +203,9 @@ export default function ClientPricingTable( { items = [], discountPct = 0, vatPc
 
 	if ( ! items.length ) return null;
 
+	const brandColor  = window.clientoctopusClientData?.brandColor;
+	const grandValColor = getReadableOnWhite( brandColor, '#6366F1' );
+
 	const subtotal     = items.reduce( ( s, i ) => s + ( i.qty || 0 ) * ( i.unit_price || 0 ), 0 );
 	const discountAmt  = subtotal * ( discountPct / 100 );
 	const afterDisc    = subtotal - discountAmt;
@@ -241,7 +257,7 @@ export default function ClientPricingTable( { items = [], discountPct = 0, vatPc
 
 					<div className="cfp-grand">
 						<span className="cfp-grand-lbl">Total Due</span>
-						<span className="cfp-grand-val">{ fmt( grandTotal, currency ) }</span>
+						<span className="cfp-grand-val" style={ { color: grandValColor } }>{ fmt( grandTotal, currency ) }</span>
 					</div>
 				</div>
 			</div>

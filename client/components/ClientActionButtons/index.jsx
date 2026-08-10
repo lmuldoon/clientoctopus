@@ -24,6 +24,35 @@ const injectStyles = ( id, css ) => {
 	document.head.appendChild( s );
 };
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 const CSS = `
 /* ── Footer bar ─────────────────────────────────────────────── */
 .cfa-bar {
@@ -97,13 +126,13 @@ const CSS = `
 
 /* Accept: indigo fill */
 .cfa-btn--accept {
-	background: #6366F1;
-	color: #fff;
-	box-shadow: 0 2px 10px rgba(99,102,241,.35);
+	background: var(--cfa-btn-bg, #6366F1);
+	color: var(--cfa-btn-text, #fff);
+	box-shadow: 0 2px 10px var(--cfa-btn-shadow, rgba(99,102,241,.35));
 }
 .cfa-btn--accept:hover:not(:disabled) {
-	background: #4F46E5;
-	box-shadow: 0 4px 18px rgba(99,102,241,.45);
+	background: var(--cfa-btn-hover, #4F46E5);
+	box-shadow: 0 4px 18px var(--cfa-btn-shadow-strong, rgba(99,102,241,.45));
 	transform: translateY(-1px);
 }
 
@@ -494,6 +523,17 @@ function RevisionModal( { onConfirm, onCancel } ) {
 export default function ClientActionButtons( { status, paymentEnabled, hasPaid, remainingBalance, ownerEmail, onAccept, onDecline, onRequestChange, onPayment, loading } ) {
 	injectStyles( 'co-actions-s', CSS );
 
+	const { brandColor, buttonColor } = window.clientoctopusClientData || {};
+	const btnColor = buttonColor || brandColor || '#6366F1';
+	const btnColors = getBrandButtonColors( btnColor );
+	const btnStyleVars = {
+		'--cfa-btn-bg': btnColors.bg,
+		'--cfa-btn-hover': btnColors.hover,
+		'--cfa-btn-text': btnColors.text,
+		'--cfa-btn-shadow': btnColors.shadow,
+		'--cfa-btn-shadow-strong': btnColors.shadowStrong,
+	};
+
 	const [ showModal, setShowModal ] = useState( false );
 	const [ showRevisionModal, setShowRevisionModal ] = useState( false );
 
@@ -516,7 +556,7 @@ export default function ClientActionButtons( { status, paymentEnabled, hasPaid, 
 	// Terminal non-payment state — minimal bar
 	if ( ! ACTIONABLE.includes( status ) && ! showPaymentButton ) {
 		return (
-			<div className="cfa-bar">
+			<div className="cfa-bar" style={ btnStyleVars }>
 				<a href={ `mailto:${ ownerEmail || '' }` } className="cfa-contact">Questions? Contact us</a>
 				<div className="cfa-buttons">
 					{ status === 'accepted' && (
@@ -578,7 +618,7 @@ export default function ClientActionButtons( { status, paymentEnabled, hasPaid, 
 				/>
 			) }
 
-			<div className="cfa-bar">
+			<div className="cfa-bar" style={ btnStyleVars }>
 				<a href={ `mailto:${ ownerEmail || '' }` } className="cfa-contact">Questions? Contact us</a>
 
 				<div className="cfa-buttons">

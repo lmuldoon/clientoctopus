@@ -55,6 +55,7 @@ if ( ! $clientoctopus_is_preview && ! empty( $clientoctopus_payment_result ) && 
 $clientoctopus_business_name        = get_bloginfo( 'name' );
 $clientoctopus_business_logo        = esc_url( get_option( 'clientoctopus_logo_url', '' ) );
 $clientoctopus_brand_color          = sanitize_hex_color( get_option( 'clientoctopus_brand_color', '#6366F1' ) ) ?: '#6366F1';
+$clientoctopus_button_color         = sanitize_hex_color( get_option( 'clientoctopus_button_color', '' ) ) ?: '';
 $clientoctopus_hide_business_name   = (bool) get_option( 'clientoctopus_hide_business_name', '' );
 
 // ── Asset URLs ────────────────────────────────────────────────────────────────
@@ -126,6 +127,7 @@ wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fon
 			'businessLogo'    => $clientoctopus_business_logo,
 			'hideBusinessName' => $clientoctopus_hide_business_name,
 			'brandColor'      => $clientoctopus_brand_color,
+			'buttonColor'     => $clientoctopus_button_color,
 			'nonce'           => wp_create_nonce( 'wp_rest' ),
 			'pageType'        => $clientoctopus_is_preview ? 'preview' : ( $clientoctopus_payment_result ?: 'proposal' ),
 			'sessionId'       => $clientoctopus_session_id,

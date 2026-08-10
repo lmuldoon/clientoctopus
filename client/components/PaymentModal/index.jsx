@@ -20,6 +20,35 @@ const injectStyles = ( id, css ) => {
 	document.head.appendChild( s );
 };
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 injectStyles( 'co-payment-modal-s', `
 /* ── Overlay ───────────────────────────────────────────── */
 .cfpm-overlay {
@@ -188,8 +217,8 @@ injectStyles( 'co-payment-modal-s', `
 	align-items: center;
 	gap: 8px;
 	padding: 11px 24px;
-	background: #6366F1;
-	color: #fff;
+	background: var(--cfpm-btn-bg, #6366F1);
+	color: var(--cfpm-btn-text, #fff);
 	border: none;
 	border-radius: 9px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -198,7 +227,7 @@ injectStyles( 'co-payment-modal-s', `
 	cursor: pointer;
 	transition: background .15s;
 }
-.cfpm-retry:hover { background: #4F46E5; }
+.cfpm-retry:hover { background: var(--cfpm-btn-hover, #4F46E5); }
 
 /* ── Mobile ─────────────────────────────────────────────── */
 @media (max-width: 480px) {
@@ -216,6 +245,14 @@ function fmt( amount, currency ) {
 export default function PaymentModal( { proposal, onClose } ) {
 	const [ phase,    setPhase    ] = useState( 'loading' ); // 'loading' | 'error'
 	const [ errorMsg, setErrorMsg ] = useState( '' );
+
+	const { brandColor, buttonColor } = window.clientoctopusClientData || {};
+	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars = {
+		'--cfpm-btn-bg': btnColors.bg,
+		'--cfpm-btn-hover': btnColors.hover,
+		'--cfpm-btn-text': btnColors.text,
+	};
 
 	const createSession = async () => {
 		setPhase( 'loading' );
@@ -254,7 +291,7 @@ export default function PaymentModal( { proposal, onClose } ) {
 			aria-label="Payment"
 			onClick={ ( e ) => e.target === e.currentTarget && onClose() }
 		>
-			<div className="cfpm-card">
+			<div className="cfpm-card" style={ btnStyleVars }>
 				<button className="cfpm-close" onClick={ onClose } aria-label="Close">×</button>
 
 				{ /* ── Lock icon ─────────────────────────────────────── */ }

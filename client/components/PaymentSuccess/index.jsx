@@ -18,6 +18,35 @@ const injectStyles = ( id, css ) => {
 	document.head.appendChild( s );
 };
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 /* Inject fonts if ProposalClientView hasn't already (standalone success page). */
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
@@ -278,8 +307,8 @@ injectStyles( 'co-pay-success-s', `
 	justify-content: center;
 	gap: 7px;
 	padding: 13px 20px;
-	background: #6366F1;
-	color: #fff;
+	background: var(--cfps-btn-bg, #6366F1);
+	color: var(--cfps-btn-text, #fff);
 	border-radius: 10px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
@@ -287,7 +316,7 @@ injectStyles( 'co-pay-success-s', `
 	text-decoration: none;
 	transition: background .15s, transform .12s;
 }
-.cfps-portal-btn:hover { background: #4F46E5; transform: translateY(-1px); }
+.cfps-portal-btn:hover { background: var(--cfps-btn-hover, #4F46E5); transform: translateY(-1px); }
 
 .cfps-secondary-actions {
 	display: flex;
@@ -364,7 +393,13 @@ const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/client
 
 export default function PaymentSuccess( { token, sessionId } ) {
 	const [ payment, setPayment ] = useState( null );
-	const { businessName = '', clientEmail = '' } = window.clientoctopusClientData || {};
+	const { businessName = '', clientEmail = '', brandColor, buttonColor } = window.clientoctopusClientData || {};
+	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars = {
+		'--cfps-btn-bg': btnColors.bg,
+		'--cfps-btn-hover': btnColors.hover,
+		'--cfps-btn-text': btnColors.text,
+	};
 
 	// Poll payment status so we can show the confirmed amount.
 	useEffect( () => {
@@ -400,7 +435,7 @@ export default function PaymentSuccess( { token, sessionId } ) {
 				) ) }
 			</div>
 
-			<div className="cfps-card">
+			<div className="cfps-card" style={ btnStyleVars }>
 				{ /* Animated checkmark */ }
 				<div className="cfps-check-wrap">
 					<svg viewBox="0 0 100 100" fill="none">

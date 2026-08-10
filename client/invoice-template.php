@@ -79,6 +79,10 @@ $clientoctopus_inv = $clientoctopus_invoice;
 $clientoctopus_business_name  = get_option( 'clientoctopus_business_name', get_bloginfo( 'name' ) );
 $clientoctopus_business_logo  = esc_url( get_option( 'clientoctopus_logo_url', '' ) );
 $clientoctopus_brand_color    = sanitize_hex_color( get_option( 'clientoctopus_brand_color', '#6366F1' ) ) ?: '#6366F1';
+$clientoctopus_button_color   = sanitize_hex_color( get_option( 'clientoctopus_button_color', '' ) ) ?: $clientoctopus_brand_color;
+$clientoctopus_button_text    = clientoctopus_accessible_text_color( $clientoctopus_button_color );
+$clientoctopus_header_text    = clientoctopus_accessible_text_color( $clientoctopus_brand_color );
+$clientoctopus_total_color    = clientoctopus_readable_on_white( $clientoctopus_brand_color, '#6366F1' );
 
 // ── Client details ────────────────────────────────────────────────────────────
 $clientoctopus_client_name    = '';
@@ -124,8 +128,11 @@ $clientoctopus_sym = $clientoctopus_currency_symbols[ $clientoctopus_inv['curren
 // ── Enqueue styles (must happen before HTML output) ───────────────────────────
 wp_enqueue_style( 'co-inv-client', CLIENTOCTOPUS_URL . 'client/invoice.css', [], CLIENTOCTOPUS_VERSION );
 wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fonts.css', [], CLIENTOCTOPUS_VERSION );
-// Brand colour custom property — uses a PHP value so cannot live in the static CSS file.
-wp_add_inline_style( 'co-inv-client', ':root { --brand: ' . esc_attr( $clientoctopus_brand_color ) . '; }' );
+// Brand/button/header colour custom properties — use PHP values so cannot live in the static CSS file.
+// --brand: the tenant's identity colour (logo text). --btn-brand/--btn-brand-text: the
+// (optionally overridden) button colour, with an auto-computed contrast-safe text colour.
+// --header-bg/--header-text: the invoice header band colour and its auto-computed contrast-safe text colour.
+wp_add_inline_style( 'co-inv-client', ':root { --brand: ' . esc_attr( $clientoctopus_brand_color ) . '; --btn-brand: ' . esc_attr( $clientoctopus_button_color ) . '; --btn-brand-text: ' . esc_attr( $clientoctopus_button_text ) . '; --header-bg: ' . esc_attr( $clientoctopus_brand_color ) . '; --header-text: ' . esc_attr( $clientoctopus_header_text ) . '; }' );
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo esc_attr( get_bloginfo( 'language' ) ); ?>">
@@ -157,15 +164,25 @@ if ( 'success' === $clientoctopus_payment_result ) {
 }
 ?>
 
-	<div class="inv-header-bar">
-		<?php if ( $clientoctopus_business_logo ) : ?>
-			<div class="inv-logo"><img src="<?php echo esc_url( $clientoctopus_business_logo ); ?>" alt="<?php echo esc_attr( $clientoctopus_business_name ); ?>"></div>
-		<?php else : ?>
-			<div class="inv-logo-text"><?php echo esc_html( $clientoctopus_business_name ); ?></div>
-		<?php endif; ?>
+	<div class="inv-print-btn-wrap">
+		<button type="button" class="inv-print-btn" onclick="window.print()">
+			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+			</svg>
+			<?php esc_html_e( 'Print / Save as PDF', 'clientoctopus' ); ?>
+		</button>
 	</div>
 
 	<div class="inv-card">
+		<div class="inv-header">
+			<?php if ( $clientoctopus_business_logo ) : ?>
+				<div class="inv-logo"><img src="<?php echo esc_url( $clientoctopus_business_logo ); ?>" alt="<?php echo esc_attr( $clientoctopus_business_name ); ?>"></div>
+			<?php else : ?>
+				<div class="inv-logo-text"><?php echo esc_html( $clientoctopus_business_name ); ?></div>
+			<?php endif; ?>
+			<p class="inv-header-label"><?php esc_html_e( 'Invoice', 'clientoctopus' ); ?></p>
+		</div>
+
 		<div class="inv-title-row">
 			<div>
 				<div class="inv-ref"><?php echo esc_html( $clientoctopus_inv['invoice_ref'] ); ?></div>
@@ -262,52 +279,52 @@ if ( 'success' === $clientoctopus_payment_result ) {
 		?>
 
 		<?php if ( ! empty( $line_items ) ) : ?>
-		<table class="inv-items-table">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Description', 'clientoctopus' ); ?></th>
-					<th style="text-align:right;"><?php esc_html_e( 'Amount', 'clientoctopus' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
+		<div class="inv-items">
+			<div class="inv-items-table">
+				<div class="inv-items-thead">
+					<span class="inv-items-th"><?php esc_html_e( 'Description', 'clientoctopus' ); ?></span>
+					<span class="inv-items-th inv-items-th--r"><?php esc_html_e( 'Amount', 'clientoctopus' ); ?></span>
+				</div>
 				<?php foreach ( $line_items as $item ) : ?>
-				<tr>
-					<td><?php echo esc_html( $item['description'] ?? '' ); ?></td>
-					<td><?php echo esc_html( $sym . number_format( (float) ( $item['amount'] ?? 0 ), 2 ) ); ?></td>
-				</tr>
+				<div class="inv-item-row">
+					<span class="inv-item-desc"><?php echo esc_html( $item['description'] ?? '' ); ?></span>
+					<span class="inv-item-amount"><?php echo esc_html( $sym . number_format( (float) ( $item['amount'] ?? 0 ), 2 ) ); ?></span>
+				</div>
 				<?php endforeach; ?>
-			</tbody>
-		</table>
+			</div>
+		</div>
 		<?php endif; ?>
 
 		<div class="inv-totals">
-			<div class="inv-totals-row">
-				<span class="inv-totals-label"><?php esc_html_e( 'Subtotal', 'clientoctopus' ); ?></span>
-				<span class="inv-totals-value"><?php echo esc_html( $sym . number_format( $subtotal, 2 ) ); ?></span>
-			</div>
-			<?php if ( $discount_value > 0 ) : ?>
-			<div class="inv-totals-row">
-				<span class="inv-totals-label"><?php esc_html_e( 'Discount', 'clientoctopus' ); ?></span>
-				<span class="inv-totals-value" style="color:#0F9D6E;">&minus;<?php echo esc_html( $sym . number_format( $disc_amt, 2 ) ); ?></span>
-			</div>
-			<?php endif; ?>
-			<?php if ( $vat_pct > 0 ) : ?>
-			<div class="inv-totals-row">
-				<span class="inv-totals-label">
-					<?php
-					printf(
-						/* translators: %s: VAT percentage */
-						esc_html__( 'VAT (%s%%)', 'clientoctopus' ),
-						esc_html( number_format( $vat_pct, 0 ) )
-					);
-					?>
-				</span>
-				<span class="inv-totals-value"><?php echo esc_html( $sym . number_format( $vat_amt, 2 ) ); ?></span>
-			</div>
-			<?php endif; ?>
-			<div class="inv-totals-row inv-total-final">
-				<span class="inv-totals-label"><?php esc_html_e( 'Total Due', 'clientoctopus' ); ?></span>
-				<span class="inv-totals-value"><?php echo esc_html( $sym . number_format( $total, 2 ) . ' ' . esc_html( $clientoctopus_inv['currency'] ) ); ?></span>
+			<div class="inv-totals-inner">
+				<div class="inv-totals-row">
+					<span class="inv-totals-label"><?php esc_html_e( 'Subtotal', 'clientoctopus' ); ?></span>
+					<span class="inv-totals-value"><?php echo esc_html( $sym . number_format( $subtotal, 2 ) ); ?></span>
+				</div>
+				<?php if ( $discount_value > 0 ) : ?>
+				<div class="inv-totals-row">
+					<span class="inv-totals-label"><?php esc_html_e( 'Discount', 'clientoctopus' ); ?></span>
+					<span class="inv-totals-value" style="color:#0F9D6E;">&minus;<?php echo esc_html( $sym . number_format( $disc_amt, 2 ) ); ?></span>
+				</div>
+				<?php endif; ?>
+				<?php if ( $vat_pct > 0 ) : ?>
+				<div class="inv-totals-row">
+					<span class="inv-totals-label">
+						<?php
+						printf(
+							/* translators: %s: VAT percentage */
+							esc_html__( 'VAT (%s%%)', 'clientoctopus' ),
+							esc_html( number_format( $vat_pct, 0 ) )
+						);
+						?>
+					</span>
+					<span class="inv-totals-value"><?php echo esc_html( $sym . number_format( $vat_amt, 2 ) ); ?></span>
+				</div>
+				<?php endif; ?>
+				<div class="inv-total-final">
+					<span class="inv-total-final-label"><?php esc_html_e( 'Total Due', 'clientoctopus' ); ?></span>
+					<span class="inv-total-final-value" style="color:<?php echo esc_attr( $clientoctopus_total_color ); ?>;"><?php echo esc_html( $sym . number_format( $total, 2 ) . ' ' . esc_html( $clientoctopus_inv['currency'] ) ); ?></span>
+				</div>
 			</div>
 		</div>
 
@@ -317,6 +334,10 @@ if ( 'success' === $clientoctopus_payment_result ) {
 			<p class="inv-notes-body"><?php echo esc_html( $clientoctopus_inv['notes'] ); ?></p>
 		</div>
 		<?php endif; ?>
+
+		<div class="inv-footer">
+			<?php esc_html_e( 'Thank you for your business.', 'clientoctopus' ); ?>
+		</div>
 	</div>
 
 	<?php

@@ -21,6 +21,35 @@ const apiFetch = ( path, opts = {} ) => {
 	} ).then( r => r.json() );
 };
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 // For multipart / raw fetches (file download links use anchor href, not fetch).
 
 injectStyles( 'cppr-s', `
@@ -215,16 +244,16 @@ injectStyles( 'cppr-s', `
 	font-size: 11px; font-weight: 600;
 	padding: 4px 12px;
 	border-radius: 6px;
-	border: 1.5px solid #6366F1;
+	border: 1.5px solid var(--cppr-btn-bg, #6366F1);
 	background: transparent;
-	color: #6366F1;
+	color: var(--cppr-btn-bg, #6366F1);
 	cursor: pointer;
 	white-space: nowrap;
 	transition: background .15s, color .15s;
 }
 .cppr-ms-approve-btn:hover:not(:disabled) {
-	background: #6366F1;
-	color: #fff;
+	background: var(--cppr-btn-bg, #6366F1);
+	color: var(--cppr-btn-text, #fff);
 }
 .cppr-ms-approve-btn:disabled {
 	opacity: .55;
@@ -286,11 +315,11 @@ injectStyles( 'cppr-s', `
 .cppr-download-btn {
 	display: inline-flex; align-items: center; gap: 5px;
 	padding: 6px 12px;
-	border: 1.5px solid #6366F1;
+	border: 1.5px solid var(--cppr-btn-bg, #6366F1);
 	border-radius: 7px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px; font-weight: 600;
-	color: #6366F1;
+	color: var(--cppr-btn-bg, #6366F1);
 	background: transparent;
 	text-decoration: none;
 	transition: background .15s, color .15s;
@@ -503,7 +532,7 @@ injectStyles( 'cppr-s', `
 .cppr-msg-send {
 	flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
 	gap: 5px; padding: 8px 14px; height: 38px;
-	background: #6366F1; color: #fff; border: none;
+	background: var(--cppr-btn-bg, #6366F1); color: var(--cppr-btn-text, #fff); border: none;
 	border-radius: 8px; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12.5px; font-weight: 600; cursor: pointer;
 	transition: opacity .12s; white-space: nowrap;
@@ -1082,8 +1111,15 @@ export default function PortalProjects() {
 		);
 	}
 
+	const { brandColor, buttonColor } = window.coPortalData || {};
+	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars = {
+		'--cppr-btn-bg': btnColors.bg,
+		'--cppr-btn-text': btnColors.text,
+	};
+
 	return (
-		<div>
+		<div style={ btnStyleVars }>
 			<div className="cppr-header">
 				<h1 className="cppr-title">Your Projects</h1>
 				<p className="cppr-subtitle">

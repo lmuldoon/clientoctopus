@@ -4,7 +4,7 @@ Tags: proposal, invoices, client portal, client management, payments
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -141,6 +141,19 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 - Privacy Policy: https://freemius.com/privacy/
 
 == Changelog ==
+
+= 1.1.2 =
+
+* New: Portal Button Colour setting — buttons across the client portal and public proposal/invoice/payment pages can use a dedicated colour distinct from the Brand Colour, with automatically chosen contrast-safe text (falls back to Brand Colour when left unset).
+* New: Login Background Image setting — upload a background image for the client portal login screen via the media library; the login card automatically becomes a frosted glass panel with the logo moved inside it for legibility over a photo.
+* Improved: Client portal now uses Archivo (matching the admin) across every screen instead of a mixed font set, and the generic template-style coloured left-border accents have been removed from cards, navigation, and headings across the portal and admin in favour of cleaner treatments.
+* Improved: Admin Proposals, Invoices, and Projects screens now share consistent filter tabs (with result counts), empty-state design, table layout and styling, and horizontal scrolling on smaller screens instead of each screen having its own inconsistent pattern.
+* Improved: Clicking an invoice in the portal's Payment History now opens it in a new tab instead of navigating away from the page.
+* Improved: Removed the redundant plan badge and coloured top-border accents from the Plan & Usage screen's usage cards, and added a quick-access "All Invoices" link.
+* New: Print / Save as PDF button on the client-facing invoice page.
+* Improved: Client invoice page redesigned to match the payment receipt's look — logo moved into a branded header band inside the card, matching card/section styling, and a new footer message.
+* Improved: Pricing and line-item tables on proposals, receipts, and invoices now share the same table styling for full visual consistency; invoice totals and card width now match the receipt.
+* Fix: Proposal and invoice total amounts, and the proposal header's "Proposal" label, could become unreadable when a tenant's Brand Colour was too light — these now automatically fall back to a readable colour.
 
 = 1.1.1 =
 

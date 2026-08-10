@@ -18,6 +18,35 @@ const injectStyles = ( id, css ) => {
 	document.head.appendChild( s );
 };
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 /* Inject fonts if ProposalClientView hasn't already (standalone cancel page). */
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
@@ -104,23 +133,23 @@ injectStyles( 'co-pay-cancel-s', `
 	align-items: center;
 	gap: 9px;
 	padding: 14px 30px;
-	background: #6366F1;
-	color: #fff;
+	background: var(--cfpc-btn-bg, #6366F1);
+	color: var(--cfpc-btn-text, #fff);
 	border-radius: 11px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	font-weight: 600;
 	text-decoration: none;
 	transition: background .15s, transform .15s, box-shadow .15s;
-	box-shadow: 0 3px 12px rgba(99,102,241,.3);
+	box-shadow: 0 3px 12px var(--cfpc-btn-shadow, rgba(99,102,241,.3));
 	animation: cfpc-fade 0.5s ease 0.5s both;
 	letter-spacing: 0.01em;
 }
 
 .cfpc-cta:hover {
-	background: #4F46E5;
+	background: var(--cfpc-btn-hover, #4F46E5);
 	transform: translateY(-1px);
-	box-shadow: 0 5px 18px rgba(99,102,241,.4);
+	box-shadow: 0 5px 18px var(--cfpc-btn-shadow-strong, rgba(99,102,241,.4));
 }
 
 /* ── Divider ────────────────────────────────────────────── */
@@ -168,6 +197,15 @@ injectStyles( 'co-pay-cancel-s', `
 export default function PaymentCancelled( { token, proposal } ) {
 	const businessEmail  = ( window.clientoctopusClientData || {} ).businessEmail || '';
 	const businessName   = ( window.clientoctopusClientData || {} ).businessName  || '';
+	const { brandColor, buttonColor } = window.clientoctopusClientData || {};
+	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars = {
+		'--cfpc-btn-bg': btnColors.bg,
+		'--cfpc-btn-hover': btnColors.hover,
+		'--cfpc-btn-text': btnColors.text,
+		'--cfpc-btn-shadow': btnColors.shadow,
+		'--cfpc-btn-shadow-strong': btnColors.shadowStrong,
+	};
 
 	const expiryDisplay = proposal?.expiry_date
 		? new Intl.DateTimeFormat( 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' } )
@@ -176,7 +214,7 @@ export default function PaymentCancelled( { token, proposal } ) {
 
 	return (
 		<div className="cfpc-page">
-			<div className="cfpc-card">
+			<div className="cfpc-card" style={ btnStyleVars }>
 				{ /* Amber icon */ }
 				<div className="cfpc-icon" aria-hidden="true">
 					<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

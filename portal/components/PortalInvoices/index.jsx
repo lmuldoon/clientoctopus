@@ -18,6 +18,35 @@ const apiFetch = ( path ) =>
 const fmt = ( amount, currency = 'GBP' ) =>
 	new Intl.NumberFormat( 'en-GB', { style: 'currency', currency } ).format( amount );
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 const STATUS_COLORS = {
 	sent:      { bg: '#DBEAFE', text: '#1D4ED8' },
 	paid:      { bg: '#D1FAE5', text: '#065F46' },
@@ -80,12 +109,12 @@ injectStyles( 'cppi-s', `
 	transition: all .12s;
 }
 
-.cppi-tab:hover { border-color: #6366F1; color: #6366F1; }
+.cppi-tab:hover { border-color: var(--cppi-btn-bg, #6366F1); color: var(--cppi-btn-bg, #6366F1); }
 
 .cppi-tab.cppi-tab-active {
-	background: #6366F1;
-	border-color: #6366F1;
-	color: #fff;
+	background: var(--cppi-btn-bg, #6366F1);
+	border-color: var(--cppi-btn-bg, #6366F1);
+	color: var(--cppi-btn-text, #fff);
 	font-weight: 600;
 }
 
@@ -239,6 +268,13 @@ export default function PortalInvoices() {
 
 	const filtered = filter === 'all' ? invoices : invoices.filter( i => i.status === filter );
 
+	const { brandColor, buttonColor } = window.coPortalData || {};
+	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
+	const btnStyleVars = {
+		'--cppi-btn-bg': btnColors.bg,
+		'--cppi-btn-text': btnColors.text,
+	};
+
 	if ( loading ) {
 		return (
 			<div>
@@ -258,7 +294,7 @@ export default function PortalInvoices() {
 	}
 
 	return (
-		<div>
+		<div style={ btnStyleVars }>
 			<div className="cppi-header">
 				<h1 className="cppi-heading">Your Invoices</h1>
 			</div>

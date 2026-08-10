@@ -16,6 +16,47 @@ const injectStyles = ( id, css ) => {
 	document.head.appendChild( s );
 };
 
+function getContrastColor( hex ) {
+	const c = ( hex || '#6366F1' ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.35 ? '#1A1A2E' : '#ffffff';
+}
+
+// For using an arbitrary brand colour as TEXT on a fixed white background —
+// falls back to a safe default when the brand colour is too light to read.
+function getReadableOnWhite( hex, fallback ) {
+	const c = ( hex || fallback ).replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
+	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
+	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
+	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
+	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
+	return L > 0.55 ? fallback : ( '#' + c );
+}
+
+function getBrandButtonColors( hex ) {
+	const base = hex || '#6366F1';
+	const c = base.replace( '#', '' );
+	const r = parseInt( c.substring( 0, 2 ), 16 );
+	const g = parseInt( c.substring( 2, 4 ), 16 );
+	const b = parseInt( c.substring( 4, 6 ), 16 );
+	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
+	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
+		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
+		.join( '' );
+	return {
+		bg:           base,
+		hover:        hoverHex,
+		text:         getContrastColor( base ),
+		shadow:       `rgba(${ r },${ g },${ b },.3)`,
+		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
+	};
+}
+
 const CSS = `
 .cfh-header {
 	background: #fff;
@@ -221,8 +262,8 @@ const CSS = `
 	transition: border-color .12s, color .12s, background .12s;
 }
 .cfh-download-btn:hover {
-	border-color: #6366F1;
-	color: #6366F1;
+	border-color: var(--cfh-btn-hover, #6366F1);
+	color: var(--cfh-btn-hover, #6366F1);
 	background: #F5F6FF;
 }
 @media (max-width: 680px) {
@@ -278,6 +319,8 @@ export default function ClientProposalHeader( { proposal, businessName, business
 	const initials    = ( businessName || 'CF' ).replace( /[^A-Za-z]/g, '' ).slice( 0, 2 ).toUpperCase() || 'CF';
 	const expiry      = expiryInfo( expiry_date, status );
 	const brandColor  = window.clientoctopusClientData?.brandColor || '#6366F1';
+	const buttonColor = window.clientoctopusClientData?.buttonColor;
+	const btnColors   = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
 
 	const fmtDate = iso =>
 		iso ? new Date( iso ).toLocaleDateString( 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' } ) : '';
@@ -285,7 +328,7 @@ export default function ClientProposalHeader( { proposal, businessName, business
 	const isPortalClient = window.clientoctopusClientData?.isPortalClient;
 
 	return (
-		<header className="cfh-header">
+		<header className="cfh-header" style={ { '--cfh-btn-hover': btnColors.bg } }>
 
 			{ isPortalClient && (
 				<a href="/clientoctopus/proposals" className="cfh-portal-back">
@@ -350,7 +393,7 @@ export default function ClientProposalHeader( { proposal, businessName, business
 				</div>
 
 				<div>
-					<div className="cfh-eyebrow" style={ { color: brandColor } }>Proposal</div>
+					<div className="cfh-eyebrow" style={ { color: getReadableOnWhite( brandColor, '#6366F1' ) } }>Proposal</div>
 					<h1 className="cfh-title">{ title }</h1>
 					{ client_name && (
 						<p className="cfh-prepared">
