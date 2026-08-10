@@ -1,7 +1,7 @@
 /**
  * PortalSidebar
  *
- * 260px fixed sidebar. Active item: 3px indigo left-border + pale indigo bg.
+ * 260px fixed sidebar. Active item: pale indigo background + indigo text, no left-border accent.
  * Collapses to a bottom tab bar on mobile (with sign-out tab).
  *
  * Props: { page } — active page slug
@@ -92,14 +92,14 @@ injectStyles( 'cps-s', `
 }
 
 .cps-logo-initials {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	font-weight: 700;
 	color: #fff;
 }
 
 .cps-biz-name {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 600;
 	color: #fff;
@@ -132,14 +132,13 @@ injectStyles( 'cps-s', `
 	padding: 11px 14px;
 	border-radius: 9px;
 	text-decoration: none;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 500;
 	color: #374151;
 	margin-bottom: 2px;
 	transition: background .12s, color .12s;
 	position: relative;
-	border-left: 3px solid transparent;
 }
 
 .cps-nav-item:hover:not(.cps-active) {
@@ -151,7 +150,6 @@ injectStyles( 'cps-s', `
 	background: #EEF2FF;
 	color: #6366F1;
 	font-weight: 600;
-	border-left-color: #6366F1;
 }
 
 /* Soft gradient halo behind active icon */
@@ -194,7 +192,7 @@ injectStyles( 'cps-s', `
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	font-weight: 700;
 	color: #fff;
@@ -208,7 +206,7 @@ injectStyles( 'cps-s', `
 }
 
 .cps-profile-name {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #1A1A2E;
@@ -219,7 +217,7 @@ injectStyles( 'cps-s', `
 }
 
 .cps-profile-email {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	color: #9CA3AF;
 	white-space: nowrap;
@@ -230,7 +228,7 @@ injectStyles( 'cps-s', `
 
 .cps-change-password-link {
 	display: inline-block;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	color: #9CA3AF;
 	text-decoration: none;
@@ -257,7 +255,7 @@ injectStyles( 'cps-s', `
 
 .cps-signout-btn:hover {
 	background: rgba(239, 68, 68, 0.12);
-	color: #EF4444;
+	color: #DC4C4C;
 }
 
 .cps-signout-btn:disabled {
@@ -292,7 +290,7 @@ injectStyles( 'cps-s', `
 }
 
 .cps-co-branding span {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 500;
 	color: #9CA3AF;
@@ -336,14 +334,13 @@ injectStyles( 'cps-s', `
 		gap: 4px;
 		padding: 8px 4px;
 		margin-bottom: 0;
-		border-left: none;
 		border-radius: 8px;
 		font-size: 11px;
 		text-align: center;
 		background: none;
 		border: none;
 		cursor: pointer;
-		font-family: 'DM Sans', sans-serif;
+		font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 		font-weight: 500;
 		color: #374151;
 		text-decoration: none;
@@ -351,7 +348,6 @@ injectStyles( 'cps-s', `
 	}
 
 	.cps-nav-item.cps-active {
-		border-left-color: transparent;
 		background: #EEF2FF;
 		color: #6366F1;
 	}
@@ -363,7 +359,7 @@ injectStyles( 'cps-s', `
 
 	.cps-nav-item.cps-signout-tab:hover {
 		background: rgba(239, 68, 68, 0.08);
-		color: #EF4444;
+		color: #DC4C4C;
 	}
 
 	.cps-nav-item.cps-signout-tab:disabled {

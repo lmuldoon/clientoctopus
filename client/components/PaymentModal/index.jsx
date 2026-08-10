@@ -97,7 +97,7 @@ injectStyles( 'co-payment-modal-s', `
 
 /* ── Title ─────────────────────────────────────────────── */
 .cfpm-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 28px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -107,7 +107,7 @@ injectStyles( 'co-payment-modal-s', `
 
 /* ── Amount ─────────────────────────────────────────────── */
 .cfpm-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 22px;
 	font-weight: 500;
 	color: #6366F1;
@@ -130,7 +130,7 @@ injectStyles( 'co-payment-modal-s', `
 
 /* ── Hint text ──────────────────────────────────────────── */
 .cfpm-hint {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #374151;
 	margin: 0 0 8px;
@@ -138,7 +138,7 @@ injectStyles( 'co-payment-modal-s', `
 }
 
 .cfpm-sub {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	margin: 0 0 24px;
@@ -150,7 +150,7 @@ injectStyles( 'co-payment-modal-s', `
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #9CA3AF;
 }
@@ -172,11 +172,11 @@ injectStyles( 'co-payment-modal-s', `
 	align-items: center;
 	justify-content: center;
 	margin: 0 auto 20px;
-	color: #EF4444;
+	color: #DC4C4C;
 }
 
 .cfpm-err-msg {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #6B7280;
 	line-height: 1.6;
@@ -192,7 +192,7 @@ injectStyles( 'co-payment-modal-s', `
 	color: #fff;
 	border: none;
 	border-radius: 9px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;

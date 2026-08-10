@@ -35,7 +35,7 @@ function StatusBadge( { status } ) {
 			borderRadius:  '20px',
 			fontSize:      '12px',
 			fontWeight:    '600',
-			fontFamily:    "'DM Sans', sans-serif",
+			fontFamily:    "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif",
 			background:    colors.bg,
 			color:         colors.text,
 			textTransform: 'capitalize',
@@ -51,7 +51,7 @@ injectStyles( 'cppi-s', `
 .cppi-header { margin-bottom: 32px; }
 
 .cppi-heading {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 32px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -72,7 +72,7 @@ injectStyles( 'cppi-s', `
 	border-radius: 20px;
 	border: 1.5px solid #E5E7EB;
 	background: #fff;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 500;
 	color: #6B7280;
@@ -102,20 +102,14 @@ injectStyles( 'cppi-s', `
 	border-radius: 14px;
 	border: 1px solid #EEECEA;
 	padding: 22px 24px 18px;
-	box-shadow: 0 1px 3px rgba(26,26,46,.04);
+	box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06);
 	transition: box-shadow .15s, transform .15s;
-	border-left-width: 3px;
-	border-left-color: transparent;
-	border-left-style: solid;
 }
 
 .cppi-card:hover {
-	box-shadow: 0 4px 16px rgba(26,26,46,.09);
+	box-shadow: 0 4px 12px rgba(15,23,42,0.08);
 	transform: translateY(-1px);
 }
-
-.cppi-card.cppi-paid    { border-left-color: #10B981; }
-.cppi-card.cppi-overdue { border-left-color: #EF4444; }
 
 .cppi-card-top {
 	display: flex;
@@ -126,7 +120,7 @@ injectStyles( 'cppi-s', `
 }
 
 .cppi-card-ref {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #9CA3AF;
 	margin: 0 0 3px;
@@ -134,7 +128,7 @@ injectStyles( 'cppi-s', `
 }
 
 .cppi-card-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 17px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -144,7 +138,7 @@ injectStyles( 'cppi-s', `
 }
 
 .cppi-card-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 16px;
 	color: #6366F1;
 	white-space: nowrap;
@@ -161,13 +155,13 @@ injectStyles( 'cppi-s', `
 }
 
 .cppi-card-date {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #9CA3AF;
 }
 
 .cppi-card-link {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #6366F1;
@@ -189,7 +183,7 @@ injectStyles( 'cppi-s', `
 }
 
 .cppi-empty-msg {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #9CA3AF;
 	margin: 0;

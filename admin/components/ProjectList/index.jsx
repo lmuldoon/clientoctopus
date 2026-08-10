@@ -47,17 +47,22 @@ const CSS = `
 }
 
 .co-pl-tabs {
-  display: flex; gap: 2px; margin-bottom: 24px;
-  border-bottom: 2px solid var(--co-slate-100);
+  display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap;
 }
 .co-pl-tab {
-  padding: 9px 18px; font-size: 13px; font-weight: 500;
-  color: var(--co-slate-500); border: none; background: none;
-  cursor: pointer; border-bottom: 2px solid transparent;
-  margin-bottom: -2px; transition: color .12s, border-color .12s;
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  color: var(--co-slate-500); border: 1.5px solid var(--co-slate-200); background: #fff;
+  cursor: pointer; transition: all .12s;
 }
-.co-pl-tab:hover { color: var(--co-indigo); }
-.co-pl-tab.active { color: var(--co-indigo); border-bottom-color: var(--co-indigo); }
+.co-pl-tab:hover { border-color: var(--co-indigo); color: var(--co-indigo); }
+.co-pl-tab.active { background: var(--co-indigo); border-color: var(--co-indigo); color: #fff; font-weight: 600; }
+.co-pl-tab-count {
+  font-size: 11px; font-weight: 700;
+  background: var(--co-slate-100); color: var(--co-slate-500);
+  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+}
+.co-pl-tab.active .co-pl-tab-count { background: rgba(255,255,255,.22); color: #fff; }
 
 .co-pl-grid {
   display: grid;
@@ -131,7 +136,7 @@ const CSS = `
 
 .co-pl-empty {
   grid-column: 1/-1;
-  background: #fff; border: 1.5px dashed var(--co-slate-200);
+  background: #fff; border: 1.5px solid var(--co-slate-200);
   border-radius: var(--co-radius); padding: 56px 32px;
   text-align: center;
 }
@@ -243,14 +248,18 @@ export default function ProjectList( { onViewProject } ) {
 		? projects.filter( p => p.status === tab )
 		: projects;
 
+	// Count per tab
+	const counts = { '': projects.length };
+	STATUS_TABS.slice( 1 ).forEach( t => {
+		counts[ t.id ] = projects.filter( p => p.status === t.id ).length;
+	} );
+
 	return (
 		<div className="co-pl-wrap">
 			<div className="co-pl-header">
 				<div>
 					<h1 className="co-pl-title">Projects</h1>
-					<p className="co-pl-subtitle">
-						{ loading ? '' : `${ projects.length } project${ projects.length !== 1 ? 's' : '' } total` }
-					</p>
+					<p className="co-pl-subtitle">Track progress and milestones for your active client work</p>
 				</div>
 			</div>
 
@@ -295,6 +304,7 @@ export default function ProjectList( { onViewProject } ) {
 						onClick={ () => setTab( t.id ) }
 					>
 						{ t.label }
+						<span className="co-pl-tab-count">{ counts[ t.id ] || 0 }</span>
 					</button>
 				) ) }
 			</div>

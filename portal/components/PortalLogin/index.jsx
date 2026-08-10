@@ -1,10 +1,12 @@
 /**
  * PortalLogin
  *
- * Full-page magic link request form. Split layout: indigo brand panel (left)
- * + warm paper form panel (right). Collapses to single column on mobile.
+ * Full-page magic link / password login. Centered card on a full branded
+ * background with a subtle light-to-dark gradient. Business logo sits above
+ * the card. No split panel.
  *
- * Reads: window.coPortalData.businessName, .businessLogo
+ * Reads: window.coPortalData.businessName, .businessLogo, .brandColor,
+ *        .hideBusinessName
  */
 
 const { useState } = wp.element;
@@ -20,64 +22,62 @@ const apiFetch = ( path, opts = {} ) =>
 
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }` );
+body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }` );
 
 injectStyles( 'cpl-s', `
 /* ── Shell ─────────────────────────────────────────────── */
 .cpl-shell {
-	display: flex;
 	min-height: 100vh;
-}
-
-/* ── Brand panel ────────────────────────────────────────── */
-.cpl-brand {
-	flex: 0 0 44%;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	padding: 60px 48px;
+	padding: 48px 20px;
 	position: relative;
-	overflow: hidden;
 }
 
-.cpl-brand::before {
+.cpl-shell::before {
 	content: '';
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(to bottom,  rgba(0,0,0,0) 0%,rgba(0,0,0,0.35) 100%);
+	background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.20) 100%);
 	pointer-events: none;
 }
 
-.cpl-brand-inner {
+/* ── Content wrapper (logo + card stacked) ──────────────── */
+.cpl-login-wrap {
 	position: relative;
 	z-index: 1;
-	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+	max-width: 460px;
+}
+
+/* ── Logo above card ─────────────────────────────────────── */
+.cpl-logo-above {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin-bottom: 2rem;
 }
 
 .cpl-logo-wrap {
 	width: 80px;
 	height: 80px;
-	background: rgba(255,255,255,.15);
+	background: rgba(255,255,255,.18);
 	border-radius: 20px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin: 0 auto 28px;
 	backdrop-filter: blur(8px);
-	border: 1px solid rgba(255,255,255,.2);
-}
-
-.cpl-logo-wrap img {
-	max-width: 52px;
-	max-height: 52px;
-	object-fit: contain;
+	border: 1px solid rgba(255,255,255,.25);
 }
 
 .cpl-logo-wrap.cpl-logo-wrap--image {
 	width: auto;
-	max-width: 200px;
-	height: 60px;
+	height: auto;
 	background: transparent;
 	border: none;
 	border-radius: 0;
@@ -85,13 +85,14 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-logo-wrap.cpl-logo-wrap--image img {
-	max-width: 200px;
-	max-height: 60px;
-	object-fit: contain;
+	width: 80%;
+	height: auto;
+	max-height:200px;
+	display: block;
 }
 
 .cpl-logo-initials {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 28px;
 	font-weight: 700;
 	color: #fff;
@@ -99,57 +100,28 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-brand-name {
-	font-family: 'DM Sans', sans-serif;
-	font-size: 22px;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+	font-size: 18px;
 	font-weight: 600;
-	color: #fff;
-	margin: 0 0 12px;
+	margin: 14px 0 0;
 	letter-spacing: -0.01em;
 }
 
-.cpl-brand-tagline {
-	font-family: 'DM Sans', sans-serif;
-	font-size: 15px;
-	color: rgba(255,255,255,.65);
-	margin: 0;
-	line-height: 1.5;
-}
-
-/* Decorative circles */
-.cpl-brand-deco {
-	position: absolute;
-	border-radius: 50%;
-	border: 1px solid rgba(255,255,255,.08);
-	pointer-events: none;
-}
-.cpl-brand-deco-1 { width: 340px; height: 340px; bottom: -80px; right: -80px; }
-.cpl-brand-deco-2 { width: 200px; height: 200px; top: 40px; left: -60px; }
-
-/* ── Form panel ─────────────────────────────────────────── */
-.cpl-form-panel {
-	flex: 1;
-	background: #F8F7F5;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 60px 40px;
-}
-
+/* ── Card ────────────────────────────────────────────────── */
 .cpl-card {
 	background: #fff;
 	border-radius: 20px;
-	padding: 52px 48px 44px;
+	padding: 48px 48px 40px;
 	width: 100%;
-	max-width: 440px;
 	box-shadow:
-		0 2px 4px rgba(26,26,46,.04),
-		0 12px 40px rgba(26,26,46,.08);
+		0 2px 4px rgba(26,26,46,.06),
+		0 16px 48px rgba(26,26,46,.18);
 }
 
 /* ── Typography ─────────────────────────────────────────── */
 .cpl-heading {
-	font-family: 'Playfair Display', serif;
-	font-size: 36px;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+	font-size: 32px;
 	font-weight: 700;
 	color: #1A1A2E;
 	margin: 0 0 10px;
@@ -159,11 +131,11 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-sub {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6B7280;
 	line-height: 1.65;
-	margin: 0 0 32px;
+	margin: 0 0 28px;
 	animation: cpl-fade-up .5s ease .08s both;
 }
 
@@ -175,7 +147,7 @@ injectStyles( 'cpl-s', `
 /* ── Form ───────────────────────────────────────────────── */
 .cpl-label {
 	display: block;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #374151;
@@ -192,7 +164,7 @@ injectStyles( 'cpl-s', `
 	background: #F8F7F5;
 	border: 1.5px solid #E5E7EB;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #1A1A2E;
 	outline: none;
@@ -217,7 +189,7 @@ injectStyles( 'cpl-s', `
 	color: #fff;
 	border: none;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	font-weight: 600;
 	cursor: pointer;
@@ -268,7 +240,7 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-success-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 22px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -276,7 +248,7 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-success-msg {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6B7280;
 	line-height: 1.65;
@@ -284,7 +256,7 @@ injectStyles( 'cpl-s', `
 }
 
 .cpl-retry-link {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	background: none;
@@ -302,7 +274,7 @@ injectStyles( 'cpl-s', `
 	border: 1px solid #FECACA;
 	border-radius: 8px;
 	padding: 12px 14px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #B91C1C;
 	margin-top: 16px;
@@ -312,7 +284,7 @@ injectStyles( 'cpl-s', `
 /* ── Small print ─────────────────────────────────────────── */
 .cpl-fine-print {
 	margin-top: 28px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #C0C0C8;
 	text-align: center;
@@ -335,7 +307,7 @@ injectStyles( 'cpl-s', `
 	height: 36px;
 	border: none;
 	border-radius: 7px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
@@ -382,7 +354,7 @@ injectStyles( 'cpl-s', `
 	display: block;
 	text-align: center;
 	margin-top: 18px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	background: none;
@@ -394,37 +366,12 @@ injectStyles( 'cpl-s', `
 .cpl-switch-link:hover { color: #6366F1; }
 
 /* ── Mobile ──────────────────────────────────────────────── */
-@media (max-width: 768px) {
-	.cpl-shell { flex-direction: column; }
-
-	.cpl-brand {
-		flex: 0 0 auto;
-		padding: 28px 24px;
-		flex-direction: row;
-		gap: 16px;
-		justify-content: flex-start;
-	}
-
-	.cpl-brand-inner {
-		display: flex;
-		align-items: center;
-		gap: 14px;
-		text-align: left;
-	}
-
-	.cpl-logo-wrap { margin: 0; width: 50px; height: 50px; border-radius: 10px; padding: 5px; }
-	.cpl-logo-initials { font-size: 16px; }
-	.cpl-brand-name { font-size: 16px; margin: 0; }
-	.cpl-brand-tagline { display: none; }
-	.cpl-brand-deco { display: none; }
-
-	.cpl-form-panel { padding: 32px 20px; }
-	.cpl-card { padding: 36px 28px 32px; }
-	.cpl-heading { font-size: 28px; }
-}
-
-@media print {
-	.cpl-brand { display: none; }
+@media (max-width: 520px) {
+	.cpl-shell { padding: 32px 16px; }
+	.cpl-card { padding: 36px 24px 32px; }
+	.cpl-heading { font-size: 26px; }
+	.cpl-logo-wrap { width: 60px; height: 60px; border-radius: 14px; }
+	.cpl-logo-initials { font-size: 22px; }
 }
 ` );
 
@@ -452,11 +399,11 @@ function getContrastColor( hex ) {
 }
 
 export default function PortalLogin() {
-	const { businessName, businessLogo, brandColor } = window.coPortalData || {};
+	const { businessName, businessLogo, brandColor, hideBusinessName } = window.coPortalData || {};
 	const brandBg        = brandColor || '#6366F1';
 	const brandTextColor = getContrastColor( brandBg );
 
-	const initials = ( businessName || 'CF' )
+	const initials = ( businessName || 'CO' )
 		.split( ' ' )
 		.slice( 0, 2 )
 		.map( w => w[0] )
@@ -523,33 +470,29 @@ export default function PortalLogin() {
 		}
 	}
 
-	const BrandPanel = () => (
-		<div className="cpl-brand" style={ { background: brandBg } }>
-			<div className="cpl-brand-deco cpl-brand-deco-1" />
-			<div className="cpl-brand-deco cpl-brand-deco-2" />
-			<div className="cpl-brand-inner">
-				<div className={ `cpl-logo-wrap${ businessLogo ? ' cpl-logo-wrap--image' : '' }` }>
-					{ businessLogo
-						? <img src={ businessLogo } alt={ businessName } />
-						: <span className="cpl-logo-initials">{ initials }</span>
-					}
-				</div>
-				{ businessName && <p className="cpl-brand-name" style={ { color: brandTextColor } }>{ businessName }</p> }
-				<p className="cpl-brand-tagline" style={ { color: brandTextColor === '#ffffff' ? 'rgba(255,255,255,.65)' : 'rgba(26,26,46,.65)' } }>Your dedicated client space</p>
-			</div>
-		</div>
-	);
-
 	return (
-		<div className="cpl-shell">
+		<div className="cpl-shell" style={ { background: brandBg } }>
 
-			<BrandPanel />
+			<div className="cpl-login-wrap">
 
-			<div className="cpl-form-panel">
+				{ /* Logo above card */ }
+				<div className="cpl-logo-above">
+					<div className={ `cpl-logo-wrap${ businessLogo ? ' cpl-logo-wrap--image' : '' }` }>
+						{ businessLogo
+							? <img src={ businessLogo } alt={ businessName } />
+							: <span className="cpl-logo-initials">{ initials }</span>
+						}
+					</div>
+					{ businessName && ! hideBusinessName && (
+						<p className="cpl-brand-name" style={ { color: brandTextColor } }>{ businessName }</p>
+					) }
+				</div>
+
+				{ /* Login card */ }
 				<div className="cpl-card">
 
 					<h1 className="cpl-heading">Welcome back</h1>
-					<p className="cpl-sub" style={{ marginBottom: 20 }}>
+					<p className="cpl-sub" style={ { marginBottom: 20 } }>
 						Sign in to your client portal.
 					</p>
 
@@ -579,7 +522,7 @@ export default function PortalLogin() {
 							<div className="cpl-success">
 								<div className="cpl-success-icon">
 									<svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-										stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+										stroke="#0F9D6E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
 										<polyline points="20 6 9 17 4 12"/>
 									</svg>
 								</div>
@@ -633,7 +576,7 @@ export default function PortalLogin() {
 								onChange={ e => setPwEmail( e.target.value ) }
 								required
 								autoFocus={ tab === 'password' }
-								style={{ marginBottom: 16 }}
+								style={ { marginBottom: 16 } }
 							/>
 
 							<label className="cpl-label" htmlFor="cpl-pw-pass">Password</label>
@@ -660,7 +603,7 @@ export default function PortalLogin() {
 
 							{ pwPhase === 'error' && <div className="cpl-error">{ pwErr }</div> }
 
-							<button className="cpl-btn" type="submit" disabled={ pwPhase === 'loading' } style={{ marginTop: 20 }}>
+							<button className="cpl-btn" type="submit" disabled={ pwPhase === 'loading' } style={ { marginTop: 20 } }>
 								{ pwPhase === 'loading'
 									? <><span className="cpl-spinner" />Signing in&hellip;</>
 									: 'Sign in →'

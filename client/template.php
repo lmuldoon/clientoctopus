@@ -84,7 +84,7 @@ wp_enqueue_style( 'co-client-base', plugins_url( 'client/client.css', CLIENTOCTO
 if ( $clientoctopus_has_css ) {
 	wp_enqueue_style( 'co-client-bundle', $clientoctopus_style_url, [ 'co-client-base' ], $clientoctopus_script_ver );
 }
-wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fonts.css', [], CLIENTOCTOPUS_VERSION );
+wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fonts.css', [], CLIENTOCTOPUS_VERSION );
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo esc_attr( get_bloginfo( 'language' ) ); ?>">

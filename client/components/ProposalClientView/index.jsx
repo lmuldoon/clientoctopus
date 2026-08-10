@@ -37,7 +37,7 @@ body {
 	margin: 0;
 	padding: 0;
 	min-height: 100vh;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	-webkit-font-smoothing: antialiased;
 }
 
@@ -102,7 +102,7 @@ const PAGE_CSS = `
 	gap: 12px;
 	padding: 16px 20px;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	line-height: 1.55;
 }
@@ -193,11 +193,11 @@ const PAGE_CSS = `
 	align-items: center;
 	justify-content: center;
 	margin: 0 auto 24px;
-	color: #EF4444;
+	color: #DC4C4C;
 }
 
 .cfv-error__title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 26px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -205,7 +205,7 @@ const PAGE_CSS = `
 }
 
 .cfv-error__msg {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6B7280;
 	line-height: 1.65;
@@ -230,7 +230,7 @@ const PAGE_CSS = `
 	gap: 10px;
 	padding: 13px 18px;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 500;
 	min-width: 260px;
@@ -266,7 +266,7 @@ const PAGE_CSS = `
 	justify-content: center;
 	gap: 7px;
 	padding: 28px 0 36px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #C4C9D4;
 	letter-spacing: .01em;
@@ -334,9 +334,9 @@ const SIGNATURE_MODAL_CSS = `
 	justify-content: center;
 	margin-bottom: 18px;
 }
-.cfv-sig-icon svg { width: 20px; height: 20px; stroke: #10B981; stroke-width: 2; }
+.cfv-sig-icon svg { width: 20px; height: 20px; stroke: #0F9D6E; stroke-width: 2; }
 .cfv-sig-title {
-	font-family: 'Playfair Display', Georgia, serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 20px;
 	font-weight: 600;
 	color: #0F172A;
@@ -344,14 +344,14 @@ const SIGNATURE_MODAL_CSS = `
 	line-height: 1.3;
 }
 .cfv-sig-subtitle {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #64748B;
 	margin: 0 0 22px;
 	line-height: 1.55;
 }
 .cfv-sig-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #374151;
@@ -363,7 +363,7 @@ const SIGNATURE_MODAL_CSS = `
 	padding: 11px 14px;
 	border: 1.5px solid #E2E8F0;
 	border-radius: 8px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #1E293B;
 	background: #F8FAFC;
@@ -373,7 +373,7 @@ const SIGNATURE_MODAL_CSS = `
 	margin-bottom: 18px;
 }
 .cfv-sig-input:focus {
-	border-color: #10B981;
+	border-color: #0F9D6E;
 	box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 	background: #fff;
 }
@@ -389,10 +389,10 @@ const SIGNATURE_MODAL_CSS = `
 	width: 16px;
 	height: 16px;
 	flex-shrink: 0;
-	accent-color: #10B981;
+	accent-color: #0F9D6E;
 }
 .cfv-sig-check-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	color: #374151;
 	line-height: 1.5;
@@ -403,7 +403,7 @@ const SIGNATURE_MODAL_CSS = `
 	justify-content: flex-end;
 }
 .cfv-sig-btn {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	font-weight: 600;
 	border: none;
@@ -418,7 +418,7 @@ const SIGNATURE_MODAL_CSS = `
 }
 .cfv-sig-btn--cancel:hover { background: #E2E8F0; }
 .cfv-sig-btn--sign {
-	background: #10B981;
+	background: #0F9D6E;
 	color: #fff;
 	display: flex;
 	align-items: center;
@@ -441,7 +441,7 @@ const PREVIEW_BANNER_CSS = `
 	justify-content: space-between;
 	padding: 10px 24px;
 	gap: 16px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .cfv-preview-banner__left {
 	display: flex;
@@ -479,7 +479,7 @@ const PREVIEW_BANNER_CSS = `
 	color: #FFFFFF;
 	font-size: 12px;
 	font-weight: 600;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	cursor: pointer;
 	transition: background .15s, border-color .15s;
 	white-space: nowrap;

@@ -217,20 +217,25 @@ const TEAM_CSS = `
 }
 .co-tm-remove-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* Empty state */
-.co-tm-empty {
+/* Loading state */
+.co-tm-loading {
   text-align: center;
   padding: 48px 24px;
   color: var(--co-slate-400);
 }
-.co-tm-empty-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
+.co-tm-loading p { margin: 0; font-size: 14px; }
+
+/* Empty state */
+.co-tm-empty {
+  background: #fff;
+  border: 1.5px solid var(--co-slate-200);
+  border-radius: var(--co-radius);
+  padding: 56px 32px;
+  text-align: center;
 }
-.co-tm-empty p {
-  margin: 0;
-  font-size: 14px;
-}
+.co-tm-empty-icon { color: var(--co-slate-300); margin: 0 auto 16px; display: block; }
+.co-tm-empty-title { font-family: var(--co-font); font-size: 20px; color: var(--co-navy); margin: 0 0 8px; }
+.co-tm-empty-sub { font-size: 14px; color: var(--co-slate-500); max-width: 380px; margin: 0 auto; line-height: 1.6; }
 
 /* Invite form */
 .co-tm-invite-form {
@@ -511,15 +516,21 @@ export default function TeamApp() {
 				) }
 
 				{ loading ? (
-					<div className="co-tm-empty">
+					<div className="co-tm-loading">
 						<div style={ { margin: '0 auto 12px', width: 24, height: 24, border: '2px solid #E2E8F0', borderTopColor: '#6366F1', borderRadius: '50%', animation: 'co-spin .7s linear infinite' } } />
 						<p>Loading team…</p>
 					</div>
 				) : members.length === 0 ? (
 					<div className="co-tm-empty">
-						<div className="co-tm-empty-icon">👥</div>
-						<p>No team members yet.</p>
-						{ isAgency && <p style={ { marginTop: 4 } }>Invite someone below to get started.</p> }
+						<svg className="co-tm-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
+							stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+							<circle cx="9" cy="7" r="4"/>
+							<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+							<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+						</svg>
+						<p className="co-tm-empty-title">No team members yet</p>
+						<p className="co-tm-empty-sub">{ isAgency ? 'Invite someone below to get started.' : 'Team members you invite will appear here.' }</p>
 					</div>
 				) : (
 					<table className="co-tm-table">

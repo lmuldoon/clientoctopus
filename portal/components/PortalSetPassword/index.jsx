@@ -17,7 +17,7 @@ const RULES = [
 
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
+body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
 
 injectStyles( 'cpsp-s', `
 /* ── Page ─────────────────────────────────────────────── */
@@ -63,7 +63,7 @@ injectStyles( 'cpsp-s', `
 
 /* ── Typography ─────────────────────────────────────────── */
 .cpsp-heading {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 30px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -73,7 +73,7 @@ injectStyles( 'cpsp-s', `
 }
 
 .cpsp-sub {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #6B7280;
 	line-height: 1.65;
@@ -87,7 +87,7 @@ injectStyles( 'cpsp-s', `
 
 .cpsp-label {
 	display: block;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #374151;
@@ -107,7 +107,7 @@ injectStyles( 'cpsp-s', `
 	background: #F8F7F5;
 	border: 1.5px solid #E5E7EB;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #1A1A2E;
 	outline: none;
@@ -151,7 +151,7 @@ injectStyles( 'cpsp-s', `
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	transition: color .2s;
@@ -174,13 +174,13 @@ injectStyles( 'cpsp-s', `
 }
 
 .cpsp-rule--met .cpsp-rule-dot {
-	border-color: #10B981;
-	background: #10B981;
+	border-color: #0F9D6E;
+	background: #0F9D6E;
 }
 
 /* ── Mismatch error ──────────────────────────────────────── */
 .cpsp-mismatch {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #B91C1C;
 	margin-top: 6px;
@@ -206,7 +206,7 @@ injectStyles( 'cpsp-s', `
 	color: #fff;
 	border: none;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	font-weight: 600;
 	cursor: pointer;
@@ -245,7 +245,7 @@ injectStyles( 'cpsp-s', `
 	border: 1px solid #FECACA;
 	border-radius: 8px;
 	padding: 12px 14px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #B91C1C;
 	margin-top: 16px;
@@ -335,7 +335,7 @@ export default function PortalSetPassword() {
 		return (
 			<div className="cpsp-page">
 				<div className="cpsp-card" style={ { textAlign: 'center' } }>
-					<div className="cpsp-icon" style={ { background: '#10B981' } }>
+					<div className="cpsp-icon" style={ { background: '#0F9D6E' } }>
 						<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
 							<polyline points="20 6 9 17 4 12"/>
 						</svg>

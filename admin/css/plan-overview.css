@@ -76,29 +76,6 @@
     gap: 12px;
 }
 
-/* ─── Plan Badge ──────────────────────────────────────────────────────── */
-.co-plan-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-.co-plan-badge.free   { background: var(--slate-100); color: var(--slate-600); }
-.co-plan-badge.pro    { background: var(--indigo-bg);  color: var(--indigo); }
-.co-plan-badge.agency { background: var(--emerald-bg); color: var(--emerald); }
-.co-plan-badge::before {
-    content: '';
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.8;
-}
-
 /* ─── Upgrade Button ──────────────────────────────────────────────────── */
 .co-btn-upgrade {
     display: inline-flex;
@@ -419,17 +396,6 @@
     position: relative;
     overflow: hidden;
 }
-.co-stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    border-radius: var(--radius) var(--radius) 0 0;
-}
-.co-stat-card.indigo::after { background: linear-gradient(90deg, var(--indigo), var(--indigo-lt)); }
-.co-stat-card.emerald::after { background: linear-gradient(90deg, var(--emerald), #34D399); }
-.co-stat-card.amber::after { background: linear-gradient(90deg, var(--amber), #FCD34D); }
-.co-stat-card.navy::after { background: linear-gradient(90deg, var(--navy-dim), var(--navy-mid)); }
 
 .co-stat-label {
     font-size: 11px;

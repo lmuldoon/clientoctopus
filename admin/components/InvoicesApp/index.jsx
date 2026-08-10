@@ -97,11 +97,11 @@ const CSS = `
   display:flex; align-items: flex-start; justify-content:space-between;
   flex-wrap:wrap; gap:16px; margin-bottom:24px;
 }
-.co-inv-title-row { display:flex; align-items:center; gap:12px; }
 .co-inv-title {
   font-size:28px; font-weight:800; color:var(--inv-navy);
   letter-spacing:-.5px; margin:0; line-height:1;
 }
+.co-inv-subtitle { font-size:14px; color:var(--inv-s4); margin:6px 0 0; line-height:1.5; }
 .co-inv-btn-primary {
   display:inline-flex; align-items:center; gap:7px;
   background:var(--inv-indigo); color:#fff; border:none;
@@ -118,20 +118,27 @@ const CSS = `
 
 /* Tabs */
 .co-inv-tabs {
-  display:flex; gap:2px; border-bottom:2px solid var(--inv-s2);
+  display:flex; gap:6px; flex-wrap:wrap;
   margin-bottom:20px;
 }
 .co-inv-tab {
-  padding:8px 14px; font-size:13px; font-weight:500; color:var(--inv-s4);
-  border:none; background:none; cursor:pointer; border-bottom:2px solid transparent;
-  margin-bottom:-2px; transition:color .15s;
+  display:flex; align-items:center; gap:7px;
+  padding:7px 16px; border-radius:20px; font-size:13px; font-weight:500; color:var(--inv-s4);
+  border:1.5px solid var(--inv-s2); background:#fff; cursor:pointer;
+  transition:all .12s;
 }
-.co-inv-tab:hover { color:var(--inv-navy); }
-.co-inv-tab.active { color:var(--inv-indigo); border-bottom-color:var(--inv-indigo); font-weight:700; }
+.co-inv-tab:hover { border-color:var(--inv-indigo); color:var(--inv-indigo); }
+.co-inv-tab.active { background:var(--inv-indigo); border-color:var(--inv-indigo); color:#fff; font-weight:600; }
+.co-inv-tab-count {
+  font-size:11px; font-weight:700;
+  background:var(--inv-s1); color:var(--inv-s4);
+  border-radius:999px; padding:1px 7px; min-width:20px; text-align:center;
+}
+.co-inv-tab.active .co-inv-tab-count { background:rgba(255,255,255,.22); color:#fff; }
 
 /* Table */
-.co-inv-table-wrap { background:#fff; border-radius:12px; border:1px solid var(--inv-s2); overflow:hidden; }
-.co-inv-table { width:100%; border-collapse:collapse; }
+.co-inv-table-wrap { background:#fff; border-radius:12px; border:1px solid var(--inv-s2); overflow-x:auto; overflow-y:hidden; box-shadow: 0 1px 3px rgba(26,26,46,.04), 0 6px 24px rgba(26,26,46,.06); }
+.co-inv-table { width:100%; min-width:640px; border-collapse:collapse; }
 .co-inv-table th {
   text-align:left; padding:11px 16px; font-size:11px; font-weight:700;
   color:var(--inv-s4); text-transform:uppercase; letter-spacing:.5px;
@@ -166,10 +173,13 @@ const CSS = `
 .co-inv-act-del { background:#FEF2F2; color:var(--inv-red); }
 
 /* Empty state */
-.co-inv-empty { text-align:center; padding:64px 32px; color:var(--inv-s4); }
-.co-inv-empty-icon { font-size:40px; margin-bottom:12px; }
-.co-inv-empty-title { font-size:16px; font-weight:700; color:var(--inv-navy); margin:0 0 6px; }
-.co-inv-empty-sub { font-size:14px; margin:0 0 20px; }
+.co-inv-empty {
+  background:#fff; border:1.5px solid var(--inv-s2); border-radius:12px;
+  padding:56px 32px; text-align:center;
+}
+.co-inv-empty-icon { color:var(--inv-s3); margin:0 auto 16px; display:block; }
+.co-inv-empty-title { font-family:'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size:20px; color:var(--inv-navy); margin:0 0 8px; }
+.co-inv-empty-sub { font-size:14px; color:var(--inv-s5); max-width:380px; margin:0 auto; line-height:1.6; }
 
 /* Loading / Error */
 .co-inv-loading { text-align:center; padding:48px; color:var(--inv-s4); }
@@ -715,14 +725,24 @@ function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoadin
 		return invoices.filter( i => i.status === tab );
 	}, [ invoices, tab ] );
 
+	// Count per tab
+	const counts = useMemo( () => {
+		const c = { all: invoices.length };
+		TABS.slice( 1 ).forEach( t => {
+			c[ t.id ] = invoices.filter( i => i.status === t.id ).length;
+		} );
+		return c;
+	}, [ invoices ] );
+
 	if ( loading ) return <div className="co-inv-loading">Loading invoices…</div>;
 
 	return (
 		<>
 			<div className="co-inv-header">
-				<div className="co-inv-title-row">
+				<div>
 					<h1 className="co-inv-title">Invoices</h1>
-									</div>
+					<p className="co-inv-subtitle">Create, send, and track invoices for your clients.</p>
+				</div>
 				<button className="co-inv-btn-primary" onClick={ onNew } type="button">+ New Invoice</button>
 			</div>
 
@@ -735,18 +755,26 @@ function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoadin
 						type="button"
 					>
 						{ t.label }
+						<span className="co-inv-tab-count">{ counts[ t.id ] || 0 }</span>
 					</button>
 				) ) }
 			</div>
 
 			{ filtered.length === 0 ? (
-				<div className="co-inv-table-wrap">
-					<div className="co-inv-empty">
-						<div className="co-inv-empty-icon">🧾</div>
-						<p className="co-inv-empty-title">No invoices yet</p>
-						<p className="co-inv-empty-sub">Create your first invoice to start billing clients.</p>
-						<button className="co-inv-btn-primary" onClick={ onNew } type="button">+ New Invoice</button>
-					</div>
+				<div className="co-inv-empty">
+					<svg className="co-inv-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+						<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+						<polyline points="14 2 14 8 20 8"/>
+						<line x1="12" y1="18" x2="12" y2="12"/>
+						<line x1="9" y1="15" x2="15" y2="15"/>
+					</svg>
+					<p className="co-inv-empty-title">No invoices yet</p>
+					<p className="co-inv-empty-sub">
+						{ tab !== 'all'
+							? `No ${ tab } invoices found.`
+							: 'Create your first invoice to start billing clients.' }
+					</p>
 				</div>
 			) : (
 				<div className="co-inv-table-wrap">

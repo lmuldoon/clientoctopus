@@ -20,7 +20,7 @@ const pad = ( n ) => String( n ).padStart( 6, '0' );
 
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
+body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
 
 injectStyles( 'cprc-s', `
 .cprc-page {
@@ -49,7 +49,7 @@ injectStyles( 'cprc-s', `
 	color: #fff;
 	border: none;
 	border-radius: 8px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
@@ -81,7 +81,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-biz-name {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 700;
 	letter-spacing: 0.1em;
@@ -90,7 +90,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-receipt-label {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 28px;
 	font-weight: 700;
 	color: #fff;
@@ -113,7 +113,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-meta-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	font-weight: 700;
 	letter-spacing: 0.08em;
@@ -123,7 +123,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-meta-value {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #1A1A2E;
 	font-weight: 500;
@@ -147,21 +147,21 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-item-name {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #1A1A2E;
 	font-weight: 500;
 }
 
 .cprc-item-type {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #9CA3AF;
 	margin-top: 2px;
 }
 
 .cprc-item-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #1A1A2E;
 	font-weight: 400;
@@ -180,7 +180,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-total-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 700;
 	letter-spacing: 0.06em;
@@ -189,7 +189,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-total-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 26px;
 	color: #059669;
 	font-weight: 400;
@@ -211,13 +211,13 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-detail-key {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 }
 
 .cprc-detail-val {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #6B7280;
 	max-width: 260px;
@@ -233,7 +233,7 @@ injectStyles( 'cprc-s', `
 }
 
 .cprc-footer-msg {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 16px;
 	font-style: italic;
 	color: #9CA3AF;
@@ -242,7 +242,7 @@ injectStyles( 'cprc-s', `
 
 /* ── Error / loading states ──────────────────────────── */
 .cprc-status {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6B7280;
 	margin-top: 80px;

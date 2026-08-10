@@ -29,7 +29,7 @@ const CSS = `
 	align-items: center;
 	gap: 6px;
 	padding: 9px 48px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	font-weight: 500;
 	color: #9CA3AF;
@@ -57,7 +57,7 @@ const CSS = `
 /* ── State banners ─────────────────────────────────────────── */
 .cfh-banner {
 	padding: 13px 48px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	font-weight: 500;
 	display: flex;
@@ -104,7 +104,7 @@ const CSS = `
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 20px;
 	font-weight: 700;
 	color: #fff;
@@ -112,7 +112,7 @@ const CSS = `
 	flex-shrink: 0;
 }
 .cfh-business-name {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 10.5px;
 	font-weight: 700;
 	color: #9CA3AF;
@@ -124,7 +124,7 @@ const CSS = `
 
 /* ── Content column ────────────────────────────────────────── */
 .cfh-eyebrow {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 10.5px;
 	font-weight: 700;
 	color: #C4B5FD;
@@ -133,7 +133,7 @@ const CSS = `
 	margin-bottom: 10px;
 }
 .cfh-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 40px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -142,7 +142,7 @@ const CSS = `
 	letter-spacing: -0.5px;
 }
 .cfh-prepared {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6B7280;
 	margin: 0;
@@ -167,7 +167,7 @@ const CSS = `
 	gap: 6px;
 	padding: 5px 12px;
 	border-radius: 100px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11.5px;
 	font-weight: 700;
 	letter-spacing: 0.04em;
@@ -181,7 +181,7 @@ const CSS = `
 
 /* ── Expiry chip ───────────────────────────────────────────── */
 .cfh-expiry {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12.5px;
 	color: #9CA3AF;
 	display: inline-flex;
@@ -189,7 +189,7 @@ const CSS = `
 	gap: 5px;
 }
 .cfh-expiry--warn    { color: #D97706; font-weight: 600; }
-.cfh-expiry--expired { color: #EF4444; font-weight: 700; }
+.cfh-expiry--expired { color: #DC4C4C; font-weight: 700; }
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 680px) {
@@ -214,7 +214,7 @@ const CSS = `
 	border-radius: 8px;
 	background: #fff;
 	color: #4B5563;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12.5px;
 	font-weight: 600;
 	cursor: pointer;
@@ -239,10 +239,10 @@ const CSS = `
 const STATUS_DOTS = {
 	draft:    '#94A3B8',
 	sent:     '#818CF8',
-	viewed:   '#F59E0B',
-	accepted: '#10B981',
-	declined: '#EF4444',
-	expired:  '#F59E0B',
+	viewed:   '#D97706',
+	accepted: '#0F9D6E',
+	declined: '#DC4C4C',
+	expired:  '#D97706',
 };
 
 const STATUS_LABELS = {

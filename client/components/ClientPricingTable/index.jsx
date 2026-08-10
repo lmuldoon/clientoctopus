@@ -26,7 +26,7 @@ const CSS = `
 }
 
 .cfp-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 10.5px;
 	font-weight: 700;
 	letter-spacing: 0.14em;
@@ -57,7 +57,7 @@ const CSS = `
 }
 
 .cfp-th {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 10px;
 	font-weight: 800;
 	color: #9CA3AF;
@@ -75,14 +75,14 @@ const CSS = `
 .cfp-row:hover         { background: #F8F7F5; }
 
 .cfp-desc {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 500;
 	color: #1A1A2E;
 }
 
 .cfp-num {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	color: #374151;
 	text-align: right;
@@ -117,18 +117,18 @@ const CSS = `
 	padding: 7px 0;
 }
 .cfp-total-lbl {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #6B7280;
 }
 .cfp-total-val {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	color: #374151;
 }
 
 .cfp-total-row--disc .cfp-total-lbl,
-.cfp-total-row--disc .cfp-total-val { color: #10B981; }
+.cfp-total-row--disc .cfp-total-val { color: #0F9D6E; }
 
 /* ── Grand total ────────────────────────────────────────────── */
 .cfp-grand {
@@ -140,14 +140,14 @@ const CSS = `
 	border-top: 2px solid #1A1A2E;
 }
 .cfp-grand-lbl {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 700;
 	color: #1A1A2E;
 	letter-spacing: 0.02em;
 }
 .cfp-grand-val {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 30px;
 	font-weight: 700;
 	color: #6366F1;

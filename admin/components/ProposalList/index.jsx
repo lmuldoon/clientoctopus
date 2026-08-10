@@ -115,27 +115,27 @@ const CSS = `
 }
 .co-list-tabs {
   display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--co-slate-200);
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .co-list-tab {
   display: flex; align-items: center; gap: 7px;
-  padding: 8px 14px 10px;
-  background: none; border: none;
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--co-slate-200);
+  background: #fff;
   font-size: 13px; font-weight: 500;
   font-family: var(--co-font);
   color: var(--co-slate-500);
   cursor: pointer;
-  position: relative;
-  bottom: -2px;
-  border-bottom: 2px solid transparent;
-  transition: color .15s, border-color .15s;
+  transition: all .12s;
   white-space: nowrap;
 }
-.co-list-tab:hover { color: var(--co-slate-800); }
+.co-list-tab:hover { border-color: var(--co-indigo); color: var(--co-indigo); }
 .co-list-tab.active {
-  color: var(--co-indigo);
-  border-bottom-color: var(--co-indigo);
+  background: var(--co-indigo);
+  border-color: var(--co-indigo);
+  color: #fff;
   font-weight: 600;
 }
 .co-list-tab-count {
@@ -149,8 +149,8 @@ const CSS = `
   text-align: center;
 }
 .co-list-tab.active .co-list-tab-count {
-  background: var(--co-indigo-bg);
-  color: var(--co-indigo);
+  background: rgba(255,255,255,.22);
+  color: #fff;
 }
 
 /* Search */
@@ -183,58 +183,35 @@ const CSS = `
 .co-list-search::placeholder { color: var(--co-slate-300); }
 .co-list-search:focus { border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
 
-/* Table header row */
-.co-list-col-headers {
-  display: grid;
-  grid-template-columns: 2fr 2fr 110px 124px 120px 140px;
-  gap: 12px;
-  padding: 8px 16px;
+/* Table */
+.co-list-table-wrap {
+  background: var(--co-white);
+  border: 1px solid var(--co-slate-200);
+  border-radius: var(--co-radius);
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-shadow: 0 1px 3px rgba(26,26,46,.04), 0 6px 24px rgba(26,26,46,.06);
+}
+.co-list-table { width: 100%; min-width: 640px; border-collapse: collapse; }
+.co-list-table th {
+  text-align: left;
+  padding: 11px 16px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--co-slate-400);
   border-bottom: 1px solid var(--co-slate-100);
-  margin-bottom: 4px;
+  background: var(--co-slate-50);
 }
-
-/* Row card */
-.co-list-row {
-  display: grid;
-  grid-template-columns: 2fr 2fr 110px 124px 120px 140px;
-  gap: 12px;
-  align-items: center;
+.co-list-table td {
   padding: 14px 16px;
-  background: var(--co-white);
-  border: 1px solid var(--co-slate-200);
-  border-radius: var(--co-radius-sm);
-  margin-bottom: 6px;
-  position: relative;
-  transition: border-color .15s, box-shadow .15s, transform .12s;
-  cursor: default;
+  border-bottom: 1px solid var(--co-slate-100);
+  vertical-align: middle;
 }
-.co-list-row:hover {
-  border-color: var(--co-slate-300);
-  box-shadow: var(--co-shadow);
-  transform: translateY(-1px);
-}
-.co-list-row:hover .co-list-actions { opacity: 1; }
-
-/* Left accent bar by status */
-.co-list-row::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 8px; bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--co-slate-200);
-  transition: background .15s;
-}
-.co-list-row[data-status="accepted"]::before           { background: var(--co-emerald); }
-.co-list-row[data-status="sent"]::before               { background: var(--co-indigo); }
-.co-list-row[data-status="viewed"]::before             { background: var(--co-amber); }
-.co-list-row[data-status="declined"]::before           { background: var(--co-red); }
-.co-list-row[data-status="revision_requested"]::before { background: #F59E0B; }
+.co-list-table tbody tr:last-child td { border-bottom: none; }
+.co-list-table tbody tr:hover td { background: var(--co-slate-50); }
+.co-list-table tbody tr:hover .co-list-actions { opacity: 1; }
 
 /* Client cell */
 .co-list-client-name { font-size: 13.5px; font-weight: 600; color: var(--co-slate-800); }
@@ -398,12 +375,11 @@ const CSS = `
 
 /* Skeleton */
 .co-list-skeleton {
-  height: 64px;
+  height: 18px;
   background: linear-gradient(90deg, var(--co-slate-100) 25%, var(--co-slate-50) 50%, var(--co-slate-100) 75%);
   background-size: 200% 100%;
-  border-radius: var(--co-radius-sm);
+  border-radius: 4px;
   animation: co-shimmer 1.4s ease infinite;
-  margin-bottom: 6px;
 }
 @keyframes co-shimmer {
   0%   { background-position: 200% 0; }
@@ -412,22 +388,16 @@ const CSS = `
 
 /* Empty state */
 .co-list-empty {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 60px 20px;
+  background: #fff;
+  border: 1.5px solid var(--co-slate-200);
+  border-radius: var(--co-radius);
+  padding: 56px 32px;
   text-align: center;
-  gap: 12px;
   animation: co-fade-up .3s ease both;
 }
-.co-list-empty-icon {
-  width: 72px; height: 72px;
-  background: var(--co-slate-100);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 4px;
-}
-.co-list-empty-icon svg { width: 34px; height: 34px; stroke: var(--co-slate-300); stroke-width: 1.5; }
-.co-list-empty h3 { font-size: 18px; font-weight: 700; color: var(--co-slate-700); }
-.co-list-empty p { font-size: 14px; color: var(--co-slate-400); max-width: 320px; line-height: 1.6; }
+.co-list-empty-icon { color: var(--co-slate-300); margin: 0 auto 16px; display: block; }
+.co-list-empty-title { font-family: var(--co-font-display); font-size: 20px; color: var(--co-navy); margin-bottom: 8px; }
+.co-list-empty-sub { font-size: 14px; color: var(--co-slate-500); max-width: 380px; margin: 0 auto; line-height: 1.6; }
 
 /* Error banner */
 .co-list-error {
@@ -1009,59 +979,62 @@ export default function ProposalList( {
 				</div>
 			) }
 
-			{/* Column headers */ }
+			{/* Table */ }
 			{ ( loading || paginated.length > 0 ) && (
-				<div className="co-list-col-headers">
-					<div>Client</div>
-					<div>Proposal</div>
-					<div>Amount</div>
-					<div>Status</div>
-					<div>Created</div>
-					<div />
-				</div>
-			) }
+				<div className="co-list-table-wrap">
+					<table className="co-list-table">
+						<thead>
+							<tr>
+								<th>Client</th>
+								<th>Proposal</th>
+								<th>Amount</th>
+								<th>Status</th>
+								<th>Created</th>
+								<th />
+							</tr>
+						</thead>
+						<tbody>
+							{/* Loading skeletons */ }
+							{ loading && [ 1, 2, 3, 4 ].map( i => (
+								<tr key={ i } className="co-list-skeleton-row">
+									<td colSpan={ 6 }><div className="co-list-skeleton" style={ { animationDelay: `${ i * 0.1 }s` } } /></td>
+								</tr>
+							) ) }
 
-			{/* Loading skeletons */ }
-			{ loading && [ 1, 2, 3, 4 ].map( i => (
-				<div key={ i } className="co-list-skeleton" style={ { animationDelay: `${ i * 0.1 }s` } } />
-			) ) }
+							{/* Rows */ }
+							{ ! loading && paginated.map( ( proposal, idx ) => (
+								<tr
+									key={ proposal.id }
+									style={ { animation: `co-fade-up .25s ease ${ idx * 0.04 }s both` } }
+								>
+									{/* Client */ }
+									<td>
+										<div className="co-list-client-name">{ proposal.client_name || 'No client' }</div>
+										{ proposal.client_company && (
+											<div className="co-list-client-company">{ proposal.client_company }</div>
+										) }
+									</td>
 
-			{/* Rows */ }
-			{ ! loading && paginated.map( ( proposal, idx ) => (
-				<div
-					key={ proposal.id }
-					className="co-list-row"
-					data-status={ proposal.status }
-					style={ { animation: `co-fade-up .25s ease ${ idx * 0.04 }s both` } }
-				>
-					{/* Client */ }
-					<div>
-						<div className="co-list-client-name">{ proposal.client_name || 'No client' }</div>
-						{ proposal.client_company && (
-							<div className="co-list-client-company">{ proposal.client_company }</div>
-						) }
-					</div>
+									{/* Title */ }
+									<td className="co-list-proposal-title" title={ proposal.title }>
+										{ proposal.title || 'Untitled' }
+									</td>
 
-					{/* Title */ }
-					<div className="co-list-proposal-title" title={ proposal.title }>
-						{ proposal.title || 'Untitled' }
-					</div>
+									{/* Amount */ }
+									<td className="co-list-amount">
+										{ formatAmount( proposal.total_amount, proposal.currency ) }
+									</td>
 
-					{/* Amount */ }
-					<div className="co-list-amount">
-						{ formatAmount( proposal.total_amount, proposal.currency ) }
-					</div>
+									{/* Status */ }
+									<td>
+										<StatusBadge status={ proposal.status } />
+									</td>
 
-					{/* Status */ }
-					<div>
-						<StatusBadge status={ proposal.status } />
-					</div>
+									{/* Date */ }
+									<td className="co-list-date">{ formatDate( proposal.created_at ) }</td>
 
-					{/* Date */ }
-					<div className="co-list-date">{ formatDate( proposal.created_at ) }</div>
-
-					{/* Actions */ }
-					<div className="co-list-actions">
+									{/* Actions */ }
+									<td className="co-list-actions">
 						{ proposal.status === 'declined' && proposal.decline_reason && (
 							<button
 								type="button"
@@ -1216,39 +1189,34 @@ export default function ProposalList( {
 								<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
 							</svg>
 						</button>
-					</div>
+									</td>
+								</tr>
+							) ) }
+						</tbody>
+					</table>
 				</div>
-			) ) }
+			) }
 
 			{/* Empty state */ }
 			{ ! loading && paginated.length === 0 && (
 				<div className="co-list-empty">
-					<div className="co-list-empty-icon">
-						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-							<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-							<polyline points="14 2 14 8 20 8"/>
-							<line x1="12" y1="18" x2="12" y2="12"/>
-							<line x1="9" y1="15" x2="15" y2="15"/>
-						</svg>
-					</div>
-					<h3>{ search || activeTab !== 'all' ? 'No proposals found' : 'No proposals yet' }</h3>
-					<p>
+					<svg className="co-list-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+						<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+						<polyline points="14 2 14 8 20 8"/>
+						<line x1="12" y1="18" x2="12" y2="12"/>
+						<line x1="9" y1="15" x2="15" y2="15"/>
+					</svg>
+					<p className="co-list-empty-title">No proposals yet</p>
+					<p className="co-list-empty-sub">
 						{ search
 							? `No proposals match "${ search }". Try a different search.`
 							: activeTab !== 'all'
-							? `You have no ${ activeTab } proposals yet.`
+							? `No ${ activeTab } proposals found.`
 							: window.clientoctopusData?.onboardingComplete === false
-							? <>New to Client Octopus? <a href="admin.php?page=clientoctopus-setup" style={ { color: 'var(--co-indigo)' } }>Complete your setup</a> then create your first proposal.</>
+							? <>New to Client Octopus? <a href="admin.php?page=clientoctopus-setup" style={ { color: 'var(--co-indigo)' } }>Complete your setup</a> to get started.</>
 							: 'Create your first proposal to get started.' }
 					</p>
-					{ ! search && activeTab === 'all' && (
-						<button type="button" className="co-list-new-btn" onClick={ onNewProposal } style={ { marginTop: 8 } }>
-							<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" style={ { width: 15, height: 15, stroke: 'currentColor', strokeWidth: 2.5 } }>
-								<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-							</svg>
-							Create Proposal
-						</button>
-					) }
 				</div>
 			) }
 

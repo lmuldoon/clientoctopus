@@ -27,12 +27,12 @@ injectStyles( 'cppr-s', `
 /* ── Page header ──────────────────────────────────────── */
 .cppr-header { margin-bottom: 36px; }
 .cppr-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 30px; font-weight: 700;
 	color: #1A1A2E; letter-spacing: -.5px;
 	margin-bottom: 6px;
 }
-.cppr-subtitle { font-family: 'DM Sans', sans-serif; font-size: 14px; color: #6B7280; }
+.cppr-subtitle { font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; color: #6B7280; }
 
 /* ── Project cards ───────────────────────────────────── */
 .cppr-grid { display: flex; flex-direction: column; gap: 16px; }
@@ -53,11 +53,11 @@ injectStyles( 'cppr-s', `
 
 .cppr-card-left { flex: 1; min-width: 0; }
 .cppr-card-name {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 18px; color: #1A1A2E; margin-bottom: 4px;
 }
 .cppr-card-proposal {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px; color: #6B7280;
 }
 
@@ -68,25 +68,25 @@ injectStyles( 'cppr-s', `
 /* Status badge */
 .cppr-badge {
 	display: inline-flex; align-items: center; padding: 3px 10px;
-	border-radius: 20px; font-family: 'DM Sans', sans-serif;
+	border-radius: 20px; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px; font-weight: 600; letter-spacing: .4px; white-space: nowrap;
 }
 .cppr-badge-active    { background: #EEF2FF; color: #6366F1; }
-.cppr-badge-on-hold   { background: #FFFBEB; color: #F59E0B; }
-.cppr-badge-completed { background: #ECFDF5; color: #10B981; }
+.cppr-badge-on-hold   { background: #FFFBEB; color: #D97706; }
+.cppr-badge-completed { background: #ECFDF5; color: #0F9D6E; }
 .cppr-badge-archived  { background: #F3F4F6; color: #9CA3AF; }
 
 /* Progress */
 .cppr-progress-wrap { width: 160px; }
 .cppr-progress-label {
 	display: flex; justify-content: space-between; align-items: center;
-	font-family: 'DM Sans', sans-serif; font-size: 11px; color: #9CA3AF; margin-bottom: 5px;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; color: #9CA3AF; margin-bottom: 5px;
 }
 .cppr-progress-bar {
 	height: 5px; background: #F1F5F9; border-radius: 99px; overflow: hidden;
 }
 .cppr-progress-fill {
-	height: 100%; border-radius: 99px; background: #10B981;
+	height: 100%; border-radius: 99px; background: #0F9D6E;
 	transition: width .5s cubic-bezier(.4,0,.2,1);
 }
 
@@ -129,26 +129,26 @@ injectStyles( 'cppr-s', `
 }
 .cppr-ms-icon-pending     { background: #F1F5F9; }
 .cppr-ms-icon-in-progress { background: #EEF2FF; }
-.cppr-ms-icon-completed   { background: #10B981; }
+.cppr-ms-icon-completed   { background: #0F9D6E; }
 
 .cppr-ms-text { flex: 1; }
 .cppr-ms-title {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px; color: #1A1A2E; line-height: 1.4;
 }
 .cppr-ms-title.completed { text-decoration: line-through; color: #9CA3AF; }
 .cppr-ms-due {
 	font-size: 11px; color: #9CA3AF; margin-top: 2px;
 }
-.cppr-ms-due.overdue { color: #EF4444; font-weight: 600; }
+.cppr-ms-due.overdue { color: #DC4C4C; font-weight: 600; }
 
 .cppr-ms-status-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px; color: #9CA3AF; white-space: nowrap;
 }
 .cppr-ms-status-label.pending      { color: #9CA3AF; }
 .cppr-ms-status-label.in-progress { color: #6366F1; }
-.cppr-ms-status-label.completed   { color: #10B981; }
+.cppr-ms-status-label.completed   { color: #0F9D6E; }
 
 .cppr-payment-due-banner {
 	display: flex;
@@ -160,7 +160,7 @@ injectStyles( 'cppr-s', `
 	border-radius: 10px;
 	background: #FFFBEB;
 	border: 1.5px solid #FDE68A;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .cppr-pdb-left {
 	display: flex;
@@ -170,7 +170,7 @@ injectStyles( 'cppr-s', `
 }
 .cppr-pdb-left svg {
 	flex-shrink: 0;
-	color: #F59E0B;
+	color: #D97706;
 }
 .cppr-pdb-label {
 	font-size: 11px;
@@ -181,7 +181,7 @@ injectStyles( 'cppr-s', `
 	margin-bottom: 2px;
 }
 .cppr-pdb-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 20px;
 	font-weight: 700;
 	color: #78350F;
@@ -195,7 +195,7 @@ injectStyles( 'cppr-s', `
 	border-radius: 6px;
 	background: #92400E;
 	color: #FFFBEB;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	text-decoration: none;
@@ -211,7 +211,7 @@ injectStyles( 'cppr-s', `
 }
 
 .cppr-ms-approve-btn {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px; font-weight: 600;
 	padding: 4px 12px;
 	border-radius: 6px;
@@ -243,7 +243,7 @@ injectStyles( 'cppr-s', `
 	padding: 20px 26px;
 }
 .cppr-section-title {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px; font-weight: 700;
 	text-transform: uppercase; letter-spacing: .07em;
 	color: #9CA3AF;
@@ -275,7 +275,7 @@ injectStyles( 'cppr-s', `
 
 .cppr-file-info { flex: 1; min-width: 0; }
 .cppr-file-name {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px; font-weight: 600; color: #1A1A2E;
 	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -288,7 +288,7 @@ injectStyles( 'cppr-s', `
 	padding: 6px 12px;
 	border: 1.5px solid #6366F1;
 	border-radius: 7px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px; font-weight: 600;
 	color: #6366F1;
 	background: transparent;
@@ -300,7 +300,7 @@ injectStyles( 'cppr-s', `
 .cppr-download-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 2.5; }
 
 .cppr-no-items {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px; color: #9CA3AF; font-style: italic;
 }
 
@@ -326,8 +326,8 @@ injectStyles( 'cppr-s', `
 	text-transform: uppercase; letter-spacing: .05em;
 	background: #EEF2FF; color: #6366F1;
 }
-.cppr-aprv-type.content     { background: #FFFBEB; color: #F59E0B; }
-.cppr-aprv-type.deliverable { background: #ECFDF5; color: #10B981; }
+.cppr-aprv-type.content     { background: #FFFBEB; color: #D97706; }
+.cppr-aprv-type.deliverable { background: #ECFDF5; color: #0F9D6E; }
 .cppr-aprv-type.other       { background: #F1F5F9; color: #64748B; }
 
 .cppr-aprv-status {
@@ -335,13 +335,13 @@ injectStyles( 'cppr-s', `
 	padding: 2px 8px; border-radius: 999px;
 	font-size: 10px; font-weight: 700;
 }
-.cppr-aprv-status.pending  { background: #FFFBEB; color: #F59E0B; }
-.cppr-aprv-status.approved { background: #ECFDF5; color: #10B981; }
-.cppr-aprv-status.rejected { background: #FEF2F2; color: #EF4444; }
+.cppr-aprv-status.pending  { background: #FFFBEB; color: #D97706; }
+.cppr-aprv-status.approved { background: #ECFDF5; color: #0F9D6E; }
+.cppr-aprv-status.rejected { background: #FEF2F2; color: #DC4C4C; }
 .cppr-aprv-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
 .cppr-approval-desc {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px; color: #374151; line-height: 1.5; margin-bottom: 8px;
 }
 
@@ -365,7 +365,7 @@ injectStyles( 'cppr-s', `
 /* Response form */
 .cppr-aprv-form { margin-top: 4px; }
 .cppr-aprv-comment {
-	width: 100%; font-family: 'DM Sans', sans-serif;
+	width: 100%; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px; color: #1A1A2E;
 	background: #F8F7F5; border: 1.5px solid #EEECEA;
 	border-radius: 8px; padding: 10px 12px;
@@ -383,13 +383,13 @@ injectStyles( 'cppr-s', `
 .cppr-aprv-reject-btn {
 	display: inline-flex; align-items: center; gap: 6px;
 	padding: 8px 16px; border: none; border-radius: 8px;
-	font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; font-weight: 600;
 	cursor: pointer; transition: opacity .15s, transform .12s;
 }
 .cppr-aprv-approve-btn:disabled,
 .cppr-aprv-reject-btn:disabled { opacity: .55; cursor: not-allowed; }
 .cppr-aprv-approve-btn {
-	background: #10B981; color: #fff;
+	background: #0F9D6E; color: #fff;
 	box-shadow: 0 2px 8px rgba(16,185,129,.3);
 }
 .cppr-aprv-approve-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
@@ -397,7 +397,7 @@ injectStyles( 'cppr-s', `
 	background: transparent; color: #6B7280;
 	border: 1.5px solid #E2E8F0;
 }
-.cppr-aprv-reject-btn:hover:not(:disabled) { background: #FEF2F2; border-color: #FECACA; color: #EF4444; }
+.cppr-aprv-reject-btn:hover:not(:disabled) { background: #FEF2F2; border-color: #FECACA; color: #DC4C4C; }
 .cppr-aprv-approve-btn svg,
 .cppr-aprv-reject-btn svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.5; }
 
@@ -436,7 +436,7 @@ injectStyles( 'cppr-s', `
 	min-width: 60px;
 	padding: 9px 13px;
 	border-radius: 14px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	line-height: 1.5;
 	word-wrap: break-word;
@@ -475,7 +475,7 @@ injectStyles( 'cppr-s', `
 	display: flex; align-items: center; justify-content: center;
 }
 .cppr-msg-empty-icon svg { width: 20px; height: 20px; stroke: #CBD5E1; stroke-width: 1.5; }
-.cppr-msg-empty p { font-family: 'DM Sans', sans-serif; font-size: 13px; color: #9CA3AF; margin: 0; }
+.cppr-msg-empty p { font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; color: #9CA3AF; margin: 0; }
 
 .cppr-msg-composer {
 	display: flex; gap: 8px; align-items: flex-end;
@@ -490,7 +490,7 @@ injectStyles( 'cppr-s', `
 	padding: 8px 11px;
 	border: 1.5px solid #EEECEA;
 	border-radius: 8px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px; color: #1A1A2E;
 	background: #FAFAF9;
 	resize: none; outline: none;
@@ -504,7 +504,7 @@ injectStyles( 'cppr-s', `
 	flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
 	gap: 5px; padding: 8px 14px; height: 38px;
 	background: #6366F1; color: #fff; border: none;
-	border-radius: 8px; font-family: 'DM Sans', sans-serif;
+	border-radius: 8px; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12.5px; font-weight: 600; cursor: pointer;
 	transition: opacity .12s; white-space: nowrap;
 }
@@ -536,11 +536,11 @@ injectStyles( 'cppr-s', `
 }
 .cppr-empty-icon { color: #CBD5E1; display: block; margin: 0 auto 16px; }
 .cppr-empty-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 20px; color: #1A1A2E; margin-bottom: 8px;
 }
 .cppr-empty-sub {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px; color: #6B7280; max-width: 340px; margin: 0 auto; line-height: 1.6;
 }
 ` );

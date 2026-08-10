@@ -24,7 +24,7 @@ body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, san
 .inv-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
 .inv-meta-block dt { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #94A3B8; margin: 0 0 4px; }
 .inv-meta-block dd { font-size: 14px; color: #1E293B; font-weight: 500; margin: 0; }
-.inv-meta-block dd.overdue { color: #EF4444; font-weight: 700; }
+.inv-meta-block dd.overdue { color: #DC4C4C; font-weight: 700; }
 
 .inv-items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
 .inv-items-table th { text-align: left; padding: 9px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #94A3B8; border-bottom: 1.5px solid #E2E8F0; }
@@ -38,7 +38,7 @@ body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, san
 .inv-totals-value { font-weight: 600; color: #0F172A; text-align: right; }
 .inv-total-final { border-top: 2px solid #E2E8F0; padding-top: 10px; margin-top: 4px; }
 .inv-total-final .inv-totals-label { font-size: 16px; font-weight: 700; color: #0F172A; }
-.inv-total-final .inv-totals-value { font-size: 20px; font-weight: 900; color: var(--brand, #6366F1); }
+.inv-total-final .inv-totals-value { font-size: 20px; font-weight: 900; color: #6366F1; }
 
 .inv-notes { border-top: 1.5px solid #E2E8F0; padding-top: 20px; margin-top: 20px; }
 .inv-notes-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #94A3B8; margin: 0 0 8px; }

@@ -16,7 +16,7 @@ import PortalProjects  from '../PortalProjects';
 
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
+body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
 
 injectStyles( 'cpa-s', `
 /* ── Shell ───────────────────────────────────────────── */

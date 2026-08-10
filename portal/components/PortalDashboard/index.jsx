@@ -40,7 +40,7 @@ function StatusBadge( { status } ) {
 			borderRadius:  '20px',
 			fontSize:      '12px',
 			fontWeight:    '600',
-			fontFamily:    "'DM Sans', sans-serif",
+			fontFamily:    "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif",
 			letterSpacing: '0.02em',
 			background:    colors.bg,
 			color:         colors.text,
@@ -56,7 +56,7 @@ injectStyles( 'cpd-s', `
 .cpd-header { margin-bottom: 36px; }
 
 .cpd-greeting {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 32px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -66,7 +66,7 @@ injectStyles( 'cpd-s', `
 }
 
 .cpd-subtitle {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6B7280;
 	margin: 0;
@@ -89,7 +89,7 @@ injectStyles( 'cpd-s', `
 }
 
 .cpd-stat-num {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 30px;
 	color: #6366F1;
 	font-weight: 400;
@@ -98,7 +98,7 @@ injectStyles( 'cpd-s', `
 }
 
 .cpd-stat-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	margin: 0;
@@ -107,7 +107,7 @@ injectStyles( 'cpd-s', `
 
 /* ── Section header ───────────────────────────────────── */
 .cpd-section-head {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	font-weight: 700;
 	letter-spacing: 0.1em;
@@ -132,7 +132,7 @@ injectStyles( 'cpd-s', `
 }
 
 .cpd-table th {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	font-weight: 700;
 	letter-spacing: 0.06em;
@@ -144,7 +144,7 @@ injectStyles( 'cpd-s', `
 }
 
 .cpd-table td {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #374151;
 	padding: 14px 20px;
@@ -155,7 +155,7 @@ injectStyles( 'cpd-s', `
 .cpd-table tr:last-child td { border-bottom: none; }
 
 .cpd-table td.mono {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 }
 
@@ -168,7 +168,7 @@ injectStyles( 'cpd-s', `
 
 /* ── View all link ────────────────────────────────────── */
 .cpd-view-all {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #6366F1;
@@ -202,7 +202,7 @@ injectStyles( 'cpd-s', `
 }
 
 .cpd-empty-msg {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #9CA3AF;
 	margin: 0;

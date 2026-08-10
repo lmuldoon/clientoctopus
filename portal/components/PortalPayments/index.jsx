@@ -2,7 +2,7 @@
  * PortalPayments
  *
  * Payment history table with running total.
- * Alternating row backgrounds, DM Mono amounts, status badges.
+ * Alternating row backgrounds, Archivo amounts, status badges.
  */
 
 const { useState, useEffect } = wp.element;
@@ -34,7 +34,7 @@ function StatusBadge( { status } ) {
 			borderRadius:  '20px',
 			fontSize:      '12px',
 			fontWeight:    '600',
-			fontFamily:    "'DM Sans', sans-serif",
+			fontFamily:    "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif",
 			background:    c.bg,
 			color:         c.text,
 			textTransform: 'capitalize',
@@ -49,7 +49,7 @@ injectStyles( 'cppm-s', `
 .cppm-header { margin-bottom: 32px; }
 
 .cppm-heading {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 32px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -71,14 +71,14 @@ injectStyles( 'cppm-s', `
 }
 
 .cppm-summary-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	font-weight: 500;
 }
 
 .cppm-summary-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 22px;
 	color: #6366F1;
 	font-weight: 400;
@@ -99,7 +99,7 @@ injectStyles( 'cppm-s', `
 }
 
 .cppm-table th {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	font-weight: 700;
 	letter-spacing: 0.07em;
@@ -114,7 +114,7 @@ injectStyles( 'cppm-s', `
 .cppm-table td.right { text-align: right; }
 
 .cppm-table td {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #374151;
 	padding: 14px 20px;
@@ -123,7 +123,7 @@ injectStyles( 'cppm-s', `
 }
 
 .cppm-table td.mono {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 }
 
@@ -145,7 +145,7 @@ injectStyles( 'cppm-s', `
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	font-weight: 600;
 	color: #6366F1;
@@ -172,7 +172,7 @@ injectStyles( 'cppm-s', `
 }
 
 .cppm-total-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 700;
 	color: #374151;
@@ -181,7 +181,7 @@ injectStyles( 'cppm-s', `
 }
 
 .cppm-total-amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #6366F1;
 }
@@ -193,14 +193,14 @@ injectStyles( 'cppm-s', `
 }
 
 .cppm-empty-msg {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #9CA3AF;
 	margin: 0 0 8px;
 }
 
 .cppm-empty-sub {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #C0C0C8;
 	margin: 0;
@@ -364,7 +364,7 @@ export default function PortalPayments() {
 			{ /* ── Invoice Payments ─────────────────────────────── */ }
 			<div style={{ marginTop: 40 }}>
 				<h2 style={{
-					fontFamily:    "'Playfair Display', serif",
+					fontFamily:    "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif",
 					fontSize:      '22px',
 					fontWeight:    '700',
 					color:         '#1A1A2E',
@@ -416,7 +416,7 @@ export default function PortalPayments() {
 											href={ `/invoices/${ inv.token }` }
 											onClick={ e => e.stopPropagation() }
 										>
-											<span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: '#9CA3AF', display: 'block' }}>
+											<span style={{ fontFamily: "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: 12, color: '#9CA3AF', display: 'block' }}>
 												{ inv.invoice_ref }
 											</span>
 											{ inv.title || inv.invoice_ref }

@@ -123,7 +123,7 @@ $clientoctopus_sym = $clientoctopus_currency_symbols[ $clientoctopus_inv['curren
 
 // ── Enqueue styles (must happen before HTML output) ───────────────────────────
 wp_enqueue_style( 'co-inv-client', CLIENTOCTOPUS_URL . 'client/invoice.css', [], CLIENTOCTOPUS_VERSION );
-wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/client-fonts.css', [], CLIENTOCTOPUS_VERSION );
+wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fonts.css', [], CLIENTOCTOPUS_VERSION );
 // Brand colour custom property — uses a PHP value so cannot live in the static CSS file.
 wp_add_inline_style( 'co-inv-client', ':root { --brand: ' . esc_attr( $clientoctopus_brand_color ) . '; }' );
 ?>
@@ -288,7 +288,7 @@ if ( 'success' === $clientoctopus_payment_result ) {
 			<?php if ( $discount_value > 0 ) : ?>
 			<div class="inv-totals-row">
 				<span class="inv-totals-label"><?php esc_html_e( 'Discount', 'clientoctopus' ); ?></span>
-				<span class="inv-totals-value" style="color:#10B981;">&minus;<?php echo esc_html( $sym . number_format( $disc_amt, 2 ) ); ?></span>
+				<span class="inv-totals-value" style="color:#0F9D6E;">&minus;<?php echo esc_html( $sym . number_format( $disc_amt, 2 ) ); ?></span>
 			</div>
 			<?php endif; ?>
 			<?php if ( $vat_pct > 0 ) : ?>

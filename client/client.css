@@ -4,7 +4,7 @@ body {
 	margin: 0;
 	padding: 0;
 	background: #F8F7F5;
-	font-family: -apple-system, 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	min-height: 100vh;
 }
 #co-client-root {

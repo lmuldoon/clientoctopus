@@ -21,7 +21,7 @@ const injectStyles = ( id, css ) => {
 /* Inject fonts if ProposalClientView hasn't already (standalone cancel page). */
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
+body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; background: #F8F7F5; }` );
 
 injectStyles( 'co-pay-cancel-s', `
 /* ── Page ──────────────────────────────────────────────── */
@@ -74,7 +74,7 @@ injectStyles( 'co-pay-cancel-s', `
 
 /* ── Title ─────────────────────────────────────────────── */
 .cfpc-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 34px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -85,7 +85,7 @@ injectStyles( 'co-pay-cancel-s', `
 }
 
 .cfpc-sub {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 16px;
 	color: #6B7280;
 	line-height: 1.65;
@@ -107,7 +107,7 @@ injectStyles( 'co-pay-cancel-s', `
 	background: #6366F1;
 	color: #fff;
 	border-radius: 11px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	font-weight: 600;
 	text-decoration: none;
@@ -133,7 +133,7 @@ injectStyles( 'co-pay-cancel-s', `
 
 /* ── Contact row ────────────────────────────────────────── */
 .cfpc-contact {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #9CA3AF;
 	animation: cfpc-fade 0.5s ease 0.65s both;
@@ -150,7 +150,7 @@ injectStyles( 'co-pay-cancel-s', `
 /* ── Small print ────────────────────────────────────────── */
 .cfpc-small {
 	margin-top: 16px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #C0C0C8;
 	line-height: 1.5;
@@ -179,7 +179,7 @@ export default function PaymentCancelled( { token, proposal } ) {
 			<div className="cfpc-card">
 				{ /* Amber icon */ }
 				<div className="cfpc-icon" aria-hidden="true">
-					<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+					<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
 						<circle cx="12" cy="12" r="10"/>
 						<line x1="15" y1="9" x2="9" y2="15"/>
 						<line x1="9" y1="9" x2="15" y2="15"/>

@@ -24,6 +24,7 @@ const WH_CSS = `
   --co-slate-50:   #F8FAFC;
   --co-slate-100:  #F1F5F9;
   --co-slate-200:  #E2E8F0;
+  --co-slate-300:  #CBD5E1;
   --co-slate-400:  #94A3B8;
   --co-slate-500:  #64748B;
   --co-white:      #FFFFFF;
@@ -202,10 +203,15 @@ const WH_CSS = `
 
 /* Empty state */
 .co-wh-empty {
-  text-align: center; padding: 60px 24px; color: var(--co-slate-500);
+  background: #fff;
+  border: 1.5px solid var(--co-slate-200);
+  border-radius: var(--co-radius);
+  padding: 56px 32px;
+  text-align: center;
 }
-.co-wh-empty-title { font-size: 16px; font-weight: 700; color: var(--co-navy); margin: 16px 0 8px; }
-.co-wh-empty-sub   { font-size: 14px; margin: 0; }
+.co-wh-empty-icon { color: var(--co-slate-300); margin: 0 auto 16px; display: block; }
+.co-wh-empty-title { font-family: var(--co-font); font-size: 20px; color: var(--co-navy); margin: 0 0 8px; }
+.co-wh-empty-sub   { font-size: 14px; color: var(--co-slate-500); max-width: 380px; margin: 0 auto; line-height: 1.6; }
 
 /* Notice */
 .co-wh-notice {
@@ -563,7 +569,8 @@ export default function WebhooksApp() {
 				<p style={{ color: '#94A3B8', fontSize: 14 }}>Loading…</p>
 			) : webhooks.length === 0 && canUse ? (
 				<div className="co-wh-empty">
-					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+					<svg className="co-wh-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
 						<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
 					</svg>
 					<p className="co-wh-empty-title">No webhooks yet</p>

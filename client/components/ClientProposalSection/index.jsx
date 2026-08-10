@@ -22,15 +22,15 @@ const CSS = `
 	margin-top: 0;
 }
 .cfs-heading h2 {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 25px;
-	font-weight: 700;
+	font-weight: 800;
 	color: #1A1A2E;
 	margin: 0;
-	padding-left: 18px;
-	border-left: 3px solid #6366F1;
+	padding-bottom: 12px;
+	border-bottom: 1px solid #EEECEA;
 	line-height: 1.3;
-	letter-spacing: -0.2px;
+	letter-spacing: -0.3px;
 }
 
 /* ── Text ──────────────────────────────────────────────────── */
@@ -38,7 +38,7 @@ const CSS = `
 	margin: 0 0 24px;
 }
 .cfs-text p {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15.5px;
 	line-height: 1.78;
 	color: #374151;
@@ -62,7 +62,7 @@ const CSS = `
 	align-items: flex-start;
 	gap: 13px;
 	padding: 7px 0;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	line-height: 1.65;
 	color: #374151;
@@ -82,7 +82,7 @@ const CSS = `
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-style: italic;
 	color: #9CA3AF;

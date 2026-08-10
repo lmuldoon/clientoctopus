@@ -33,11 +33,11 @@ injectStyles( 'co-payment-btn-s', `
 	align-items: center;
 	gap: 10px;
 	padding: 13px 26px;
-	background: #10B981;
+	background: #0F9D6E;
 	color: #fff;
 	border: none;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	font-weight: 600;
 	cursor: pointer;
@@ -110,7 +110,7 @@ injectStyles( 'co-payment-btn-s', `
 	display: flex;
 	align-items: center;
 	gap: 5px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	color: #9CA3AF;
 	letter-spacing: 0.025em;

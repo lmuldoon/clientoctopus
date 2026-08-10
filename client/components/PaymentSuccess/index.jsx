@@ -21,40 +21,40 @@ const injectStyles = ( id, css ) => {
 /* Inject fonts if ProposalClientView hasn't already (standalone success page). */
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }` );
+body { margin: 0; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }` );
 
 /* ── Confetti data ────────────────────────────────────────────────────────── */
 const CONFETTI = [
-	{ left:  3, delay: 0.0, dur: 3.2, color: '#10B981', size: 8,  round: false },
+	{ left:  3, delay: 0.0, dur: 3.2, color: '#0F9D6E', size: 8,  round: false },
 	{ left:  8, delay: 0.2, dur: 2.8, color: '#6366F1', size: 6,  round: true  },
-	{ left: 14, delay: 0.5, dur: 3.5, color: '#F59E0B', size: 7,  round: false },
-	{ left: 19, delay: 0.1, dur: 3.0, color: '#10B981', size: 5,  round: true  },
+	{ left: 14, delay: 0.5, dur: 3.5, color: '#D97706', size: 7,  round: false },
+	{ left: 19, delay: 0.1, dur: 3.0, color: '#0F9D6E', size: 5,  round: true  },
 	{ left: 25, delay: 0.7, dur: 2.6, color: '#6366F1', size: 9,  round: false },
-	{ left: 30, delay: 0.3, dur: 3.3, color: '#F59E0B', size: 6,  round: true  },
-	{ left: 35, delay: 0.9, dur: 2.9, color: '#10B981', size: 8,  round: false },
+	{ left: 30, delay: 0.3, dur: 3.3, color: '#D97706', size: 6,  round: true  },
+	{ left: 35, delay: 0.9, dur: 2.9, color: '#0F9D6E', size: 8,  round: false },
 	{ left: 40, delay: 0.4, dur: 3.1, color: '#6366F1', size: 5,  round: true  },
-	{ left: 47, delay: 0.6, dur: 3.4, color: '#F59E0B', size: 7,  round: false },
-	{ left: 52, delay: 0.2, dur: 2.7, color: '#10B981', size: 6,  round: true  },
+	{ left: 47, delay: 0.6, dur: 3.4, color: '#D97706', size: 7,  round: false },
+	{ left: 52, delay: 0.2, dur: 2.7, color: '#0F9D6E', size: 6,  round: true  },
 	{ left: 58, delay: 0.8, dur: 3.0, color: '#6366F1', size: 8,  round: false },
-	{ left: 63, delay: 0.1, dur: 3.2, color: '#F59E0B', size: 5,  round: true  },
-	{ left: 69, delay: 0.5, dur: 2.8, color: '#10B981', size: 9,  round: false },
+	{ left: 63, delay: 0.1, dur: 3.2, color: '#D97706', size: 5,  round: true  },
+	{ left: 69, delay: 0.5, dur: 2.8, color: '#0F9D6E', size: 9,  round: false },
 	{ left: 74, delay: 0.3, dur: 3.5, color: '#6366F1', size: 6,  round: true  },
-	{ left: 80, delay: 0.7, dur: 3.1, color: '#F59E0B', size: 7,  round: false },
-	{ left: 85, delay: 0.4, dur: 2.9, color: '#10B981', size: 5,  round: true  },
+	{ left: 80, delay: 0.7, dur: 3.1, color: '#D97706', size: 7,  round: false },
+	{ left: 85, delay: 0.4, dur: 2.9, color: '#0F9D6E', size: 5,  round: true  },
 	{ left: 90, delay: 0.6, dur: 3.3, color: '#6366F1', size: 8,  round: false },
-	{ left: 95, delay: 0.2, dur: 3.0, color: '#F59E0B', size: 6,  round: true  },
-	{ left:  7, delay: 1.1, dur: 2.8, color: '#10B981', size: 7,  round: false },
+	{ left: 95, delay: 0.2, dur: 3.0, color: '#D97706', size: 6,  round: true  },
+	{ left:  7, delay: 1.1, dur: 2.8, color: '#0F9D6E', size: 7,  round: false },
 	{ left: 16, delay: 1.3, dur: 3.4, color: '#6366F1', size: 5,  round: true  },
-	{ left: 23, delay: 1.0, dur: 3.1, color: '#F59E0B', size: 8,  round: false },
-	{ left: 32, delay: 1.5, dur: 2.7, color: '#10B981', size: 6,  round: true  },
+	{ left: 23, delay: 1.0, dur: 3.1, color: '#D97706', size: 8,  round: false },
+	{ left: 32, delay: 1.5, dur: 2.7, color: '#0F9D6E', size: 6,  round: true  },
 	{ left: 43, delay: 1.2, dur: 3.2, color: '#6366F1', size: 9,  round: false },
-	{ left: 55, delay: 1.4, dur: 2.9, color: '#F59E0B', size: 5,  round: true  },
-	{ left: 66, delay: 1.0, dur: 3.5, color: '#10B981', size: 7,  round: false },
+	{ left: 55, delay: 1.4, dur: 2.9, color: '#D97706', size: 5,  round: true  },
+	{ left: 66, delay: 1.0, dur: 3.5, color: '#0F9D6E', size: 7,  round: false },
 	{ left: 72, delay: 1.6, dur: 3.0, color: '#6366F1', size: 6,  round: true  },
-	{ left: 78, delay: 1.1, dur: 2.8, color: '#F59E0B', size: 8,  round: false },
-	{ left: 87, delay: 1.3, dur: 3.3, color: '#10B981', size: 5,  round: true  },
+	{ left: 78, delay: 1.1, dur: 2.8, color: '#D97706', size: 8,  round: false },
+	{ left: 87, delay: 1.3, dur: 3.3, color: '#0F9D6E', size: 5,  round: true  },
 	{ left: 92, delay: 1.5, dur: 3.1, color: '#6366F1', size: 7,  round: false },
-	{ left: 97, delay: 1.2, dur: 2.6, color: '#F59E0B', size: 6,  round: true  },
+	{ left: 97, delay: 1.2, dur: 2.6, color: '#D97706', size: 6,  round: true  },
 ];
 
 injectStyles( 'co-pay-success-s', `
@@ -142,7 +142,7 @@ injectStyles( 'co-pay-success-s', `
 
 /* ── Title ─────────────────────────────────────────────── */
 .cfps-title {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 38px;
 	font-weight: 700;
 	color: #1A1A2E;
@@ -153,7 +153,7 @@ injectStyles( 'co-pay-success-s', `
 }
 
 .cfps-subtitle {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 16px;
 	color: #6B7280;
 	margin: 0 0 32px;
@@ -191,7 +191,7 @@ injectStyles( 'co-pay-success-s', `
 }
 
 .cfps-detail-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	font-weight: 600;
 	color: #9CA3AF;
@@ -200,7 +200,7 @@ injectStyles( 'co-pay-success-s', `
 }
 
 .cfps-detail-value {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #1A1A2E;
 	font-weight: 500;
@@ -208,9 +208,9 @@ injectStyles( 'co-pay-success-s', `
 }
 
 .cfps-detail-value--amount {
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 17px;
-	color: #10B981;
+	color: #0F9D6E;
 	font-weight: 600;
 }
 
@@ -222,7 +222,7 @@ injectStyles( 'co-pay-success-s', `
 }
 
 .cfps-next-title {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 700;
 	color: #9CA3AF;
@@ -246,7 +246,7 @@ injectStyles( 'co-pay-success-s', `
 	background: #EDE9FE;
 	color: #6366F1;
 	border-radius: 50%;
-	font-family: 'DM Mono', monospace;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 11px;
 	font-weight: 700;
 	display: flex;
@@ -257,7 +257,7 @@ injectStyles( 'co-pay-success-s', `
 }
 
 .cfps-step-text {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #374151;
 	line-height: 1.55;
@@ -281,7 +281,7 @@ injectStyles( 'co-pay-success-s', `
 	background: #6366F1;
 	color: #fff;
 	border-radius: 10px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 600;
 	text-decoration: none;
@@ -305,7 +305,7 @@ injectStyles( 'co-pay-success-s', `
 	border: 1.5px solid #E5E7EB;
 	border-radius: 9px;
 	background: transparent;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #6B7280;
 	font-weight: 500;
@@ -322,7 +322,7 @@ injectStyles( 'co-pay-success-s', `
 	border: 1.5px solid #E5E7EB;
 	border-radius: 9px;
 	background: transparent;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #6B7280;
 	font-weight: 500;
@@ -334,7 +334,7 @@ injectStyles( 'co-pay-success-s', `
 /* ── Footer ─────────────────────────────────────────────── */
 .cfps-footer {
 	margin-top: 32px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 12px;
 	color: #C0C0C8;
 	text-align: center;
@@ -407,12 +407,12 @@ export default function PaymentSuccess( { token, sessionId } ) {
 						<circle
 							className="cfps-check-circle"
 							cx="50" cy="50" r="45"
-							stroke="#10B981" strokeWidth="4"
+							stroke="#0F9D6E" strokeWidth="4"
 						/>
 						<path
 							className="cfps-check-mark"
 							d="M 28 52 L 43 67 L 72 33"
-							stroke="#10B981" strokeWidth="5"
+							stroke="#0F9D6E" strokeWidth="5"
 							strokeLinecap="round" strokeLinejoin="round"
 						/>
 					</svg>
@@ -440,7 +440,7 @@ export default function PaymentSuccess( { token, sessionId } ) {
 					{ sessionId && (
 						<div className="cfps-detail-row">
 							<span className="cfps-detail-label">Reference</span>
-							<span className="cfps-detail-value" style={ { fontFamily: "'DM Mono', monospace", fontSize: '12px', color: '#9CA3AF' } }>
+							<span className="cfps-detail-value" style={ { fontFamily: "'Archivo', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '12px', color: '#9CA3AF' } }>
 								{ sessionId.slice( 0, 28 ) }…
 							</span>
 						</div>

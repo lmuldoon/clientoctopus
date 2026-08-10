@@ -50,7 +50,7 @@ const CSS = `
 }
 
 .cfa-contact {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	color: #9CA3AF;
 	text-decoration: none;
@@ -71,7 +71,7 @@ const CSS = `
 	gap: 8px;
 	padding: 11px 22px;
 	border-radius: 9px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
@@ -89,8 +89,8 @@ const CSS = `
 /* Decline: ghost red */
 .cfa-btn--decline {
 	background: transparent;
-	color: #EF4444;
-	border-color: #EF4444;
+	color: #DC4C4C;
+	border-color: #DC4C4C;
 	padding: 10px 20px;
 }
 .cfa-btn--decline:hover:not(:disabled) { background: #FEF2F2; }
@@ -109,7 +109,7 @@ const CSS = `
 
 /* Payment: emerald */
 .cfa-btn--payment {
-	background: #10B981;
+	background: #0F9D6E;
 	color: #fff;
 	box-shadow: 0 2px 10px rgba(16,185,129,.3);
 }
@@ -133,14 +133,14 @@ const CSS = `
 
 /* ── Static status label ────────────────────────────────────── */
 .cfa-status {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	font-weight: 600;
 	display: flex;
 	align-items: center;
 	gap: 7px;
 }
-.cfa-status--accepted { color: #10B981; }
+.cfa-status--accepted { color: #0F9D6E; }
 .cfa-status--declined { color: #94A3B8; }
 .cfa-status--expired  { color: #9CA3AF; }
 
@@ -155,7 +155,7 @@ const CSS = `
 
 /* Revision modal accent */
 .cfa-modal--revision {
-	border-left-color: #F59E0B;
+	border-top-color: #D97706;
 }
 .cfa-modal--revision .cfa-modal-icon {
 	background: #FFFBEB;
@@ -164,11 +164,11 @@ const CSS = `
 	stroke: #D97706;
 }
 .cfa-modal--revision .cfa-modal-textarea:focus {
-	border-color: #F59E0B;
+	border-color: #D97706;
 	box-shadow: 0 0 0 3px rgba(245,158,11,0.12);
 }
 .cfa-modal--revision .cfa-modal-btn--confirm {
-	background: #F59E0B;
+	background: #D97706;
 	box-shadow: 0 2px 8px rgba(245,158,11,.3);
 }
 .cfa-modal--revision .cfa-modal-btn--confirm:hover {
@@ -227,7 +227,7 @@ const CSS = `
 .cfa-modal {
 	background: #fff;
 	border-radius: 14px;
-	border-left: 3px solid #EF4444;
+	border-top: 4px solid #DC4C4C;
 	padding: 32px;
 	width: 100%;
 	max-width: 480px;
@@ -250,12 +250,12 @@ const CSS = `
 .cfa-modal-icon svg {
 	width: 20px;
 	height: 20px;
-	stroke: #EF4444;
+	stroke: #DC4C4C;
 	stroke-width: 2;
 }
 
 .cfa-modal-title {
-	font-family: 'Playfair Display', Georgia, serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 20px;
 	font-weight: 600;
 	color: #0F172A;
@@ -264,7 +264,7 @@ const CSS = `
 }
 
 .cfa-modal-subtitle {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 14px;
 	color: #64748B;
 	margin: 0 0 22px;
@@ -272,7 +272,7 @@ const CSS = `
 }
 
 .cfa-modal-label {
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13px;
 	font-weight: 600;
 	color: #374151;
@@ -292,7 +292,7 @@ const CSS = `
 	padding: 12px 14px;
 	border: 1.5px solid #E2E8F0;
 	border-radius: 8px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	line-height: 1.6;
 	color: #1E293B;
@@ -308,7 +308,7 @@ const CSS = `
 	font-style: italic;
 }
 .cfa-modal-textarea:focus {
-	border-color: #EF4444;
+	border-color: #DC4C4C;
 	box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 	background: #fff;
 }
@@ -325,7 +325,7 @@ const CSS = `
 	gap: 7px;
 	padding: 10px 20px;
 	border-radius: 8px;
-	font-family: 'DM Sans', sans-serif;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 13.5px;
 	font-weight: 600;
 	cursor: pointer;
@@ -345,7 +345,7 @@ const CSS = `
 }
 
 .cfa-modal-btn--confirm {
-	background: #EF4444;
+	background: #DC4C4C;
 	color: #fff;
 	box-shadow: 0 2px 8px rgba(239,68,68,.3);
 }

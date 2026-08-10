@@ -93,15 +93,6 @@ const CSS = `
   margin: 0;
   line-height: 1;
 }
-.co-cl-count {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--cl-indigo);
-  background: #EEF2FF;
-  border-radius: 20px;
-  padding: 3px 11px;
-  letter-spacing: .03em;
-}
 .co-cl-subtitle {
   font-size: 14px;
   color: var(--cl-slate4);
@@ -145,10 +136,11 @@ const CSS = `
   background: #fff;
   border-radius: 16px;
   border: 1px solid var(--cl-slate2);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 1px 3px rgba(26,26,46,.04), 0 6px 24px rgba(26,26,46,.06);
 }
-.co-cl-table { width:100%; border-collapse:collapse; }
+.co-cl-table { width:100%; min-width:640px; border-collapse:collapse; }
 .co-cl-th {
   padding: 12px 20px;
   font-size: 11px;
@@ -464,7 +456,6 @@ export default function ClientsApp() {
 				<div>
 					<div className="co-cl-title-group">
 						<h1 className="co-cl-title">Clients</h1>
-						{ ! loading && <span className="co-cl-count">{ clients.length }</span> }
 					</div>
 					<p className="co-cl-subtitle">Manage client portal access and invitations</p>
 				</div>
