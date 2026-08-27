@@ -5,6 +5,7 @@
  * Displays seat usage, member list, and an invite form.
  */
 import { useState, useEffect, useCallback } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -355,14 +356,6 @@ const TEAM_CSS = `
 }
 `;
 
-function injectStyles() {
-	if ( document.getElementById( 'co-team-css' ) ) return;
-	const el = document.createElement( 'style' );
-	el.id = 'co-team-css';
-	el.textContent = TEAM_CSS;
-	document.head.appendChild( el );
-}
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function coFetch( endpoint, options = {} ) {
@@ -406,7 +399,7 @@ export default function TeamApp() {
 	const [ form, setForm ] = useState( { name: '', email: '', role: 'editor' } );
 	const [ inviting, setInviting ] = useState( false );
 
-	useEffect( () => { injectStyles(); }, [] );
+	useEffect( () => { injectStyles( 'co-team-styles', TEAM_CSS ); }, [] );
 
 	const loadMembers = useCallback( async () => {
 		setLoading( true );

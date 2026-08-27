@@ -1,8 +1,9 @@
 /**
  * PaymentModal
  *
- * Fullscreen overlay that fires on mount to create a Stripe Checkout Session,
- * then immediately redirects the client to Stripe's hosted checkout page.
+ * Fullscreen overlay that fires on mount to create a checkout session with
+ * whichever gateway (Stripe or PayPal) is currently configured, then
+ * immediately redirects the client to that gateway's hosted checkout page.
  *
  * States: loading → (redirect) | error → (retry)
  *
@@ -12,42 +13,9 @@
  */
 
 const { useState, useEffect } = wp.element;
-
-const injectStyles = ( id, css ) => {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id; s.textContent = css;
-	document.head.appendChild( s );
-};
-
-function getContrastColor( hex ) {
-	const c = ( hex || '#6366F1' ).replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
-	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
-	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
-	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
-	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
-	return L > 0.35 ? '#1A1A2E' : '#ffffff';
-}
-
-function getBrandButtonColors( hex ) {
-	const base = hex || '#6366F1';
-	const c = base.replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 );
-	const g = parseInt( c.substring( 2, 4 ), 16 );
-	const b = parseInt( c.substring( 4, 6 ), 16 );
-	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
-	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
-		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
-		.join( '' );
-	return {
-		bg:           base,
-		hover:        hoverHex,
-		text:         getContrastColor( base ),
-		shadow:       `rgba(${ r },${ g },${ b },.3)`,
-		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
-	};
-}
+import { injectStyles } from '../../../shared/injectStyles';
+import { getContrastColor, getBrandButtonColors } from '../../../shared/colors';
+import { fmt } from '../../../shared/currency';
 
 injectStyles( 'co-payment-modal-s', `
 /* ── Overlay ───────────────────────────────────────────── */
@@ -174,8 +142,8 @@ injectStyles( 'co-payment-modal-s', `
 	line-height: 1.5;
 }
 
-/* ── Stripe badge ───────────────────────────────────────── */
-.cfpm-stripe {
+/* ── Gateway badge ──────────────────────────────────────── */
+.cfpm-gateway {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -184,12 +152,14 @@ injectStyles( 'co-payment-modal-s', `
 	color: #9CA3AF;
 }
 
-.cfpm-stripe strong {
+.cfpm-gateway strong {
 	font-weight: 700;
-	color: #6772E5; /* Stripe brand blue */
 	font-size: 13px;
 	letter-spacing: -0.01em;
 }
+
+.cfpm-gateway strong.cfpm-gateway--stripe { color: #6772E5; /* Stripe brand blue */ }
+.cfpm-gateway strong.cfpm-gateway--paypal { color: #003087; /* PayPal brand blue */ }
 
 /* ── Error state ────────────────────────────────────────── */
 .cfpm-err-icon {
@@ -238,15 +208,12 @@ injectStyles( 'co-payment-modal-s', `
 
 const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
 
-function fmt( amount, currency ) {
-	return new Intl.NumberFormat( 'en-GB', { style: 'currency', currency: currency || 'GBP' } ).format( amount );
-}
-
 export default function PaymentModal( { proposal, onClose } ) {
 	const [ phase,    setPhase    ] = useState( 'loading' ); // 'loading' | 'error'
 	const [ errorMsg, setErrorMsg ] = useState( '' );
 
-	const { brandColor, buttonColor } = window.clientoctopusClientData || {};
+	const { brandColor, buttonColor, activeProvider = 'stripe' } = window.clientoctopusClientData || {};
+	const gatewayName = 'paypal' === activeProvider ? 'PayPal' : 'Stripe';
 	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
 	const btnStyleVars = {
 		'--cfpm-btn-bg': btnColors.bg,
@@ -259,7 +226,7 @@ export default function PaymentModal( { proposal, onClose } ) {
 		setErrorMsg( '' );
 
 		try {
-			const res = await fetch( BASE + 'payments/create-session', {
+			const res = await fetch( BASE + 'payments/create-session/', {
 				method:  'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body:    JSON.stringify( { token: ( window.clientoctopusClientData || {} ).token || '' } ),
@@ -271,7 +238,7 @@ export default function PaymentModal( { proposal, onClose } ) {
 				throw new Error( data.message || `Error ${ res.status }` );
 			}
 
-			// Redirect to Stripe Checkout — no state update needed.
+			// Redirect to the gateway's hosted checkout — no state update needed.
 			window.location.href = data.checkout_url;
 
 		} catch ( err ) {
@@ -311,10 +278,10 @@ export default function PaymentModal( { proposal, onClose } ) {
 						</p>
 						<div className="cfpm-spinner" />
 						<p className="cfpm-hint">Preparing your secure checkout…</p>
-						<p className="cfpm-sub">You'll be redirected to Stripe's hosted checkout page.</p>
-						<div className="cfpm-stripe">
+						<p className="cfpm-sub">You'll be redirected to { gatewayName }'s hosted checkout page.</p>
+						<div className="cfpm-gateway">
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-							Powered by <strong>Stripe</strong>
+							Powered by <strong className={ `cfpm-gateway--${ activeProvider }` }>{ gatewayName }</strong>
 						</div>
 					</>
 				) }

@@ -6,6 +6,7 @@
  * Paid plans: Welcome → Stripe → Brand → Done  (4 steps)
  */
 import { useState, useEffect } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
 
 const API  = window.clientoctopusData?.apiUrl  || '/wp-json/clientoctopus/v1/';
 const NONCE = window.clientoctopusData?.nonce  || '';
@@ -478,14 +479,6 @@ body.co-setup-active {
   to   { opacity: 1; transform: translateX(0); }
 }
 `;
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 

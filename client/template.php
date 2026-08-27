@@ -39,8 +39,9 @@ if ( empty( $clientoctopus_active_token ) ) {
 }
 
 // Payment result only applies on live proposal URLs.
-$clientoctopus_payment_result = $clientoctopus_is_preview ? '' : ( $clientoctopus_payment_result ?? '' );
-$clientoctopus_session_id     = $clientoctopus_is_preview ? '' : ( $clientoctopus_session_id     ?? '' );
+$clientoctopus_payment_result    = $clientoctopus_is_preview ? '' : ( $clientoctopus_payment_result    ?? '' );
+$clientoctopus_session_id        = $clientoctopus_is_preview ? '' : ( $clientoctopus_session_id        ?? '' );
+$clientoctopus_gateway_provider  = $clientoctopus_is_preview ? '' : ( $clientoctopus_gateway_provider  ?? 'stripe' );
 
 // ── Client email (for success page personalisation) ───────────────────────────
 $clientoctopus_client_email = '';
@@ -131,6 +132,10 @@ wp_enqueue_style( 'co-client-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fon
 			'nonce'           => wp_create_nonce( 'wp_rest' ),
 			'pageType'        => $clientoctopus_is_preview ? 'preview' : ( $clientoctopus_payment_result ?: 'proposal' ),
 			'sessionId'       => $clientoctopus_session_id,
+			'gatewayProvider' => $clientoctopus_gateway_provider,
+			// The actually configured gateway (independent of redirect context) — used by
+			// PaymentModal, shown before any redirect has happened.
+			'activeProvider'  => 'paypal' === get_option( 'clientoctopus_payment_provider', 'stripe' ) ? 'paypal' : 'stripe',
 			'clientEmail'     => $clientoctopus_client_email,
 			'isPortalClient'  => class_exists( 'ClientOctopus_Portal_Auth' ) && ClientOctopus_Portal_Auth::is_authenticated(),
 			'pluginLogoUrl'   => esc_url( CLIENTOCTOPUS_URL . 'assets/images/logo-inline.svg' ),

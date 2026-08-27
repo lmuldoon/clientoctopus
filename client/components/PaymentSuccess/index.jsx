@@ -6,46 +6,14 @@
  *
  * Props:
  *   token      {string}  Proposal token (for "Return to proposal" link)
- *   sessionId  {string}  Stripe session ID (cs_xxx) from URL query param
+ *   sessionId  {string}  Gateway checkout/order ID (Stripe cs_xxx or PayPal order ID) from URL
+ *   provider   {string}  'stripe' | 'paypal' — which gateway processed this payment
  */
 
 const { useState, useEffect } = wp.element;
-
-const injectStyles = ( id, css ) => {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id; s.textContent = css;
-	document.head.appendChild( s );
-};
-
-function getContrastColor( hex ) {
-	const c = ( hex || '#6366F1' ).replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
-	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
-	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
-	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
-	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
-	return L > 0.35 ? '#1A1A2E' : '#ffffff';
-}
-
-function getBrandButtonColors( hex ) {
-	const base = hex || '#6366F1';
-	const c = base.replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 );
-	const g = parseInt( c.substring( 2, 4 ), 16 );
-	const b = parseInt( c.substring( 4, 6 ), 16 );
-	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
-	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
-		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
-		.join( '' );
-	return {
-		bg:           base,
-		hover:        hoverHex,
-		text:         getContrastColor( base ),
-		shadow:       `rgba(${ r },${ g },${ b },.3)`,
-		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
-	};
-}
+import { injectStyles } from '../../../shared/injectStyles';
+import { getContrastColor, getBrandButtonColors } from '../../../shared/colors';
+import { fmt } from '../../../shared/currency';
 
 /* Inject fonts if ProposalClientView hasn't already (standalone success page). */
 injectStyles( 'co-global-s', `
@@ -385,13 +353,9 @@ injectStyles( 'co-pay-success-s', `
 }
 ` );
 
-function fmt( amount, currency ) {
-	return new Intl.NumberFormat( 'en-GB', { style: 'currency', currency: currency || 'GBP' } ).format( amount );
-}
-
 const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
 
-export default function PaymentSuccess( { token, sessionId } ) {
+export default function PaymentSuccess( { token, sessionId, provider = 'stripe' } ) {
 	const [ payment, setPayment ] = useState( null );
 	const { businessName = '', clientEmail = '', brandColor, buttonColor } = window.clientoctopusClientData || {};
 	const btnColors = getBrandButtonColors( buttonColor || brandColor || '#6366F1' );
@@ -401,14 +365,43 @@ export default function PaymentSuccess( { token, sessionId } ) {
 		'--cfps-btn-text': btnColors.text,
 	};
 
-	// Poll payment status so we can show the confirmed amount.
+	// Poll payment status so we can show the confirmed amount. Retries for a few
+	// seconds if still pending — PayPal's order-approval state can take a moment
+	// to propagate after the redirect fires, so the very first check can land
+	// too early; a single one-shot check would otherwise leave this stuck showing
+	// "pending" until the client manually reloads the page.
 	useEffect( () => {
 		if ( ! sessionId ) return;
-		fetch( `${ BASE }payments/status?session_id=${ encodeURIComponent( sessionId ) }` )
-			.then( r => r.json() )
-			.then( data => setPayment( data ) )
-			.catch( () => {} );
-	}, [ sessionId ] );
+
+		let cancelled     = false;
+		let attempt       = 0;
+		const maxAttempts = 8;
+		const intervalMs  = 2000;
+
+		const poll = () => {
+			fetch( `${ BASE }payments/status?session_id=${ encodeURIComponent( sessionId ) }&provider=${ encodeURIComponent( provider ) }` )
+				.then( r => r.json() )
+				.then( data => {
+					if ( cancelled ) return;
+					setPayment( data );
+					attempt++;
+					if ( 'pending' === data.status && attempt < maxAttempts ) {
+						setTimeout( poll, intervalMs );
+					}
+				} )
+				.catch( () => {
+					if ( cancelled ) return;
+					attempt++;
+					if ( attempt < maxAttempts ) {
+						setTimeout( poll, intervalMs );
+					}
+				} );
+		};
+
+		poll();
+
+		return () => { cancelled = true; };
+	}, [ sessionId, provider ] );
 
 	const date = new Intl.DateTimeFormat( 'en-GB', {
 		day: '2-digit', month: 'long', year: 'numeric'
@@ -486,7 +479,7 @@ export default function PaymentSuccess( { token, sessionId } ) {
 				<div className="cfps-next">
 					<p className="cfps-next-title">What happens next?</p>
 					{ [
-						'You\'ll receive a payment receipt from Stripe shortly.',
+						`You'll receive a payment receipt from ${ provider === 'paypal' ? 'PayPal' : 'Stripe' } shortly.`,
 						clientEmail
 							? `A confirmation has been sent to ${ clientEmail }.`
 							: 'Check your inbox for a confirmation email.',

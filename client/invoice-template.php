@@ -13,7 +13,8 @@
  * Variables injected by client-routing.php:
  *   $clientoctopus_invoice_token  string  Sanitised UUID token from the URL.
  *   $clientoctopus_payment_result string  'success' | 'cancel' | ''
- *   $clientoctopus_session_id     string  Stripe session_id query param (read-only).
+ *   $clientoctopus_session_id     string  Gateway checkout/order ID query param (read-only).
+ *   $clientoctopus_gateway_provider string 'stripe' | 'paypal' — which gateway redirected here.
  *
  * @package ClientOctopus
  * @since   1.2.0
@@ -25,9 +26,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- All file-scope variables use the clientoctopus_ prefix.
 
-$clientoctopus_invoice_token  = $clientoctopus_invoice_token  ?? '';
-$clientoctopus_payment_result = $clientoctopus_payment_result ?? '';
-$clientoctopus_session_id     = $clientoctopus_session_id     ?? '';
+$clientoctopus_invoice_token     = $clientoctopus_invoice_token     ?? '';
+$clientoctopus_payment_result    = $clientoctopus_payment_result    ?? '';
+$clientoctopus_session_id        = $clientoctopus_session_id        ?? '';
+$clientoctopus_gateway_provider  = $clientoctopus_gateway_provider  ?? 'stripe';
 
 if ( empty( $clientoctopus_invoice_token ) ) {
 	wp_die(
@@ -45,17 +47,50 @@ if ( ! class_exists( 'ClientOctopus_Invoice' ) ) {
 	}
 }
 
-// ── Write-through: mark invoice paid if returning from successful Stripe checkout ─
+// ── Write-through: mark invoice paid if returning from a successful checkout ─────
 if ( 'success' === $clientoctopus_payment_result && $clientoctopus_session_id && class_exists( 'ClientOctopus_Invoice' ) ) {
-	$clientoctopus_stripe_cls = CLIENTOCTOPUS_DIR . 'modules/payments/class-stripe.php';
-	if ( ! class_exists( 'ClientOctopus_Stripe' ) && file_exists( $clientoctopus_stripe_cls ) ) {
-		require_once $clientoctopus_stripe_cls;
-	}
-	if ( class_exists( 'ClientOctopus_Stripe' ) && ClientOctopus_Stripe::is_configured() ) {
-		$clientoctopus_stripe_session = ClientOctopus_Stripe::retrieve_session( $clientoctopus_session_id );
-		if ( ! is_wp_error( $clientoctopus_stripe_session ) && 'paid' === ( $clientoctopus_stripe_session['payment_status'] ?? '' ) ) {
-			if ( function_exists( 'clientoctopus_handle_checkout_complete' ) ) {
-				clientoctopus_handle_checkout_complete( $clientoctopus_stripe_session );
+	if ( 'paypal' === $clientoctopus_gateway_provider ) {
+		$clientoctopus_paypal_cls = CLIENTOCTOPUS_DIR . 'modules/payments/class-paypal.php';
+		if ( ! class_exists( 'ClientOctopus_PayPal' ) && file_exists( $clientoctopus_paypal_cls ) ) {
+			require_once $clientoctopus_paypal_cls;
+		}
+		if ( class_exists( 'ClientOctopus_PayPal' ) && ClientOctopus_PayPal::is_configured() ) {
+			// Read-only check first — capture_order() errors if already captured
+			// elsewhere (e.g. by the webhook, or a concurrent status-endpoint poll).
+			// PayPal's order-approval state can take a moment to propagate after the
+			// redirect fires, so retry a few times with a short pause rather than
+			// giving up on the very first (possibly premature) check.
+			$clientoctopus_paypal_order = ClientOctopus_PayPal::get_order( $clientoctopus_session_id );
+			for ( $clientoctopus_paypal_attempt = 0; $clientoctopus_paypal_attempt < 3; $clientoctopus_paypal_attempt++ ) {
+				if ( ! is_wp_error( $clientoctopus_paypal_order ) && in_array( $clientoctopus_paypal_order['status'] ?? '', [ 'APPROVED', 'COMPLETED' ], true ) ) {
+					break;
+				}
+				sleep( 1 );
+				$clientoctopus_paypal_order = ClientOctopus_PayPal::get_order( $clientoctopus_session_id );
+			}
+			if ( ! is_wp_error( $clientoctopus_paypal_order ) && 'APPROVED' === ( $clientoctopus_paypal_order['status'] ?? '' ) ) {
+				$clientoctopus_paypal_captured = ClientOctopus_PayPal::capture_order( $clientoctopus_session_id );
+				if ( ! is_wp_error( $clientoctopus_paypal_captured ) ) {
+					$clientoctopus_paypal_order = $clientoctopus_paypal_captured;
+				}
+			}
+			if ( ! is_wp_error( $clientoctopus_paypal_order ) && 'COMPLETED' === ( $clientoctopus_paypal_order['status'] ?? '' ) ) {
+				if ( function_exists( 'clientoctopus_handle_paypal_order_complete' ) ) {
+					clientoctopus_handle_paypal_order_complete( $clientoctopus_paypal_order );
+				}
+			}
+		}
+	} else {
+		$clientoctopus_stripe_cls = CLIENTOCTOPUS_DIR . 'modules/payments/class-stripe.php';
+		if ( ! class_exists( 'ClientOctopus_Stripe' ) && file_exists( $clientoctopus_stripe_cls ) ) {
+			require_once $clientoctopus_stripe_cls;
+		}
+		if ( class_exists( 'ClientOctopus_Stripe' ) && ClientOctopus_Stripe::is_configured() ) {
+			$clientoctopus_stripe_session = ClientOctopus_Stripe::retrieve_session( $clientoctopus_session_id );
+			if ( ! is_wp_error( $clientoctopus_stripe_session ) && 'paid' === ( $clientoctopus_stripe_session['payment_status'] ?? '' ) ) {
+				if ( function_exists( 'clientoctopus_handle_checkout_complete' ) ) {
+					clientoctopus_handle_checkout_complete( $clientoctopus_stripe_session );
+				}
 			}
 		}
 	}

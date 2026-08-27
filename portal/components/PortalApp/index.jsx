@@ -13,6 +13,7 @@ import PortalProposals from '../PortalProposals';
 import PortalInvoices  from '../PortalInvoices';
 import PortalPayments  from '../PortalPayments';
 import PortalProjects  from '../PortalProjects';
+import { injectStyles } from '../../../shared/injectStyles';
 
 injectStyles( 'co-global-s', `
 *, *::before, *::after { box-sizing: border-box; }

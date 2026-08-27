@@ -15,15 +15,9 @@ import ClientProposalSection from '../ClientProposalSection';
 import ClientPricingTable    from '../ClientPricingTable';
 import ClientActionButtons   from '../ClientActionButtons';
 import PaymentModal          from '../PaymentModal';
+import { injectStyles } from '../../../shared/injectStyles';
 
 /* ── Style injection ──────────────────────────────────────────── */
-const injectStyles = ( id, css ) => {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-};
 
 /* Fonts + global reset — injected once at root level */
 const GLOBAL_CSS = `

@@ -81,7 +81,10 @@ function injectGlobalStyles() {
 // ─── API helper ───────────────────────────────────────────────────────────────
 export async function coFetch( path, options = {} ) {
 	const { apiUrl, nonce } = window.clientoctopusData || {};
-	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
+	// Ensure the resource path (not the query string) ends in a trailing slash —
+	// some hosts 301-redirect a request missing it, which can drop the method/body.
+	const [ base, qs ] = path.split( '?' );
+	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + base.replace( /\/?$/, '/' ) + ( qs ? `?${ qs }` : '' );
 
 	const res = await fetch( url, {
 		cache: 'no-store',
@@ -104,7 +107,8 @@ export async function coFetch( path, options = {} ) {
 // ─── Root Component ───────────────────────────────────────────────────────────
 export default function App() {
 	const [ view, setView ]                             = useState( 'list' );
-	const [ proposals, setProposals ]                   = useState( [] );
+	const [ query, setQuery ]                           = useState( { status: '', search: '', page: 1 } );
+	const [ list, setList ]                             = useState( { proposals: [], total: 0, pages: 1, counts: {} } );
 	const [ loading, setLoading ]                       = useState( true );
 	const [ error, setError ]                           = useState( null );
 	const [ editingProposal, setEditingProposal ]       = useState( null );
@@ -112,20 +116,41 @@ export default function App() {
 
 	useEffect( () => {
 		injectGlobalStyles();
-		fetchProposals();
 	}, [] );
 
-	async function fetchProposals() {
-		setLoading( true );
-		setError( null );
-		try {
-			const data = await coFetch( 'proposals' );
-			setProposals( data.proposals || [] );
-		} catch ( e ) {
-			setError( e.message );
-		} finally {
-			setLoading( false );
-		}
+	useEffect( () => {
+		let cancelled = false;
+		( async () => {
+			setLoading( true );
+			setError( null );
+			try {
+				const params = new URLSearchParams();
+				if ( query.status ) params.set( 'status', query.status );
+				if ( query.search ) params.set( 'search', query.search );
+				params.set( 'page', String( query.page ) );
+				params.set( 'per_page', '20' );
+				const data = await coFetch( `proposals?${ params.toString() }` );
+				if ( ! cancelled ) {
+					setList( {
+						proposals: data.proposals || [],
+						total:     data.total     || 0,
+						pages:     data.pages     || 1,
+						counts:    data.counts    || {},
+					} );
+				}
+			} catch ( e ) {
+				if ( ! cancelled ) setError( e.message );
+			} finally {
+				if ( ! cancelled ) setLoading( false );
+			}
+		} )();
+		return () => { cancelled = true; };
+	}, [ query ] );
+
+	// Re-runs the current query — used after any action (delete/send/save) that
+	// changes data server-side, since the list is no longer held fully in memory.
+	function refetch() {
+		setQuery( q => ( { ...q } ) );
 	}
 
 	async function handleEditProposal( id ) {
@@ -139,12 +164,7 @@ export default function App() {
 	}
 
 	function handleWizardComplete( savedProposal ) {
-		if ( editingProposal ) {
-			// Replace the updated proposal in-place in the list.
-			setProposals( prev => prev.map( p => p.id === savedProposal.id ? savedProposal : p ) );
-		} else {
-			setProposals( prev => [ savedProposal, ...prev ] );
-		}
+		refetch();
 		setEditingProposal( null );
 		setView( 'list' );
 	}
@@ -165,7 +185,7 @@ export default function App() {
 	}
 
 	function handleContentSave( updatedProposal ) {
-		setProposals( prev => prev.map( p => p.id === updatedProposal.id ? updatedProposal : p ) );
+		refetch();
 		setEditingContentProposal( null );
 		setView( 'list' );
 	}
@@ -176,24 +196,29 @@ export default function App() {
 	}
 
 	function handleProposalDeleted( id ) {
-		setProposals( prev => prev.filter( p => p.id !== id ) );
+		refetch();
 	}
 
 	function handleProposalSent( id ) {
-		setProposals( prev => prev.map( p => p.id === id ? { ...p, status: 'sent' } : p ) );
+		refetch();
 	}
 
 	return (
 		<div id="co-app" style={ { padding: '32px 28px 64px' } }>
 			{ view === 'list' && (
 				<ProposalList
-					proposals={ proposals }
+					proposals={ list.proposals }
+					total={ list.total }
+					pages={ list.pages }
+					counts={ list.counts }
+					query={ query }
+					onQueryChange={ setQuery }
 					loading={ loading }
 					error={ error }
 					onNewProposal={ () => setView( 'wizard' ) }
 					onEditProposal={ handleEditProposal }
 					onEditContent={ handleEditContent }
-					onRefresh={ fetchProposals }
+					onRefresh={ refetch }
 					onProposalDeleted={ handleProposalDeleted }
 					onProposalSent={ handleProposalSent }
 				/>

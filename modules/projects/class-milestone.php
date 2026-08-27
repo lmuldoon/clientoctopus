@@ -51,6 +51,7 @@ class ClientOctopus_Milestone {
 
 		// Auto-assign sort_order if not provided.
 		if ( ! isset( $data['sort_order'] ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 			$max = (int) $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT COALESCE(MAX(sort_order), -1) FROM " . self::table() . " WHERE project_id = %d AND owner_id = %d",
@@ -101,7 +102,7 @@ class ClientOctopus_Milestone {
 			? $wpdb->prepare( "project_id = %d AND owner_id = %d", $project_id, $owner_id )
 			: $wpdb->prepare( "project_id = %d", $project_id );
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant; $where is pre-built via $wpdb->prepare() above.
 		$rows = $wpdb->get_results(
 			"SELECT * FROM " . self::table() . " WHERE $where ORDER BY sort_order ASC, created_at ASC",
 			ARRAY_A
@@ -133,6 +134,7 @@ class ClientOctopus_Milestone {
 
 		// Block status changes on completed milestones — they are permanently locked.
 		if ( isset( $update['status'] ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 			$current_status = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT status FROM " . self::table() . " WHERE id = %d AND owner_id = %d",
@@ -153,6 +155,7 @@ class ClientOctopus_Milestone {
 		// Stamp completed_at when completing; clear it when un-completing.
 		if ( isset( $update['status'] ) ) {
 			if ( 'completed' === $update['status'] ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 				$existing_completed = $wpdb->get_var(
 					$wpdb->prepare( "SELECT completed_at FROM " . self::table() . " WHERE id = %d", $id )
 				);
@@ -177,6 +180,7 @@ class ClientOctopus_Milestone {
 		}
 
 		if ( 0 === $result ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 			$exists = $wpdb->get_var(
 				$wpdb->prepare( "SELECT id FROM " . self::table() . " WHERE id = %d AND owner_id = %d", $id, $owner_id )
 			);
@@ -255,6 +259,7 @@ class ClientOctopus_Milestone {
 	public static function submit( int $id, int $owner_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT status FROM " . self::table() . " WHERE id = %d AND owner_id = %d",
@@ -292,6 +297,7 @@ class ClientOctopus_Milestone {
 	public static function approve( int $id, int $project_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT status FROM " . self::table() . " WHERE id = %d AND project_id = %d",
@@ -328,6 +334,7 @@ class ClientOctopus_Milestone {
 	public static function all_completed( int $project_id ): bool {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$incomplete = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM " . self::table() . " WHERE project_id = %d AND status != 'completed'",

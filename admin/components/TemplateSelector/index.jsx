@@ -10,6 +10,7 @@
  *   userPlan   {string}   — 'free' | 'pro' | 'agency'
  */
 import { useState } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
 
 // ─── Template definitions ─────────────────────────────────────────────────────
 const TEMPLATES = [
@@ -195,14 +196,6 @@ const CSS = `
   color: var(--co-slate-400);
 }
 `;
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const el = document.createElement( 'style' );
-	el.id = id;
-	el.textContent = css;
-	document.head.appendChild( el );
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function TemplateSelector( { selected, onSelect, userPlan = 'free' } ) {

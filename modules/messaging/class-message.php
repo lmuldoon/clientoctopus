@@ -114,6 +114,7 @@ class ClientOctopus_Message {
 		// Mark client messages read.
 		self::mark_read_admin( $project_id, $owner_id );
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at ASC",
@@ -141,6 +142,7 @@ class ClientOctopus_Message {
 	public static function delete( int $id, int $owner_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$result = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE m FROM " . self::table() . " m
@@ -170,6 +172,7 @@ class ClientOctopus_Message {
 		global $wpdb;
 
 		// Only update if project belongs to owner.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$wpdb->query(
 			$wpdb->prepare(
 				"UPDATE " . self::table() . " m
@@ -200,6 +203,7 @@ class ClientOctopus_Message {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$unread = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM " . self::table() . "
@@ -210,6 +214,7 @@ class ClientOctopus_Message {
 
 		self::mark_read_by_email( $project_id, $client_email );
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at ASC",
@@ -293,6 +298,7 @@ class ClientOctopus_Message {
 	private static function mark_read_by_email( int $project_id, string $client_email ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$wpdb->query(
 			$wpdb->prepare(
 				"UPDATE " . self::table() . " m
@@ -342,6 +348,7 @@ class ClientOctopus_Message {
 	public static function unread_count_admin( int $owner_id ): int {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM " . self::table() . " m
@@ -364,6 +371,7 @@ class ClientOctopus_Message {
 	public static function unread_count_for_project_admin( int $project_id, int $owner_id ): int {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM " . self::table() . " m
@@ -455,6 +463,7 @@ class ClientOctopus_Message {
 	private static function notify_recipient( int $message_id ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$msg = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT m.sender_type, m.message, m.sender_id,

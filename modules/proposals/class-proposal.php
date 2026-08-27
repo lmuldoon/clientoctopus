@@ -221,12 +221,29 @@ $now      = current_time( 'mysql' );
 			$rows = [];
 		}
 
+		// Per-status counts for the tab badges — always reflects the full,
+		// unfiltered-by-status/search set (matches the pre-pagination client-side
+		// behavior, which counted the entire fetched list regardless of the
+		// active tab or search box).
+		$counts = array_fill_keys( self::STATUSES, 0 );
+		$counts['all'] = 0;
+		$count_rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT status, COUNT(*) AS c FROM $t WHERE owner_id = %d AND deleted_at IS NULL GROUP BY status", $owner_id )
+		);
+		foreach ( $count_rows as $row ) {
+			if ( isset( $counts[ $row->status ] ) ) {
+				$counts[ $row->status ] = (int) $row->c;
+			}
+			$counts['all'] += (int) $row->c;
+		}
+
 		return [
 			'proposals' => array_map( [ __CLASS__, 'prepare_row' ], $rows ),
 			'total'     => $total,
 			'pages'     => (int) ceil( $total / $per_page ),
 			'page'      => $page,
 			'per_page'  => $per_page,
+			'counts'    => $counts,
 		];
 	}
 
@@ -283,6 +300,7 @@ $now      = current_time( 'mysql' );
 
 		if ( 0 === $result ) {
 			// Either not found or no change — verify existence.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM " . self::table() . " WHERE id = %d AND owner_id = %d", $id, $owner_id ) );
 			if ( ! $exists ) {
 				return new WP_Error( 'proposal_not_found', __( 'Proposal not found.', 'clientoctopus' ), [ 'status' => 404 ] );
@@ -353,6 +371,7 @@ $now      = current_time( 'mysql' );
 	public static function delete( int $id, int $owner_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$proposal = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT status FROM " . self::table() . " WHERE id = %d AND owner_id = %d AND deleted_at IS NULL",
@@ -454,6 +473,7 @@ $now      = current_time( 'mysql' );
 	public static function generate_preview_token( int $id, int $owner_id ): string|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$exists = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT id FROM " . self::table() . " WHERE id = %d AND owner_id = %d AND deleted_at IS NULL",
@@ -493,6 +513,7 @@ $now      = current_time( 'mysql' );
 	public static function revoke_preview_token( int $id, int $owner_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$exists = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT id FROM " . self::table() . " WHERE id = %d AND owner_id = %d AND deleted_at IS NULL",

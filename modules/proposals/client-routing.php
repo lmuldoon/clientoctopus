@@ -26,6 +26,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Case-insensitive $_GET lookup — PayPal's own redirect params (`token`, `PayerID`)
+ * are read directly from the query string, so this guards against any casing variance
+ * rather than relying on the exact-case key PayPal happens to use today.
+ *
+ * @param string $name Case-insensitive query param name.
+ *
+ * @return string
+ */
+function clientoctopus_get_query_param_ci( string $name ): string {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Payment provider redirect parameters, read-only, no state change.
+	foreach ( $_GET as $key => $value ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only redirect parameters.
+		if ( 0 === strcasecmp( (string) $key, $name ) ) {
+			return sanitize_text_field( wp_unslash( is_array( $value ) ? '' : (string) $value ) );
+		}
+	}
+	return '';
+}
+
 // ── Register rewrite tags + rules ────────────────────────────────────────────
 
 add_action( 'init', static function (): void {
@@ -109,9 +128,18 @@ add_action( 'template_redirect', static function (): void {
 
 	$clientoctopus_invoice_token  = sanitize_text_field( $invoice_token );
 	$clientoctopus_payment_result = sanitize_key( get_query_var( 'clientoctopus_payment_result', '' ) );
-	// Stripe passes ?session_id=cs_xxx on success redirect — read-only, no state change.
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Stripe redirect parameter, read-only, no state change.
-	$clientoctopus_session_id     = sanitize_text_field( wp_unslash( $_GET['session_id'] ?? '' ) );
+	// Stripe passes ?session_id=cs_xxx on the success redirect. PayPal always appends its own
+	// `token` (order id) + `PayerID` params to whatever return_url we give it — detect PayPal
+	// purely from THEIR params (case-insensitive), with no dependency on any marker of ours
+	// surviving PayPal's redirect. return_url is built with no pre-existing query string, so
+	// there's no risk of PayPal producing a malformed `?a=b?c=d` URL either.
+	$clientoctopus_paypal_token     = clientoctopus_get_query_param_ci( 'token' );
+	$clientoctopus_paypal_payer_id  = clientoctopus_get_query_param_ci( 'PayerID' );
+	$clientoctopus_gateway_provider = ( $clientoctopus_paypal_token && $clientoctopus_paypal_payer_id ) ? 'paypal' : 'stripe';
+	$clientoctopus_session_id       = 'paypal' === $clientoctopus_gateway_provider
+		? $clientoctopus_paypal_token
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Stripe redirect parameter, read-only, no state change.
+		: sanitize_text_field( wp_unslash( $_GET['session_id'] ?? '' ) );
 
 	// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 	include $template;
@@ -160,11 +188,18 @@ add_action( 'template_redirect', static function (): void {
 	// Pass sanitised variables to the template.
 	$clientoctopus_proposal_token  = sanitize_text_field( $token );
 	$clientoctopus_payment_result  = sanitize_key( get_query_var( 'clientoctopus_payment_result', '' ) );
-	// Stripe passes ?session_id=cs_xxx on the success redirect — read-only
-	// parameter, no state change. Nonces are for form submissions, not external
-	// redirect parameters from payment providers.
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Stripe redirect parameter, read-only, no state change.
-	$clientoctopus_session_id      = sanitize_text_field( wp_unslash( $_GET['session_id'] ?? '' ) );
+	// Stripe passes ?session_id=cs_xxx on the success redirect. PayPal always appends its own
+	// `token` (order id) + `PayerID` params to whatever return_url we give it — detect PayPal
+	// purely from THEIR params (case-insensitive), with no dependency on any marker of ours
+	// surviving PayPal's redirect. return_url is built with no pre-existing query string, so
+	// there's no risk of PayPal producing a malformed `?a=b?c=d` URL either.
+	$clientoctopus_paypal_token     = clientoctopus_get_query_param_ci( 'token' );
+	$clientoctopus_paypal_payer_id  = clientoctopus_get_query_param_ci( 'PayerID' );
+	$clientoctopus_gateway_provider = ( $clientoctopus_paypal_token && $clientoctopus_paypal_payer_id ) ? 'paypal' : 'stripe';
+	$clientoctopus_session_id       = 'paypal' === $clientoctopus_gateway_provider
+		? $clientoctopus_paypal_token
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Stripe redirect parameter, read-only, no state change.
+		: sanitize_text_field( wp_unslash( $_GET['session_id'] ?? '' ) );
 
 	// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 	include $template;

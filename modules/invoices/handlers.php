@@ -191,11 +191,12 @@ function clientoctopus_invoice_webhook_payload( int $invoice_id, int $owner_id )
 	}
 
 	return [
-		'invoice_id'     => $invoice['id'],
-		'invoice_number' => $invoice['invoice_ref'],
-		'client_email'   => $client_email,
-		'total_amount'   => $invoice['total_amount'],
-		'currency'       => $invoice['currency'],
-		'status'         => $invoice['status'],
+		'invoice_id'           => $invoice['id'],
+		'invoice_number'       => $invoice['invoice_ref'],
+		'client_email'         => $client_email,
+		'total_amount'         => $invoice['total_amount'],
+		'currency'             => $invoice['currency'],
+		'status'               => $invoice['status'],
+		'recurring_profile_id' => $invoice['recurring_profile_id'] ?? null,
 	];
 }

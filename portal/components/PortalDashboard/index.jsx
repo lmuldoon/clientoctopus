@@ -6,6 +6,8 @@
  */
 
 const { useState, useEffect } = wp.element;
+import { injectStyles } from '../../../shared/injectStyles';
+import { fmt } from '../../../shared/currency';
 
 const apiFetch = ( path ) =>
 	fetch( window.coPortalData.apiUrl + path, {
@@ -14,9 +16,6 @@ const apiFetch = ( path ) =>
 			'Content-Type': 'application/json',
 		},
 	} ).then( r => r.json() );
-
-const fmt = ( amount, currency = 'GBP' ) =>
-	new Intl.NumberFormat( 'en-GB', { style: 'currency', currency } ).format( amount );
 
 const STATUS_COLORS = {
 	draft:    { bg: '#F3F4F6', text: '#6B7280' },

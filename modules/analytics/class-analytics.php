@@ -69,15 +69,27 @@ class ClientOctopus_Analytics {
 	}
 
 	private static function kpi_query( wpdb $wpdb, int $owner_id, string $from, string $to ): array {
-		$p_table = $wpdb->prefix . 'clientoctopus_proposals';
+		$p_table   = $wpdb->prefix . 'clientoctopus_proposals';
 		$pay_table = $wpdb->prefix . 'clientoctopus_payments';
+		$inv_table = $wpdb->prefix . 'clientoctopus_invoices';
 
-		$revenue = (float) $wpdb->get_var( $wpdb->prepare(
+		// Revenue combines proposal payments and paid standalone invoices —
+		// both are real money received, regardless of source.
+		$proposal_revenue = (float) $wpdb->get_var( $wpdb->prepare(
 			"SELECT COALESCE(SUM(amount),0) FROM {$pay_table}
 			 WHERE owner_id = %d AND status = 'completed'
 			   AND completed_at BETWEEN %s AND %s",
 			$owner_id, $from, $to
 		) );
+
+		$invoice_revenue = (float) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COALESCE(SUM(total_amount),0) FROM {$inv_table}
+			 WHERE owner_id = %d AND status = 'paid' AND deleted_at IS NULL
+			   AND paid_at BETWEEN %s AND %s",
+			$owner_id, $from, $to
+		) );
+
+		$revenue = $proposal_revenue + $invoice_revenue;
 
 		$proposals_sent = (int) $wpdb->get_var( $wpdb->prepare(
 			"SELECT COUNT(*) FROM {$p_table}
@@ -128,6 +140,7 @@ class ClientOctopus_Analytics {
 
 		global $wpdb;
 		$pay_table = $wpdb->prefix . 'clientoctopus_payments';
+		$inv_table = $wpdb->prefix . 'clientoctopus_invoices';
 
 		$format = match ( $granularity ) {
 			'month' => '%Y-%m',
@@ -135,14 +148,23 @@ class ClientOctopus_Analytics {
 			default => '%Y-%m-%d',
 		};
 
+		// Combine proposal payments and paid invoices into the same date buckets —
+		// both are revenue, regardless of source.
 		$rows = $wpdb->get_results( $wpdb->prepare(
-			"SELECT DATE_FORMAT(completed_at, %s) AS date_label,
-			        COALESCE(SUM(amount), 0) AS amount
-			 FROM {$pay_table}
-			 WHERE owner_id = %d AND status = 'completed'
-			   AND completed_at BETWEEN %s AND %s
+			"SELECT date_label, SUM(amount) AS amount FROM (
+				(SELECT DATE_FORMAT(completed_at, %s) AS date_label, amount, completed_at AS sort_ts
+				 FROM {$pay_table}
+				 WHERE owner_id = %d AND status = 'completed'
+				   AND completed_at BETWEEN %s AND %s)
+				UNION ALL
+				(SELECT DATE_FORMAT(paid_at, %s) AS date_label, total_amount AS amount, paid_at AS sort_ts
+				 FROM {$inv_table}
+				 WHERE owner_id = %d AND status = 'paid' AND deleted_at IS NULL
+				   AND paid_at BETWEEN %s AND %s)
+			 ) combined
 			 GROUP BY date_label
-			 ORDER BY MIN(completed_at) ASC",
+			 ORDER BY MIN(sort_ts) ASC",
+			$format, $owner_id, $from, $to,
 			$format, $owner_id, $from, $to
 		), ARRAY_A );
 
@@ -274,9 +296,14 @@ class ClientOctopus_Analytics {
 			(SELECT 'project', CONCAT('Project started: ', name), created_at, NULL
 			 FROM {$p}clientoctopus_projects
 			 WHERE owner_id = %d AND created_at IS NOT NULL AND deleted_at IS NULL)
+			UNION ALL
+			(SELECT 'invoice_paid', CONCAT('Invoice paid: ', c.name), inv.paid_at, inv.total_amount
+			 FROM {$p}clientoctopus_invoices inv
+			 JOIN {$p}clientoctopus_clients c ON c.id = inv.client_id
+			 WHERE inv.owner_id = %d AND inv.status = 'paid' AND inv.deleted_at IS NULL AND inv.paid_at IS NOT NULL)
 			ORDER BY ts DESC
 			LIMIT %d",
-			$owner_id, $owner_id, $owner_id, $owner_id, $owner_id, $lim
+			$owner_id, $owner_id, $owner_id, $owner_id, $owner_id, $owner_id, $lim
 		), ARRAY_A );
 
 		$result = array_map( static fn( $r ) => [
@@ -316,8 +343,9 @@ class ClientOctopus_Analytics {
 		global $wpdb;
 		$p_table   = $wpdb->prefix . 'clientoctopus_proposals';
 		$pay_table = $wpdb->prefix . 'clientoctopus_payments';
+		$inv_table = $wpdb->prefix . 'clientoctopus_invoices';
 
-		$rows = $wpdb->get_results( $wpdb->prepare(
+		$proposal_rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT p.title, p.status, p.total_amount, p.currency, p.template_id,
 			        p.sent_at, p.accepted_at, p.declined_at,
 			        COALESCE(pay.amount, 0) AS payment_received
@@ -328,6 +356,18 @@ class ClientOctopus_Analytics {
 			$owner_id, $from, $to
 		), ARRAY_A );
 
+		// Paid standalone invoices — reported as their own type since they carry
+		// different fields (no template, no accept/decline lifecycle) rather than
+		// conflated into the proposal columns.
+		$invoice_rows = $wpdb->get_results( $wpdb->prepare(
+			"SELECT title, status, total_amount, currency, sent_at, paid_at
+			 FROM {$inv_table}
+			 WHERE owner_id = %d AND status = 'paid' AND deleted_at IS NULL
+			   AND paid_at BETWEEN %s AND %s
+			 ORDER BY paid_at DESC",
+			$owner_id, $from, $to
+		), ARRAY_A );
+
 		$filename = 'clientoctopus-analytics-' . gmdate( 'Y-m-d' ) . '.csv';
 
 		header( 'Content-Type: text/csv; charset=utf-8' );
@@ -335,10 +375,11 @@ class ClientOctopus_Analytics {
 		header( 'Pragma: no-cache' );
 
 		$out = fopen( 'php://output', 'w' );
-		fputcsv( $out, [ 'Title', 'Status', 'Amount', 'Currency', 'Template', 'Sent', 'Accepted', 'Declined', 'Payment Received' ] );
+		fputcsv( $out, [ 'Type', 'Title', 'Status', 'Amount', 'Currency', 'Template', 'Sent', 'Accepted', 'Declined', 'Payment Received' ] );
 
-		foreach ( $rows as $row ) {
+		foreach ( $proposal_rows as $row ) {
 			fputcsv( $out, [
+				'Proposal',
 				$row['title'],
 				$row['status'],
 				$row['total_amount'],
@@ -348,6 +389,21 @@ class ClientOctopus_Analytics {
 				$row['accepted_at'] ?? '',
 				$row['declined_at'] ?? '',
 				$row['payment_received'],
+			] );
+		}
+
+		foreach ( $invoice_rows as $row ) {
+			fputcsv( $out, [
+				'Invoice',
+				$row['title'],
+				$row['status'],
+				$row['total_amount'],
+				$row['currency'],
+				'', // no template concept for invoices
+				$row['sent_at'] ?? '',
+				'', // no accepted_at concept for invoices
+				'', // no declined_at concept for invoices
+				$row['total_amount'],
 			] );
 		}
 
@@ -369,5 +425,12 @@ add_action( 'clientoctopus_proposal_saved', static function ( int $proposal_id, 
 }, 10, 2 );
 
 add_action( 'clientoctopus_payment_completed', static function ( int $payment_id, int $owner_id ): void {
+	ClientOctopus_Analytics::bust_cache( $owner_id );
+}, 10, 2 );
+
+// Invoices now contribute to revenue (see kpi_query/revenue_chart/activity_feed
+// above) — without this, the analytics cache wouldn't invalidate when an
+// invoice (recurring or manual) gets paid, and revenue would look stale.
+add_action( 'clientoctopus_invoice_paid', static function ( int $invoice_id, int $owner_id ): void {
 	ClientOctopus_Analytics::bust_cache( $owner_id );
 }, 10, 2 );

@@ -2,9 +2,9 @@
 Contributors: codievolt
 Tags: proposal, invoices, client portal, client management, payments
 Requires at least: 6.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Professional proposal, invoice, payment, and client management for WordPress fre
 
 Client Octopus gives freelancers and agencies everything they need to send proposals and invoices, collect payments, manage projects, and communicate with clients — all from the WordPress admin.
 
-Create professional proposals and standalone invoices, collect e-signatures, automate client reminders, collect Stripe payments, and provide a branded client portal directly on your own website.
+Create professional proposals and standalone invoices, collect e-signatures, automate client reminders, collect payments via Stripe or PayPal, and provide a branded client portal directly on your own website.
 
 = Free Features =
 
@@ -31,8 +31,8 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 = Pro Features =
 
 * Everything in Free plus...
-* Stripe payment collection on proposals
-* Stripe "Pay Now" button on client-facing invoices (auto-marks paid via webhook)
+* Stripe or PayPal payment collection on proposals
+* Stripe or PayPal "Pay Now" button on client-facing invoices (auto-marks paid via webhook)
 * Client portal with magic-link login
 * AI writing tools for proposal content
 * Revenue analytics dashboard
@@ -65,9 +65,9 @@ Unlike Proposify, HoneyBook, or Dubsado, your data never leaves your own server.
 
 == FAQ ==
 
-= Does Client Octopus support Stripe payments? =
+= Does Client Octopus support payments? =
 
-Yes. Stripe payments are available on the Pro and Agency plans for both proposals and standalone invoices.
+Yes. On the Pro and Agency plans, you can accept payments on proposals and standalone invoices via either Stripe or PayPal — choose whichever gateway you prefer in Settings. Clients always see a single "Pay Now" button that routes to whichever gateway you've configured.
 
 = Can clients access a portal? =
 
@@ -99,16 +99,20 @@ Client Octopus is a self-hosted WordPress plugin, not a SaaS platform. Your prop
 
 = Can I send invoices without a proposal? =
 
-Yes. Standalone invoices are available on all plans. Create an invoice, assign a client, add line items with VAT and discount options, and send it directly. Free plan clients pay via bank transfer; Pro plan clients get a "Pay Now" Stripe button on their invoice page.
+Yes. Standalone invoices are available on all plans. Create an invoice, assign a client, add line items with VAT and discount options, and send it directly. Free plan clients pay via bank transfer; Pro plan clients get a "Pay Now" button (Stripe or PayPal, whichever is configured) on their invoice page.
 
 == Screenshots ==
 
-1. Client Octopus plan and usage dashboard
-2. Client Octopus proposal builder templates
-3. Client Octopus proposal builder pricing setup
-4. Client Octopus project milestones and approvals
-5. Client Octopus client portal projects interface
-6. Client Octopus invoice
+1. Client-facing proposal — branded, with pricing breakdown and e-signature acceptance
+2. Client portal dashboard — proposals, invoices, projects, and payments at a glance
+3. Branded client invoice with Print / Save as PDF
+4. Creating a new proposal — guided template picker
+5. Client portal payment history — proposal deposits and invoice payments
+6. Creating a new invoice — client, line items, discounts, and VAT
+7. Project detail — milestones, approvals, and payment status
+8. Client portal login — magic link or password sign-in
+9. Plan & usage dashboard — feature access and monthly limits
+10. Webhooks — connect Zapier, Make, or your own systems
 
 == External Services ==
 
@@ -122,6 +126,15 @@ Client Octopus uses Stripe to process client payments on proposals and invoices.
 - Data sent: payment amount, currency, project or invoice description, and client email when a payment session is created. Stripe webhook events (payment completion) are received and verified using your webhook secret.
 - Terms of Service: https://stripe.com/legal/ssa
 - Privacy Policy: https://stripe.com/privacy
+
+**PayPal**
+
+Client Octopus uses PayPal as an alternative to Stripe for processing client payments on proposals and invoices, if you choose it as your active payment provider. When a client pays, the plugin creates a PayPal order on your configured PayPal account and redirects the client to complete and approve payment on PayPal's hosted page. The client's payment details are entered directly on PayPal's servers and are never stored in WordPress. Your PayPal API credentials (Client ID and Client Secret) are stored in the WordPress options table and transmitted only to PayPal's API.
+
+- Service: PayPal, Inc.
+- Data sent: payment amount, currency, and a proposal or invoice reference when an order is created. PayPal webhook events (order approval and payment capture) are received and verified using PayPal's own signature-verification API.
+- Terms of Service: https://www.paypal.com/us/legalhub/useragreement-full
+- Privacy Policy: https://www.paypal.com/us/legalhub/paypal/privacy-full
 
 **Client Octopus AI Relay**
 
@@ -141,6 +154,17 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 - Privacy Policy: https://freemius.com/privacy/
 
 == Changelog ==
+
+= 1.1.3 =
+
+* New: Recurring Invoices — set up a profile for a client (weekly, monthly, quarterly, or yearly) and Client Octopus automatically generates and sends a fresh invoice on schedule; clients still pay each one manually via the existing Pay Now flow. Supports its own Payment Terms and Notes & Payment Instructions, matching standalone invoices.
+* New: PayPal as an alternate payment provider (Pro & Agency) — choose either Stripe or PayPal as your active gateway in Settings; clients always see a single "Pay Now" button that routes to whichever gateway is configured, on both proposals and standalone invoices.
+* New: Payment Provider settings section with PayPal API credentials, Sandbox/Live mode toggle, and webhook configuration, alongside the existing Stripe settings.
+* New: "+ Add New Client" button in the Invoices and Recurring Invoices client picker for adding a client without leaving the form.
+* New: Pagination on the Proposals, Projects, Invoices, Recurring Invoices, and Clients admin screens.
+* Improved: Client search — in the client picker and the main Clients screen — now correctly filters by name, email, or company instead of always showing the full list.
+* Improved: Faster plugin activation, particularly on sites that have been through several updates.
+* Fix: Webhook "Copy" buttons in Settings could silently fail to copy on non-HTTPS local development sites; now falls back to a compatible copy method.
 
 = 1.1.2 =
 

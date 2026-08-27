@@ -1,10 +1,14 @@
-import { useState, useEffect, useMemo } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 async function coFetch( path, options = {} ) {
 	const { apiUrl, nonce } = window.clientoctopusData || {};
-	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
+	// Ensure the resource path (not the query string) ends in a trailing slash —
+	// some hosts 301-redirect a request missing it, which can drop the method/body.
+	const [ base, qs ] = path.split( '?' );
+	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + base.replace( /\/?$/, '/' ) + ( qs ? `?${ qs }` : '' );
 	const res = await fetch( url, {
 		headers: {
 			'Content-Type': 'application/json',
@@ -23,13 +27,6 @@ async function coFetch( path, options = {} ) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id; s.textContent = css;
-	document.head.appendChild( s );
-}
 
 function formatDate( iso ) {
 	if ( ! iso ) return '';
@@ -140,6 +137,18 @@ const CSS = `
   overflow-y: hidden;
   box-shadow: 0 1px 3px rgba(26,26,46,.04), 0 6px 24px rgba(26,26,46,.06);
 }
+.co-cl-pager { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:20px; }
+.co-cl-page-btn {
+  min-width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; border:1.5px solid var(--cl-slate2); background:#fff;
+  font-size:13px; font-weight:600; color:var(--cl-slate4); cursor:pointer;
+  transition:border-color .12s, background .12s, color .12s;
+}
+.co-cl-page-btn:hover:not(:disabled) { border-color:var(--cl-indigo); color:var(--cl-indigo); background:#EEF2FF; }
+.co-cl-page-btn.active { background:var(--cl-indigo); color:#fff; border-color:var(--cl-indigo); }
+.co-cl-page-btn:disabled { opacity:.4; cursor:not-allowed; }
+.co-cl-page-btn svg { width:14px; height:14px; stroke:currentColor; stroke-width:2; }
+
 .co-cl-table { width:100%; min-width:640px; border-collapse:collapse; }
 .co-cl-th {
   padding: 12px 20px;
@@ -409,27 +418,42 @@ export default function ClientsApp() {
 	injectStyles( 'co-clients-styles', CSS );
 
 	const [ clients,   setClients   ] = useState( [] );
+	const [ pages,     setPages     ] = useState( 1 );
+	const [ page,       setPage     ] = useState( 1 );
 	const [ loading,   setLoading   ] = useState( true );
-	const [ search,    setSearch    ] = useState( '' );
+	const [ searchInput, setSearchInput ] = useState( '' );
+	const [ search,    setSearch    ] = useState( '' ); // debounced value actually sent to the server
 	const [ sending,   setSending   ] = useState( null );  // client id in-flight
 	const [ justSent,  setJustSent  ] = useState( null );  // client id just invited
 
+	// Debounce the search box before it triggers a server request.
 	useEffect( () => {
-		coFetch( 'clients/' )
-			.then( data => setClients( data.clients || [] ) )
-			.catch( () => {} )
-			.finally( () => setLoading( false ) );
-	}, [] );
+		const t = setTimeout( () => {
+			setSearch( searchInput );
+			setPage( 1 );
+		}, 300 );
+		return () => clearTimeout( t );
+	}, [ searchInput ] );
 
-	const filtered = useMemo( () => {
-		const q = search.toLowerCase().trim();
-		if ( ! q ) return clients;
-		return clients.filter( c =>
-			( c.name    || '' ).toLowerCase().includes( q ) ||
-			( c.email   || '' ).toLowerCase().includes( q ) ||
-			( c.company || '' ).toLowerCase().includes( q )
-		);
-	}, [ clients, search ] );
+	useEffect( () => {
+		let cancelled = false;
+		setLoading( true );
+		const params = new URLSearchParams();
+		if ( search ) params.set( 'search', search );
+		params.set( 'page', String( page ) );
+		params.set( 'per_page', '20' );
+		coFetch( `clients/?${ params.toString() }` )
+			.then( data => {
+				if ( cancelled ) return;
+				setClients( data.clients || [] );
+				setPages( data.pages || 1 );
+			} )
+			.catch( () => {} )
+			.finally( () => { if ( ! cancelled ) setLoading( false ); } );
+		return () => { cancelled = true; };
+	}, [ search, page ] );
+
+	const filtered = clients;
 
 	async function handleInvite( client ) {
 		if ( sending ) return;
@@ -468,8 +492,8 @@ export default function ClientsApp() {
 						className="co-cl-search"
 						type="text"
 						placeholder="Search clients…"
-						value={ search }
-						onChange={ e => setSearch( e.target.value ) }
+						value={ searchInput }
+						onChange={ e => setSearchInput( e.target.value ) }
 					/>
 				</div>
 			</div>
@@ -576,6 +600,57 @@ export default function ClientsApp() {
 					</tbody>
 				</table>
 			</div>
+
+			{ pages > 1 && (
+				<div className="co-cl-pager">
+					<button
+						type="button"
+						className="co-cl-page-btn"
+						disabled={ page === 1 }
+						onClick={ () => setPage( p => p - 1 ) }
+						aria-label="Previous page"
+					>
+						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+						</svg>
+					</button>
+
+					{ Array.from( { length: pages }, ( _, i ) => i + 1 )
+						.filter( p => p === 1 || p === pages || Math.abs( p - page ) <= 1 )
+						.reduce( ( acc, p, idx, arr ) => {
+							if ( idx > 0 && p - arr[ idx - 1 ] > 1 ) acc.push( '…' );
+							acc.push( p );
+							return acc;
+						}, [] )
+						.map( ( p, i ) =>
+							p === '…' ? (
+								<span key={ `ellipsis-${ i }` } style={ { padding: '0 4px', color: '#94A3B8' } }>…</span>
+							) : (
+								<button
+									key={ p }
+									type="button"
+									className={ `co-cl-page-btn${ page === p ? ' active' : '' }` }
+									onClick={ () => setPage( p ) }
+								>
+									{ p }
+								</button>
+							)
+						)
+					}
+
+					<button
+						type="button"
+						className="co-cl-page-btn"
+						disabled={ page === pages }
+						onClick={ () => setPage( p => p + 1 ) }
+						aria-label="Next page"
+					>
+						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+						</svg>
+					</button>
+				</div>
+			) }
 		</div>
 	);
 }

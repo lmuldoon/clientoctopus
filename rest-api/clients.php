@@ -24,6 +24,11 @@ add_action( 'rest_api_init', static function (): void {
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => 'clientoctopus_rest_list_clients',
 			'permission_callback' => 'clientoctopus_rest_require_manage',
+			'args'                => [
+				'search'   => [ 'type' => 'string',  'required' => false, 'sanitize_callback' => 'sanitize_text_field', 'default' => '' ],
+				'page'     => [ 'type' => 'integer', 'required' => false, 'default' => 1, 'minimum' => 1 ],
+				'per_page' => [ 'type' => 'integer', 'required' => false, 'default' => 20, 'minimum' => 1, 'maximum' => 100 ],
+			],
 		],
 		[
 			'methods'             => WP_REST_Server::CREATABLE,
@@ -53,12 +58,31 @@ add_action( 'rest_api_init', static function (): void {
 function clientoctopus_rest_list_clients( WP_REST_Request $request ): WP_REST_Response {
 	global $wpdb;
 
-	$user_id = clientoctopus_get_owner_id( get_current_user_id() );
-	$ct      = $wpdb->prefix . 'clientoctopus_clients';
-	$pt      = $wpdb->prefix . 'clientoctopus_proposals';
+	$user_id  = clientoctopus_get_owner_id( get_current_user_id() );
+	$ct       = $wpdb->prefix . 'clientoctopus_clients';
+	$pt       = $wpdb->prefix . 'clientoctopus_proposals';
+	$search   = (string) $request->get_param( 'search' );
+	$page     = max( 1, (int) $request->get_param( 'page' ) ?: 1 );
+	$per_page = (int) $request->get_param( 'per_page' ) ?: 20;
+	$offset   = ( $page - 1 ) * $per_page;
+
+	// Each WHERE fragment is resolved via its own prepare() call before assembly,
+	// so the outer prepare() calls below always have a fixed, statically-known
+	// placeholder count (matching the pattern used in class-proposal.php::list()).
+	$where = [ $wpdb->prepare( 'c.owner_id = %d', $user_id ) ];
+	if ( '' !== $search ) {
+		$like    = '%' . $wpdb->esc_like( $search ) . '%';
+		$where[] = $wpdb->prepare( '( c.name LIKE %s OR c.email LIKE %s OR c.company LIKE %s )', $like, $like, $like );
+	}
+	$where_sql = implode( ' AND ', $where );
+
+	// $where_sql components are individually prepared above; no outer prepare() needed.
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$ct} c WHERE {$where_sql}" );
 
 	// Single JOIN against the latest accepted/completed proposal per client,
 	// replacing three correlated subqueries that generated N×3 extra queries.
+	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	$rows = $wpdb->get_results(
 		$wpdb->prepare(
 			"SELECT c.*,
@@ -75,9 +99,11 @@ function clientoctopus_rest_list_clients( WP_REST_Request $request ): WP_REST_Re
 			     ORDER  BY p2.accepted_at DESC
 			     LIMIT  1
 			 )
-			 WHERE  c.owner_id = %d
-			 ORDER  BY c.created_at DESC",
-			$user_id
+			 WHERE  {$where_sql}
+			 ORDER  BY c.created_at DESC
+			 LIMIT  %d OFFSET %d",
+			$per_page,
+			$offset
 		),
 		ARRAY_A
 	);
@@ -89,7 +115,13 @@ function clientoctopus_rest_list_clients( WP_REST_Request $request ): WP_REST_Re
 		return $row;
 	}, $rows ?: [] );
 
-	return new WP_REST_Response( [ 'clients' => $clients ], 200 );
+	return new WP_REST_Response( [
+		'clients'  => $clients,
+		'total'    => $total,
+		'pages'    => (int) ceil( $total / $per_page ),
+		'page'     => $page,
+		'per_page' => $per_page,
+	], 200 );
 }
 
 function clientoctopus_rest_create_client( WP_REST_Request $request ): WP_REST_Response|WP_Error {

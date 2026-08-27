@@ -47,12 +47,20 @@ if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'
 			update_option( $option, $value );
 		}
 
-		// Stripe options: paid plans only — do not overwrite on free to avoid clearing stored keys.
+		// Payment gateway options: paid plans only — do not overwrite on free to avoid clearing stored keys.
 		$_save_owner_id = clientoctopus_get_owner_id( get_current_user_id() );
 		if ( clientoctopus_can_user( $_save_owner_id, 'use_payments' ) ) {
 			update_option( 'clientoctopus_stripe_publishable_key', sanitize_text_field( wp_unslash( $_POST['clientoctopus_stripe_publishable_key'] ?? '' ) ) );
 			update_option( 'clientoctopus_stripe_secret_key',      sanitize_text_field( wp_unslash( $_POST['clientoctopus_stripe_secret_key'] ?? '' ) ) );
 			update_option( 'clientoctopus_stripe_webhook_secret',  sanitize_text_field( wp_unslash( $_POST['clientoctopus_stripe_webhook_secret'] ?? '' ) ) );
+
+			$_save_payment_provider = sanitize_text_field( wp_unslash( $_POST['clientoctopus_payment_provider'] ?? '' ) );
+			update_option( 'clientoctopus_payment_provider', 'paypal' === $_save_payment_provider ? 'paypal' : 'stripe' );
+			update_option( 'clientoctopus_paypal_client_id',     sanitize_text_field( wp_unslash( $_POST['clientoctopus_paypal_client_id'] ?? '' ) ) );
+			update_option( 'clientoctopus_paypal_client_secret', sanitize_text_field( wp_unslash( $_POST['clientoctopus_paypal_client_secret'] ?? '' ) ) );
+			update_option( 'clientoctopus_paypal_webhook_id',    sanitize_text_field( wp_unslash( $_POST['clientoctopus_paypal_webhook_id'] ?? '' ) ) );
+			$_save_paypal_mode = sanitize_text_field( wp_unslash( $_POST['clientoctopus_paypal_mode'] ?? '' ) );
+			update_option( 'clientoctopus_paypal_mode', 'live' === $_save_paypal_mode ? 'live' : 'sandbox' );
 		}
 
 		// Testimonial options: paid plans only.
@@ -102,6 +110,19 @@ $webhook_sec  = get_option( 'clientoctopus_stripe_webhook_secret', '' );
 
 $stripe_mode   = str_starts_with( $secret_key, 'sk_live_' ) ? 'live' : ( $secret_key ? 'test' : '' );
 $webhook_url   = rest_url( 'clientoctopus/v1/payments/webhook' );
+
+$payment_provider     = 'paypal' === get_option( 'clientoctopus_payment_provider', 'stripe' ) ? 'paypal' : 'stripe';
+$paypal_client_id     = get_option( 'clientoctopus_paypal_client_id', '' );
+$paypal_client_secret = get_option( 'clientoctopus_paypal_client_secret', '' );
+$paypal_mode          = 'live' === get_option( 'clientoctopus_paypal_mode', 'sandbox' ) ? 'live' : 'sandbox';
+$paypal_webhook_id    = get_option( 'clientoctopus_paypal_webhook_id', '' );
+$paypal_webhook_url   = rest_url( 'clientoctopus/v1/payments/paypal/webhook' );
+$paypal_configured    = '' !== $paypal_client_id && '' !== $paypal_client_secret;
+
+// Initial SSR visibility for the gateway-specific field cards — JS (settings.js) takes
+// over toggling once the Payment Provider <select> changes.
+$co_hide_stripe_fields = 'stripe' !== $payment_provider ? ' style="display:none;"' : '';
+$co_hide_paypal_fields = 'paypal' !== $payment_provider ? ' style="display:none;"' : '';
 
 $business_name        = get_option( 'clientoctopus_business_name', '' );
 $hide_business_name   = get_option( 'clientoctopus_hide_business_name', '' );
@@ -366,11 +387,46 @@ if ( class_exists( 'ClientOctopus_Automations' ) ) {
 				</div>
 			</div>
 
-			<!-- ── Stripe cards (stacked in one grid column) ────────────────────── -->
+			<!-- ── Payment gateway cards (stacked in one grid column) ─────────────── -->
 			<div style="display:flex;flex-direction:column;gap:20px;">
 
-			<!-- ── Stripe API Keys card ──────────────────────────────────────────── -->
+			<!-- ── Payment Provider card ───────────────────────────────────────────── -->
 			<div class="co-card">
+				<p class="co-card__title">
+					<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20 15.3 15.3 0 010-20z"/>
+					</svg>
+					<?php esc_html_e( 'Payment Provider', 'clientoctopus' ); ?>
+				</p>
+				<p class="co-card__desc">
+					<?php esc_html_e( 'Clients always see a single "Pay Now" button — choose which gateway it uses.', 'clientoctopus' ); ?>
+				</p>
+
+				<?php if ( $cf_payments_locked ) : ?>
+				<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+						<path d="M7 11V7a5 5 0 0110 0v4"/>
+					</svg>
+					<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
+					<a href="<?php echo esc_url( function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_upgrade_url() : 'https://clientoctopus.com/pricing' ); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
+				</div>
+				<?php else : ?>
+
+				<div class="co-field">
+					<label class="co-label" for="co-payment-provider"><?php esc_html_e( 'Active Gateway', 'clientoctopus' ); ?></label>
+					<select id="co-payment-provider" name="clientoctopus_payment_provider" class="co-input">
+						<option value="stripe" <?php selected( $payment_provider, 'stripe' ); ?>><?php esc_html_e( 'Stripe', 'clientoctopus' ); ?></option>
+						<option value="paypal" <?php selected( $payment_provider, 'paypal' ); ?>><?php esc_html_e( 'PayPal', 'clientoctopus' ); ?></option>
+					</select>
+					<p class="co-help"><?php esc_html_e( 'Only the selected gateway needs to be configured below.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<?php endif; ?>
+			</div>
+
+			<!-- ── Stripe API Keys card ──────────────────────────────────────────── -->
+			<div class="co-card co-gateway-fields co-gateway-fields--stripe"<?php echo $co_hide_stripe_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from a hardcoded string constant above, no user input. ?>>
 				<p class="co-card__title">
 					<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
@@ -438,7 +494,7 @@ if ( class_exists( 'ClientOctopus_Automations' ) ) {
 			</div>
 
 			<!-- ── Webhook card ──────────────────────────────────────────────────── -->
-			<div class="co-card">
+			<div class="co-card co-gateway-fields co-gateway-fields--stripe"<?php echo $co_hide_stripe_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from a hardcoded string constant above, no user input. ?>>
 				<p class="co-card__title">
 					<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.72a19.79 19.79 0 01-3.07-8.67A2 2 0 012.71 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 9.67a16 16 0 006.29 6.29l1.03-1.04a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
@@ -481,7 +537,7 @@ if ( class_exists( 'ClientOctopus_Automations' ) ) {
 						<button
 							type="button"
 							class="co-copy-btn"
-							onclick="navigator.clipboard.writeText(document.getElementById('co-webhook-url').value).then(function(){this.textContent='Copied!';}.bind(this))"
+							data-copy-target="co-webhook-url"
 						><?php esc_html_e( 'Copy', 'clientoctopus' ); ?></button>
 					</div>
 				</div>
@@ -503,6 +559,141 @@ if ( class_exists( 'ClientOctopus_Automations' ) ) {
 					>
 					<p class="co-help">
 						<?php esc_html_e( 'Found in your webhook\'s settings page on the Stripe Dashboard. Used to verify events are genuinely from Stripe.', 'clientoctopus' ); ?>
+					</p>
+				</div>
+
+				<?php endif; ?>
+			</div>
+
+			<!-- ── PayPal API Credentials card ─────────────────────────────────────── -->
+			<div class="co-card co-gateway-fields co-gateway-fields--paypal"<?php echo $co_hide_paypal_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from a hardcoded string constant above, no user input. ?>>
+				<p class="co-card__title">
+					<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+					</svg>
+					<?php esc_html_e( 'PayPal API Credentials', 'clientoctopus' ); ?>
+					<?php if ( ! $cf_payments_locked && $paypal_configured ) : ?>
+						<span class="co-badge co-badge--<?php echo 'live' === $paypal_mode ? 'live' : 'test'; ?>">
+							<?php echo esc_html( ucfirst( $paypal_mode ) ); ?> <?php esc_html_e( 'mode', 'clientoctopus' ); ?>
+						</span>
+					<?php elseif ( ! $cf_payments_locked ) : ?>
+						<span class="co-badge co-badge--none"><?php esc_html_e( 'Not configured', 'clientoctopus' ); ?></span>
+					<?php endif; ?>
+				</p>
+				<p class="co-card__desc">
+					<?php esc_html_e( 'Find these in the PayPal Developer Dashboard under Apps &amp; Credentials.', 'clientoctopus' ); ?>
+				</p>
+
+				<?php if ( $cf_payments_locked ) : ?>
+				<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+						<path d="M7 11V7a5 5 0 0110 0v4"/>
+					</svg>
+					<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
+					<a href="<?php echo esc_url( function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_upgrade_url() : 'https://clientoctopus.com/pricing' ); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
+				</div>
+				<?php else : ?>
+
+				<div class="co-field">
+					<label class="co-label" for="co-paypal-mode"><?php esc_html_e( 'Mode', 'clientoctopus' ); ?></label>
+					<select id="co-paypal-mode" name="clientoctopus_paypal_mode" class="co-input">
+						<option value="sandbox" <?php selected( $paypal_mode, 'sandbox' ); ?>><?php esc_html_e( 'Sandbox (testing)', 'clientoctopus' ); ?></option>
+						<option value="live" <?php selected( $paypal_mode, 'live' ); ?>><?php esc_html_e( 'Live', 'clientoctopus' ); ?></option>
+					</select>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-paypal-client-id"><?php esc_html_e( 'Client ID', 'clientoctopus' ); ?></label>
+					<input
+						type="text"
+						id="co-paypal-client-id"
+						name="clientoctopus_paypal_client_id"
+						class="co-input"
+						value="<?php echo esc_attr( $paypal_client_id ); ?>"
+						autocomplete="off"
+						spellcheck="false"
+					>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-paypal-client-secret"><?php esc_html_e( 'Client Secret', 'clientoctopus' ); ?></label>
+					<input
+						type="password"
+						id="co-paypal-client-secret"
+						name="clientoctopus_paypal_client_secret"
+						class="co-input"
+						value="<?php echo esc_attr( $paypal_client_secret ); ?>"
+						autocomplete="new-password"
+						spellcheck="false"
+					>
+					<p class="co-help"><?php esc_html_e( 'Never share your client secret. It is stored encrypted in your database.', 'clientoctopus' ); ?></p>
+				</div>
+
+				<?php endif; ?>
+			</div>
+
+			<!-- ── PayPal Webhook card ─────────────────────────────────────────────── -->
+			<div class="co-card co-gateway-fields co-gateway-fields--paypal"<?php echo $co_hide_paypal_fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from a hardcoded string constant above, no user input. ?>>
+				<p class="co-card__title">
+					<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.72a19.79 19.79 0 01-3.07-8.67A2 2 0 012.71 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 9.67a16 16 0 006.29 6.29l1.03-1.04a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+					</svg>
+					<?php esc_html_e( 'PayPal Webhook', 'clientoctopus' ); ?>
+				</p>
+				<p class="co-card__desc">
+					<?php
+					printf(
+						/* translators: 1: <code>CHECKOUT.ORDER.APPROVED</code>, 2: <code>PAYMENT.CAPTURE.COMPLETED</code> */
+						esc_html__( 'In the PayPal Developer Dashboard, open your app and add a webhook pointed at the URL below. Select %1$s and %2$s events, then paste the resulting Webhook ID here.', 'clientoctopus' ),
+						'<code>CHECKOUT.ORDER.APPROVED</code>',
+						'<code>PAYMENT.CAPTURE.COMPLETED</code>'
+					);
+					?>
+				</p>
+
+				<?php if ( $cf_payments_locked ) : ?>
+				<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:30px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+						<path d="M7 11V7a5 5 0 0110 0v4"/>
+					</svg>
+					<p style="margin:0;font-size:13px;font-weight:600;color:#1A1A2E;"><?php esc_html_e( 'Available on Pro &amp; Agency plans', 'clientoctopus' ); ?></p>
+					<a href="<?php echo esc_url( function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_upgrade_url() : 'https://clientoctopus.com/pricing' ); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:7px 18px;background:#6366F1;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;"><?php esc_html_e( 'Upgrade', 'clientoctopus' ); ?></a>
+				</div>
+				<?php else : ?>
+
+				<div class="co-field">
+					<label class="co-label" for="co-paypal-webhook-url"><?php esc_html_e( 'Webhook Endpoint URL', 'clientoctopus' ); ?></label>
+					<div class="co-webhook-row">
+						<input
+							type="text"
+							id="co-paypal-webhook-url"
+							class="co-input"
+							value="<?php echo esc_url( $paypal_webhook_url ); ?>"
+							readonly
+						>
+						<button
+							type="button"
+							class="co-copy-btn"
+							data-copy-target="co-paypal-webhook-url"
+						><?php esc_html_e( 'Copy', 'clientoctopus' ); ?></button>
+					</div>
+				</div>
+
+				<div class="co-field">
+					<label class="co-label" for="co-paypal-webhook-id"><?php esc_html_e( 'Webhook ID', 'clientoctopus' ); ?></label>
+					<input
+						type="text"
+						id="co-paypal-webhook-id"
+						name="clientoctopus_paypal_webhook_id"
+						class="co-input"
+						value="<?php echo esc_attr( $paypal_webhook_id ); ?>"
+						autocomplete="off"
+						spellcheck="false"
+					>
+					<p class="co-help">
+						<?php esc_html_e( 'PayPal identifies webhooks by this ID (not a shared secret) — used to verify events are genuinely from PayPal.', 'clientoctopus' ); ?>
 					</p>
 				</div>
 

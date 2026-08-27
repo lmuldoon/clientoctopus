@@ -9,6 +9,7 @@
 import { useState } from '@wordpress/element';
 import ProjectList   from '../ProjectList';
 import ProjectDetail from '../ProjectDetail';
+import { injectStyles } from '../../../shared/injectStyles';
 
 const CF_GLOBAL_CSS = `
 
@@ -54,17 +55,12 @@ const CF_GLOBAL_CSS = `
 #co-projects-root a { text-decoration: none; }
 `;
 
-function injectGlobalStyles() {
-	if ( document.getElementById( 'co-projects-global-styles' ) ) return;
-	const el = document.createElement( 'style' );
-	el.id = 'co-projects-global-styles';
-	el.textContent = CF_GLOBAL_CSS;
-	document.head.appendChild( el );
-}
-
 export async function coFetch( path, options = {} ) {
 	const { apiUrl, nonce } = window.clientoctopusData || {};
-	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
+	// Ensure the resource path (not the query string) ends in a trailing slash —
+	// some hosts 301-redirect a request missing it, which can drop the method/body.
+	const [ base, qs ] = path.split( '?' );
+	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + base.replace( /\/?$/, '/' ) + ( qs ? `?${ qs }` : '' );
 
 	const res = await fetch( url, {
 		...options,
@@ -84,7 +80,7 @@ export async function coFetch( path, options = {} ) {
 }
 
 export default function ProjectsApp() {
-	injectGlobalStyles();
+	injectStyles( 'co-projects-global-styles', CF_GLOBAL_CSS );
 
 	const [ view, setView ]               = useState( 'list' );
 	const [ activeProjectId, setActiveProjectId ] = useState( null );
@@ -99,16 +95,12 @@ export default function ProjectsApp() {
 		setView( 'list' );
 	}
 
-	return (
-		<div style={ { padding: '32px 28px 64px' } }>
-			{ view === 'list' ? (
-				<ProjectList onViewProject={ handleViewProject } />
-			) : (
-				<ProjectDetail
-					projectId={ activeProjectId }
-					onBack={ handleBack }
-				/>
-			) }
-		</div>
+	return view === 'list' ? (
+		<ProjectList onViewProject={ handleViewProject } />
+	) : (
+		<ProjectDetail
+			projectId={ activeProjectId }
+			onBack={ handleBack }
+		/>
 	);
 }

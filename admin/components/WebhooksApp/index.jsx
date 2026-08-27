@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from '@wordpress/element';
 import { coFetch } from '../../App.jsx';
+import { injectStyles } from '../../../shared/injectStyles';
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -463,9 +464,7 @@ export default function WebhooksApp() {
 	// Inject styles once.
 	useEffect( () => {
 		if ( stylesInjected.current ) return;
-		const el = document.createElement( 'style' );
-		el.textContent = WH_CSS;
-		document.head.appendChild( el );
+		injectStyles( 'co-webhooks-styles', WH_CSS );
 		stylesInjected.current = true;
 	}, [] );
 

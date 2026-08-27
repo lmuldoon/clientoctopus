@@ -6,6 +6,8 @@
  */
 
 const { useState, useEffect, useCallback } = wp.element;
+import { injectStyles } from '../../../shared/injectStyles';
+import { getContrastColor, getBrandButtonColors } from '../../../shared/colors';
 
 const RULES = [
 	{ key: 'min_length', label: 'At least 8 characters',    test: p => p.length >= 8 },
@@ -270,35 +272,6 @@ const EyeIcon = ( { open } ) => open ? (
 		<line x1="1" y1="1" x2="23" y2="23"/>
 	</svg>
 );
-
-function getContrastColor( hex ) {
-	const c = ( hex || '#6366F1' ).replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
-	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
-	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
-	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
-	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
-	return L > 0.35 ? '#1A1A2E' : '#ffffff';
-}
-
-function getBrandButtonColors( hex ) {
-	const base = hex || '#6366F1';
-	const c = base.replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 );
-	const g = parseInt( c.substring( 2, 4 ), 16 );
-	const b = parseInt( c.substring( 4, 6 ), 16 );
-	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
-	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
-		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
-		.join( '' );
-	return {
-		bg:           base,
-		hover:        hoverHex,
-		text:         getContrastColor( base ),
-		shadow:       `rgba(${ r },${ g },${ b },.3)`,
-		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
-	};
-}
 
 const CheckIcon = () => (
 	<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

@@ -12,8 +12,8 @@
  *   vatPct      {number}
  */
 import { useState, useCallback } from '@wordpress/element';
-
-const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€', CAD: '$', AUD: '$' };
+import { injectStyles } from '../../../shared/injectStyles';
+import { SYMBOLS } from '../../../shared/currency';
 
 function uid() {
 	return Math.random().toString( 36 ).slice( 2 );
@@ -202,14 +202,6 @@ const CSS = `
 }
 `;
 
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
-
 function fmt( amount, symbol ) {
 	return `${ symbol }${ Number( amount ).toFixed( 2 ) }`;
 }
@@ -223,7 +215,7 @@ export default function PricingSetup( {
 } ) {
 	injectStyles( 'co-pricing-styles', CSS );
 
-	const symbol = CURRENCY_SYMBOLS[ currency ] || '£';
+	const symbol = SYMBOLS[ currency ] || '£';
 
 	function updateItems( newItems ) {
 		onUpdate( { items: newItems, discount_pct: discountPct, vat_pct: vatPct } );

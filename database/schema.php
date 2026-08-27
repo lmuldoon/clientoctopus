@@ -325,6 +325,11 @@ function clientoctopus_create_tables(): void {
 		KEY proposal_status (proposal_id, status)
 	) $charset_collate;" );
 
+	// provider/paypal_order_id/paypal_capture_id are added exclusively via the guarded
+	// ALTER block below (DB version 19), not baked into the CREATE TABLE text above —
+	// having them in both confused dbDelta's diffing and produced malformed ALTER SQL
+	// on every admin page load (matches the pattern used for clients.portal_* etc.).
+
 	// Ensure the composite index exists on existing installations.
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- migration DDL uses $wpdb->prefix (trusted) and a hardcoded literal; ALTER TABLE has no user input.
 	$idx_exists = $wpdb->get_var( $wpdb->prepare(
@@ -333,6 +338,18 @@ function clientoctopus_create_tables(): void {
 	) );
 	if ( ! $idx_exists ) {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_payments ADD KEY proposal_status (proposal_id, status)" );
+	}
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+	// PayPal support (DB version 19) — additive columns; existing Stripe columns/data untouched.
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_payments LIKE %s", 'provider' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_payments ADD COLUMN provider VARCHAR(20) NOT NULL DEFAULT 'stripe' AFTER deposit_pct" );
+	}
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_payments LIKE %s", 'paypal_order_id' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_payments ADD COLUMN paypal_order_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_payments ADD COLUMN paypal_capture_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_payments ADD UNIQUE KEY paypal_order_id (paypal_order_id)" );
 	}
 	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
@@ -560,6 +577,128 @@ function clientoctopus_create_tables(): void {
 		KEY status (status),
 		KEY owner_status (owner_id, status, deleted_at)
 	) $charset_collate;" );
+
+	// provider/paypal_order_id/paypal_capture_id are added exclusively via the guarded
+	// ALTER block below (DB version 19), not baked into the CREATE TABLE text above —
+	// having them in both confused dbDelta's diffing and produced malformed ALTER SQL
+	// on every admin page load (matches the pattern used for clients.portal_* etc.).
+	// PayPal support (DB version 19) — additive columns; existing Stripe columns/data untouched.
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_invoices LIKE %s", 'provider' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN provider VARCHAR(20) NOT NULL DEFAULT 'stripe' AFTER total_amount" );
+	}
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_invoices LIKE %s", 'paypal_order_id' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN paypal_order_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN paypal_capture_id VARCHAR(255) DEFAULT NULL" );
+	}
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 19: clientoctopus_events
+	// Append-only audit log — proposal views, accept/decline/revision-request,
+	// and payment-completed events. Referenced throughout the codebase
+	// (ClientOctopus_Proposal_Client, the payments REST handlers) but its
+	// CREATE TABLE statement was missing here, so the table never actually
+	// got created — added in DB version 20.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_events (
+		id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		proposal_id BIGINT UNSIGNED NOT NULL,
+		event_type  VARCHAR(50) NOT NULL,
+		user_ip     VARCHAR(45) DEFAULT NULL,
+		user_agent  VARCHAR(500) DEFAULT NULL,
+		timestamp   DATETIME NOT NULL,
+		metadata    TEXT DEFAULT NULL,
+		PRIMARY KEY  (id),
+		KEY proposal_id (proposal_id),
+		KEY event_type (event_type),
+		KEY timestamp (timestamp)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 20: clientoctopus_recurring_profiles
+	// Templates that spawn a fresh clientoctopus_invoices row on a schedule
+	// (client pays each one manually via the existing Stripe/PayPal flow —
+	// no auto-charge). billing_mode exists now so a future auto-charge mode
+	// can be added without a schema rework; only 'manual' is used today.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_recurring_profiles (
+		id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id         BIGINT UNSIGNED NOT NULL,
+		client_id        BIGINT UNSIGNED NOT NULL,
+		title            VARCHAR(255) NOT NULL DEFAULT '',
+		line_items       LONGTEXT DEFAULT NULL,
+		currency         VARCHAR(3) NOT NULL DEFAULT 'GBP',
+		discount_type    ENUM('percentage','fixed') NOT NULL DEFAULT 'percentage',
+		discount_value   DECIMAL(10,2) NOT NULL DEFAULT 0,
+		vat_pct          DECIMAL(5,2) NOT NULL DEFAULT 0,
+		frequency        ENUM('weekly','monthly','quarterly','yearly') NOT NULL DEFAULT 'monthly',
+		start_date       DATE NOT NULL,
+		end_date         DATE DEFAULT NULL,
+		max_occurrences  SMALLINT UNSIGNED DEFAULT NULL,
+		occurrences_sent SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		next_run_date    DATE NOT NULL,
+		billing_mode     ENUM('manual','auto_charge') NOT NULL DEFAULT 'manual',
+		status           ENUM('active','paused','cancelled') NOT NULL DEFAULT 'active',
+		created_at       DATETIME DEFAULT NULL,
+		updated_at       DATETIME DEFAULT NULL,
+		PRIMARY KEY  (id),
+		KEY owner_id (owner_id),
+		KEY client_id (client_id),
+		KEY next_run_date (next_run_date),
+		KEY status (status)
+	) $charset_collate;" );
+
+	// Recurring invoices (DB version 21) — additive column linking a generated
+	// invoice back to its series, plus a uniqueness guard on invoice numbering.
+	// Not baked into the clientoctopus_invoices CREATE TABLE text above — same
+	// dbDelta-confusion reason documented for the provider/paypal_* columns.
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_invoices LIKE %s", 'recurring_profile_id' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN recurring_profile_id BIGINT UNSIGNED DEFAULT NULL" );
+	}
+
+	$has_owner_invoice_number_key = $wpdb->get_var( $wpdb->prepare(
+		"SHOW INDEX FROM {$wpdb->prefix}clientoctopus_invoices WHERE Key_name = %s",
+		'owner_invoice_number'
+	) );
+	if ( ! $has_owner_invoice_number_key ) {
+		$duplicate_invoice_numbers = $wpdb->get_var(
+			"SELECT COUNT(*) FROM (
+				SELECT owner_id, invoice_number FROM {$wpdb->prefix}clientoctopus_invoices
+				GROUP BY owner_id, invoice_number HAVING COUNT(*) > 1
+			) dupes"
+		);
+		// Only add the constraint if the existing data is actually clean — an install
+		// with pre-existing duplicates (from the old unguarded MAX()+1 logic racing)
+		// would fail the ALTER outright; skip it there rather than fatal the migration,
+		// and leave it to be retried once the duplicates are manually resolved.
+		if ( ! $duplicate_invoice_numbers ) {
+			$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD UNIQUE KEY owner_invoice_number (owner_id, invoice_number)" );
+		}
+	}
+
+	// Recurring invoices (DB version 25) — additive po_number column, mirroring
+	// the po_number field already on clientoctopus_invoices.
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_recurring_profiles LIKE %s", 'po_number' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN po_number VARCHAR(100) DEFAULT NULL AFTER title" );
+	}
+
+	// Recurring invoices (DB version 26) — additive vat_number column, mirroring
+	// the vat_number field already on clientoctopus_invoices.
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_recurring_profiles LIKE %s", 'vat_number' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN vat_number VARCHAR(50) DEFAULT NULL AFTER vat_pct" );
+	}
+
+	// Recurring invoices (DB version 27) — additive payment_terms and notes
+	// columns, mirroring the same fields already on clientoctopus_invoices.
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_recurring_profiles LIKE %s", 'payment_terms' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN payment_terms VARCHAR(100) DEFAULT NULL AFTER po_number" );
+	}
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_recurring_profiles LIKE %s", 'notes' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN notes TEXT DEFAULT NULL" );
+	}
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 	update_option( 'clientoctopus_db_version', defined( 'CLIENTOCTOPUS_DB_VERSION' ) ? CLIENTOCTOPUS_DB_VERSION : '1' );
 }

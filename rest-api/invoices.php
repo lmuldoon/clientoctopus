@@ -46,12 +46,14 @@ add_action( 'rest_api_init', static function (): void {
 		'callback'            => 'clientoctopus_rest_list_invoices',
 		'permission_callback' => 'clientoctopus_rest_require_manage',
 		'args'                => [
-			'status' => [
+			'status'   => [
 				'type'              => 'string',
 				'required'          => false,
 				'sanitize_callback' => 'sanitize_key',
 				'enum'              => [ 'draft', 'sent', 'paid', 'overdue', 'cancelled' ],
 			],
+			'page'     => [ 'type' => 'integer', 'default' => 1, 'minimum' => 1 ],
+			'per_page' => [ 'type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100 ],
 		],
 	] );
 
@@ -177,9 +179,13 @@ function clientoctopus_invoice_field_args(): array {
 function clientoctopus_rest_list_invoices( WP_REST_Request $request ): WP_REST_Response {
 	$owner_id = clientoctopus_get_owner_id( get_current_user_id() );
 	$status   = $request->get_param( 'status' ) ?: null;
-	$invoices = ClientOctopus_Invoice::list( $owner_id, $status ? [ 'status' => $status ] : [] );
+	$result   = ClientOctopus_Invoice::list( $owner_id, [
+		'status'   => $status,
+		'page'     => (int) $request->get_param( 'page' ),
+		'per_page' => (int) $request->get_param( 'per_page' ),
+	] );
 
-	return new WP_REST_Response( [ 'invoices' => $invoices ], 200 );
+	return new WP_REST_Response( $result, 200 );
 }
 
 function clientoctopus_rest_create_invoice( WP_REST_Request $request ): WP_REST_Response|WP_Error {
@@ -361,13 +367,24 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 		);
 	}
 
-	$stripe_class = CLIENTOCTOPUS_DIR . 'modules/payments/class-stripe.php';
-	if ( ! class_exists( 'ClientOctopus_Stripe' ) && file_exists( $stripe_class ) ) {
-		require_once $stripe_class;
+	$payments_base = CLIENTOCTOPUS_DIR . 'modules/payments/';
+	foreach ( [
+		'functions.php'    => null,
+		'class-stripe.php' => 'ClientOctopus_Stripe',
+		'class-paypal.php' => 'ClientOctopus_PayPal',
+	] as $file => $class ) {
+		if ( ( null === $class || ! class_exists( $class ) ) && file_exists( $payments_base . $file ) ) {
+			require_once $payments_base . $file;
+		}
 	}
 
-	if ( ! class_exists( 'ClientOctopus_Stripe' ) || ! ClientOctopus_Stripe::is_configured() ) {
-		return new WP_Error( 'stripe_not_configured', __( 'Payment is not available. Please contact the site administrator.', 'clientoctopus' ), [ 'status' => 503 ] );
+	$provider = 'paypal' === get_option( 'clientoctopus_payment_provider', 'stripe' ) ? 'paypal' : 'stripe';
+	$gateway_configured = 'paypal' === $provider
+		? ( class_exists( 'ClientOctopus_PayPal' ) && ClientOctopus_PayPal::is_configured() )
+		: ( class_exists( 'ClientOctopus_Stripe' ) && ClientOctopus_Stripe::is_configured() );
+
+	if ( ! $gateway_configured ) {
+		return new WP_Error( 'payment_not_configured', __( 'Payment is not available. Please contact the site administrator.', 'clientoctopus' ), [ 'status' => 503 ] );
 	}
 
 	$total    = (float) $invoice['total_amount'];
@@ -378,15 +395,71 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 	}
 
 	$amount_int = (int) round( $total * 100 );
-	$min_amount = in_array( $currency, [ 'usd', 'aud', 'cad' ], true ) ? 50 : 30;
+	$min_amount = clientoctopus_min_charge_amount( $currency, $provider );
 
 	if ( $amount_int < $min_amount ) {
 		return new WP_Error( 'amount_too_low', __( 'The invoice amount is below the minimum required for online payment.', 'clientoctopus' ), [ 'status' => 422 ] );
 	}
 
-	$label       = ! empty( $invoice['title'] ) ? $invoice['title'] : $invoice['invoice_ref'];
+	$label      = ! empty( $invoice['title'] ) ? $invoice['title'] : $invoice['invoice_ref'];
+	$cancel_url = site_url( '/invoices/' . $token . '/cancel' );
+	$metadata   = [
+		'type'       => 'invoice',
+		'invoice_id' => $invoice['id'],
+		'token'      => $token,
+	];
+
+	if ( 'paypal' === $provider ) {
+		// PayPal always appends its own `token` (order id) + `PayerID` query params to
+		// whatever return_url we supply — deliberately no pre-existing query string here,
+		// so there's no risk of PayPal producing a malformed `?a=b?c=d` URL; client-routing.php
+		// detects PayPal purely from the presence of its own `token`/`PayerID` params.
+		$success_url = site_url( '/invoices/' . $token . '/success' );
+
+		$order = ClientOctopus_PayPal::create_order( [
+			'intent'         => 'CAPTURE',
+			'purchase_units' => [
+				[
+					'amount'    => [
+						'currency_code' => strtoupper( $currency ),
+						'value'         => number_format( $total, 2, '.', '' ),
+					],
+					'custom_id' => wp_json_encode( $metadata ),
+				],
+			],
+			'payment_source' => [
+				'paypal' => [
+					'experience_context' => [
+						'return_url' => $success_url,
+						'cancel_url' => $cancel_url,
+					],
+				],
+			],
+		] );
+
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
+
+		$approval_url = '';
+		foreach ( (array) ( $order['links'] ?? [] ) as $link ) {
+			if ( 'payer-action' === ( $link['rel'] ?? '' ) ) {
+				$approval_url = (string) $link['href'];
+				break;
+			}
+		}
+
+		if ( ! $approval_url ) {
+			return new WP_Error( 'paypal_order_error', __( 'PayPal did not return an approval link.', 'clientoctopus' ), [ 'status' => 502 ] );
+		}
+
+		return new WP_REST_Response( [
+			'checkout_url' => $approval_url,
+			'session_id'   => (string) ( $order['id'] ?? '' ),
+		], 200 );
+	}
+
 	$success_url = site_url( '/invoices/' . $token . '/success' ) . '?session_id={CHECKOUT_SESSION_ID}';
-	$cancel_url  = site_url( '/invoices/' . $token . '/cancel' );
 
 	$session = ClientOctopus_Stripe::create_checkout_session( [
 		'mode'                 => 'payment',
@@ -403,11 +476,7 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 		],
 		'success_url'          => $success_url,
 		'cancel_url'           => $cancel_url,
-		'metadata'             => [
-			'type'       => 'invoice',
-			'invoice_id' => $invoice['id'],
-			'token'      => $token,
-		],
+		'metadata'             => $metadata,
 	] );
 
 	if ( is_wp_error( $session ) ) {

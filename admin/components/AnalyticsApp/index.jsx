@@ -6,6 +6,8 @@
  */
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
+import { injectStyles } from '../../../shared/injectStyles';
+import { fmt as sharedFmt } from '../../../shared/currency';
 
 // ── Shared CSS ─────────────────────────────────────────────────────────────────
 
@@ -292,7 +294,7 @@ const GLOBAL_CSS = `
 // ── Utilities ──────────────────────────────────────────────────────────────────
 
 const fmt = {
-	currency: ( v ) => new Intl.NumberFormat( 'en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 } ).format( v ?? 0 ),
+	currency: ( v ) => sharedFmt( v ?? 0, 'GBP' ),
 	pct:      ( v ) => `${ ( v ?? 0 ).toFixed( 1 ) }%`,
 	days:     ( v ) => `${ ( v ?? 0 ).toFixed( 1 ) }d`,
 };
@@ -468,11 +470,7 @@ export default function AnalyticsApp() {
 
 	// Inject CSS once.
 	useEffect( () => {
-		if ( document.getElementById( 'co-analytics-css' ) ) return;
-		const style = document.createElement( 'style' );
-		style.id = 'co-analytics-css';
-		style.textContent = GLOBAL_CSS;
-		document.head.appendChild( style );
+		injectStyles( 'co-analytics-css', GLOBAL_CSS );
 	}, [] );
 
 	const exportUrl = `${ apiUrl }analytics/overview?range=${ range }&export=csv&_wpnonce=${ window.clientoctopusData?.nonce ?? '' }`;

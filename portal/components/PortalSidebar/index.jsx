@@ -8,6 +8,8 @@
  */
 
 const { useState } = wp.element;
+import { injectStyles } from '../../../shared/injectStyles';
+import { getContrastColor } from '../../../shared/colors';
 const __           = ( wp.i18n && wp.i18n.__ ) || ( ( text ) => text );
 
 const apiFetch = ( path, opts = {} ) =>
@@ -24,7 +26,7 @@ injectStyles( 'cps-s', `
 .cps-sidebar {
 	width: 260px;
 	flex-shrink: 0;
-	background: #FAFAF8;
+	background: #FFFFFF;
 	border-right: 1px solid #EEECEA;
 	display: flex;
 	flex-direction: column;
@@ -76,7 +78,7 @@ injectStyles( 'cps-s', `
 
 .cps-logo-wrap.cps-logo-wrap--image {
 	width: auto;
-	max-width: 120px;
+	max-width: 160px;
 	background: transparent;
 	border: none;
 	border-radius: 0;
@@ -86,8 +88,8 @@ injectStyles( 'cps-s', `
 .cps-logo-wrap.cps-logo-wrap--image img {
 	width: auto;
 	height: 100%;
-	max-height: 40px;
-	max-width: 120px;
+	max-height: 60px;
+	max-width: 160px;
 	object-fit: contain;
 }
 
@@ -383,16 +385,6 @@ injectStyles( 'cps-s', `
 ` );
 
 // ── Contrast helper ───────────────────────────────────────────────────────────
-
-function getContrastColor( hex ) {
-	const c = ( hex || '#6366F1' ).replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
-	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
-	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
-	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
-	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
-	return L > 0.35 ? '#1A1A2E' : '#ffffff';
-}
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 

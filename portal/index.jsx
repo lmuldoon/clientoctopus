@@ -8,10 +8,6 @@
  *   dashboard | proposals | payments → PortalApp (authenticated shell)
  */
 
-// Must be first import so window.injectStyles is defined before any
-// component module evaluates its top-level injectStyles() calls.
-import './portal-globals';
-
 import PortalLogin       from './components/PortalLogin';
 import PortalVerify      from './components/PortalVerify';
 import PortalSetPassword from './components/PortalSetPassword';

@@ -18,8 +18,8 @@ import ClientDetailsForm from '../ClientDetailsForm';
 import ProposalSettings from '../ProposalSettings';
 import PricingSetup from '../PricingSetup';
 import { coFetch } from '../../App';
-
-const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€', CAD: '$', AUD: '$' };
+import { injectStyles } from '../../../shared/injectStyles';
+import { fmt } from '../../../shared/currency';
 
 const STEPS = [
 	{ num: 1, label: 'Template'  },
@@ -297,18 +297,9 @@ const CSS = `
 .co-review-item-row:last-child { border-bottom: none; }
 `;
 
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
-
 // ─── Review Step ──────────────────────────────────────────────────────────────
 function ReviewStep( { data } ) {
 	const { client, settings, lineItems, discountPct, vatPct, templateId, currency } = data;
-	const sym = CURRENCY_SYMBOLS[ currency ] || '£';
 
 	const subtotal     = lineItems.reduce( ( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0 );
 	const discountAmt  = subtotal * ( discountPct / 100 );
@@ -348,7 +339,7 @@ function ReviewStep( { data } ) {
 							<div key={ r.id } className="co-review-item-row">
 								<span>{ r.description || 'Unnamed item' } × { r.qty }</span>
 								<span style={ { fontWeight: 600 } }>
-									{ sym }{ ( ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ) ).toFixed( 2 ) }
+									{ fmt( ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), currency ) }
 								</span>
 							</div>
 						) ) }
@@ -357,7 +348,7 @@ function ReviewStep( { data } ) {
 				{/* Grand total */ }
 				<div className="co-review-total">
 					<div className="label">Grand Total</div>
-					<div className="amount">{ sym }{ grand.toFixed( 2 ) }</div>
+					<div className="amount">{ fmt( grand, currency ) }</div>
 				</div>
 			</div>
 		</div>

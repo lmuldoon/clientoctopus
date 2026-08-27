@@ -10,6 +10,7 @@
  *   errors   {object}  — { name?: string, email?: string, ... }
  */
 import { useState } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
 
 const CSS = `
 .co-cdf-grid {
@@ -77,14 +78,6 @@ const CSS = `
   color: var(--co-slate-400);
 }
 `;
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
 
 function Field( { label, name, type = 'text', required, placeholder, value, onChange, error, hint } ) {
 	const [ focused, setFocused ] = useState( false );

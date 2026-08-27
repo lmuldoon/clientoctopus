@@ -10,13 +10,7 @@
  */
 
 const { useState } = wp.element;
-
-const injectStyles = ( id, css ) => {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id; s.textContent = css;
-	document.head.appendChild( s );
-};
+import { injectStyles } from '../../../shared/injectStyles';
 
 injectStyles( 'co-payment-btn-s', `
 /* ── Payment button wrapper ────────────────────────────── */

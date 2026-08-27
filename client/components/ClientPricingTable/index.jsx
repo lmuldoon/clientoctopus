@@ -1,3 +1,6 @@
+import { injectStyles } from '../../../shared/injectStyles';
+import { getReadableOnWhite } from '../../../shared/colors';
+import { fmt } from '../../../shared/currency';
 /**
  * ClientPricingTable
  *
@@ -11,26 +14,6 @@
  *   currency    {string} ISO currency code (GBP | USD | EUR | …)
  *   totalAmount {number|null} Pre-calculated total from DB (authoritative)
  */
-
-const injectStyles = ( id, css ) => {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-};
-
-// For using an arbitrary brand colour as TEXT on a fixed white background —
-// falls back to a safe default when the brand colour is too light to read.
-function getReadableOnWhite( hex, fallback ) {
-	const c = ( hex || fallback ).replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
-	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
-	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
-	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
-	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
-	return L > 0.55 ? fallback : ( '#' + c );
-}
 
 const CSS = `
 .cfp-wrap {
@@ -190,13 +173,6 @@ const CSS = `
 	.cfp-thead { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; }
 }
 `;
-
-const SYMBOLS = { GBP: '£', USD: '$', EUR: '€', CAD: 'CA$', AUD: 'A$' };
-
-function fmt( amount, currency ) {
-	const sym = SYMBOLS[ currency ] || ( currency + ' ' );
-	return sym + Number( amount ).toLocaleString( 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 } );
-}
 
 export default function ClientPricingTable( { items = [], discountPct = 0, vatPct = 0, currency = 'GBP', totalAmount } ) {
 	injectStyles( 'co-pricing-s', CSS );

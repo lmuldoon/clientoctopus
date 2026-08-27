@@ -37,10 +37,12 @@ add_action( 'rest_api_init', static function (): void {
 	// Load payment module classes if not already autoloaded.
 	$base = CLIENTOCTOPUS_DIR . 'modules/payments/';
 	foreach ( [
+		'functions.php'     => null,
 		'class-stripe.php'  => 'ClientOctopus_Stripe',
+		'class-paypal.php'  => 'ClientOctopus_PayPal',
 		'class-payment.php' => 'ClientOctopus_Payment',
 	] as $file => $class ) {
-		if ( ! class_exists( $class ) && file_exists( $base . $file ) ) {
+		if ( ( null === $class || ! class_exists( $class ) ) && file_exists( $base . $file ) ) {
 			require_once $base . $file;
 		}
 	}
@@ -73,12 +75,18 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/payments/status/', [
 		'methods'             => WP_REST_Server::READABLE,
 		'callback'            => 'clientoctopus_rest_payment_status',
-		'permission_callback' => '__return_true', // Public endpoint; Stripe session_id validated in handler.
+		'permission_callback' => '__return_true', // Public endpoint; gateway id validated in handler.
 		'args'                => [
 			'session_id' => [
 				'type'              => 'string',
 				'required'          => true,
 				'sanitize_callback' => 'sanitize_text_field',
+			],
+			'provider' => [
+				'type'              => 'string',
+				'required'          => false,
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => 'stripe',
 			],
 			'token' => [
 				'type'              => 'string',
@@ -94,6 +102,13 @@ add_action( 'rest_api_init', static function (): void {
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_payment_webhook',
 		'permission_callback' => '__return_true', // Stripe signature check inside.
+	] );
+
+	// ── POST /payments/paypal/webhook ─────────────────────────────────────────
+	register_rest_route( $ns, '/payments/paypal/webhook/', [
+		'methods'             => WP_REST_Server::CREATABLE,
+		'callback'            => 'clientoctopus_rest_payment_paypal_webhook',
+		'permission_callback' => '__return_true', // PayPal signature check inside.
 	] );
 } );
 
@@ -136,10 +151,12 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 		);
 	}
 
-	// ── Guard: Stripe configured? ────────────────────────────────────────────
-	if ( ! ClientOctopus_Stripe::is_configured() ) {
+	// ── Guard: active gateway configured? ────────────────────────────────────
+	$provider = 'paypal' === get_option( 'clientoctopus_payment_provider', 'stripe' ) ? 'paypal' : 'stripe';
+	$gateway_configured = 'paypal' === $provider ? ClientOctopus_PayPal::is_configured() : ClientOctopus_Stripe::is_configured();
+	if ( ! $gateway_configured ) {
 		return new WP_Error(
-			'stripe_not_configured',
+			'payment_not_configured',
 			__( 'Payment is not available. Please contact the site administrator.', 'clientoctopus' ),
 			[ 'status' => 503 ]
 		);
@@ -186,8 +203,8 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 	$currency   = strtolower( $proposal['currency'] ?? 'gbp' );
 	$amount_int = (int) round( $charge * 100 ); // Convert to smallest unit (pence/cents).
 
-	// Guard against Stripe's per-currency minimums (30p for GBP, 50¢ for USD, etc.).
-	$min_amount = in_array( $currency, [ 'usd', 'aud', 'cad', 'sgd', 'hkd', 'jpy', 'krw' ], true ) ? 50 : 30;
+	// Guard against the gateway's per-currency minimums (30p for GBP, 50¢ for USD, etc.).
+	$min_amount = clientoctopus_min_charge_amount( $currency, $provider );
 	if ( $amount_int < $min_amount ) {
 		return new WP_Error(
 			'amount_too_low',
@@ -205,37 +222,88 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 		? __( ' (remaining balance)', 'clientoctopus' )
 		: ( $deposit_pct < 100 ? sprintf( ' (%d%% deposit)', $deposit_pct ) : '' );
 
-	// ── Build Stripe URLs ────────────────────────────────────────────────────
-	$success_url = site_url( '/proposals/' . $token . '/success' ) . '?session_id={CHECKOUT_SESSION_ID}';
-	$cancel_url  = site_url( '/proposals/' . $token . '/cancel' );
+	$cancel_url = site_url( '/proposals/' . $token . '/cancel' );
+	$metadata   = [
+		'proposal_id' => $proposal['id'],
+		'token'       => $token,
+		'deposit_pct' => $deposit_pct,
+	];
 
-	// ── Create checkout session ──────────────────────────────────────────────
-	$session = ClientOctopus_Stripe::create_checkout_session( [
-		'mode'                 => 'payment',
-		'payment_method_types' => [ 'card' ],
-		'line_items'           => [
-			[
-				'price_data' => [
-					'currency'     => $currency,
-					'product_data' => [
-						'name' => ( $proposal['title'] ?? __( 'Proposal', 'clientoctopus' ) ) . $deposit_note,
+	if ( 'paypal' === $provider ) {
+		// PayPal always appends its own `token` (order id) + `PayerID` query params to
+		// whatever return_url we supply — deliberately no pre-existing query string here,
+		// so there's no risk of PayPal producing a malformed `?a=b?c=d` URL; client-routing.php
+		// detects PayPal purely from the presence of its own `token`/`PayerID` params.
+		$success_url = site_url( '/proposals/' . $token . '/success' );
+
+		$order = ClientOctopus_PayPal::create_order( [
+			'intent'          => 'CAPTURE',
+			'purchase_units'  => [
+				[
+					'amount'    => [
+						'currency_code' => strtoupper( $currency ),
+						'value'         => number_format( $charge, 2, '.', '' ),
 					],
-					'unit_amount'  => $amount_int,
+					'custom_id' => wp_json_encode( $metadata ),
 				],
-				'quantity'   => 1,
 			],
-		],
-		'success_url'          => $success_url,
-		'cancel_url'           => $cancel_url,
-		'metadata'             => [
-			'proposal_id' => $proposal['id'],
-			'token'       => $token,
-			'deposit_pct' => $deposit_pct,
-		],
-	] );
+			'payment_source'  => [
+				'paypal' => [
+					'experience_context' => [
+						'return_url' => $success_url,
+						'cancel_url' => $cancel_url,
+					],
+				],
+			],
+		] );
 
-	if ( is_wp_error( $session ) ) {
-		return $session;
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
+
+		$approval_url = '';
+		foreach ( (array) ( $order['links'] ?? [] ) as $link ) {
+			if ( 'payer-action' === ( $link['rel'] ?? '' ) ) {
+				$approval_url = (string) $link['href'];
+				break;
+			}
+		}
+
+		if ( ! $approval_url ) {
+			return new WP_Error( 'paypal_order_error', __( 'PayPal did not return an approval link.', 'clientoctopus' ), [ 'status' => 502 ] );
+		}
+
+		$gateway_id = (string) ( $order['id'] ?? '' );
+		$checkout_url = $approval_url;
+	} else {
+		$success_url = site_url( '/proposals/' . $token . '/success' ) . '?session_id={CHECKOUT_SESSION_ID}';
+
+		$session = ClientOctopus_Stripe::create_checkout_session( [
+			'mode'                 => 'payment',
+			'payment_method_types' => [ 'card' ],
+			'line_items'           => [
+				[
+					'price_data' => [
+						'currency'     => $currency,
+						'product_data' => [
+							'name' => ( $proposal['title'] ?? __( 'Proposal', 'clientoctopus' ) ) . $deposit_note,
+						],
+						'unit_amount'  => $amount_int,
+					],
+					'quantity'   => 1,
+				],
+			],
+			'success_url'          => $success_url,
+			'cancel_url'           => $cancel_url,
+			'metadata'             => $metadata,
+		] );
+
+		if ( is_wp_error( $session ) ) {
+			return $session;
+		}
+
+		$gateway_id   = (string) $session['id'];
+		$checkout_url = (string) $session['url'];
 	}
 
 	// ── Persist pending payment record ───────────────────────────────────────
@@ -252,24 +320,26 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 		'amount'      => $charge,
 		'currency'    => strtoupper( $currency ),
 		'deposit_pct' => $deposit_pct,
-		'session_id'  => $session['id'],
+		'provider'    => $provider,
+		'session_id'  => $gateway_id,
 		'client_id'   => $proposal['client_id'] ?? null,
 	] );
 
 	return new WP_REST_Response( [
-		'checkout_url' => $session['url'],
-		'session_id'   => $session['id'],
+		'checkout_url' => $checkout_url,
+		'session_id'   => $gateway_id,
 	], 200 );
 }
 
 /**
- * GET /clientoctopus/v1/payments/status?session_id=cs_xxx&token=xxx
+ * GET /clientoctopus/v1/payments/status?session_id=xxx&provider=stripe|paypal&token=xxx
  *
  * Returns the payment status. Called by the PaymentSuccess component to
- * confirm payment after Stripe's success redirect.
+ * confirm payment after the gateway's success redirect.
  */
 function clientoctopus_rest_payment_status( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$session_id = (string) $request->get_param( 'session_id' );
+	$gateway_id = (string) $request->get_param( 'session_id' );
+	$provider   = 'paypal' === (string) $request->get_param( 'provider' ) ? 'paypal' : 'stripe';
 
 	// Helper: build the standard response array from a payment record.
 	$make_response = static fn( array $p ): array => [
@@ -281,9 +351,42 @@ function clientoctopus_rest_payment_status( WP_REST_Request $request ): WP_REST_
 	];
 
 	// Try local DB first. If the payment is already in a terminal state, return immediately.
-	$payment = ClientOctopus_Payment::get_by_session_id( $session_id );
+	$payment = ClientOctopus_Payment::get_by_gateway_id( $gateway_id, $provider );
 	if ( ! is_wp_error( $payment ) && in_array( $payment['status'], [ 'completed', 'failed', 'refunded' ], true ) ) {
 		return new WP_REST_Response( $make_response( $payment ), 200 );
+	}
+
+	if ( 'paypal' === $provider ) {
+		if ( ! ClientOctopus_PayPal::is_configured() ) {
+			return new WP_REST_Response( [ 'status' => 'pending' ], 200 );
+		}
+
+		// Read-only check first — capture_order() is a mutating call that errors if the
+		// order was already captured elsewhere (e.g. by the webhook, or a concurrent poll).
+		$order = ClientOctopus_PayPal::get_order( $gateway_id );
+		if ( is_wp_error( $order ) ) {
+			return new WP_REST_Response( [ 'status' => 'pending' ], 200 );
+		}
+
+		if ( 'APPROVED' === ( $order['status'] ?? '' ) ) {
+			$captured = ClientOctopus_PayPal::capture_order( $gateway_id );
+			if ( ! is_wp_error( $captured ) ) {
+				$order = $captured;
+			}
+		}
+
+		if ( 'COMPLETED' === ( $order['status'] ?? '' ) ) {
+			clientoctopus_handle_paypal_order_complete( $order );
+
+			$payment = ClientOctopus_Payment::get_by_gateway_id( $gateway_id, $provider );
+			if ( ! is_wp_error( $payment ) ) {
+				return new WP_REST_Response( $make_response( $payment ), 200 );
+			}
+
+			return new WP_REST_Response( [ 'status' => 'completed' ], 200 );
+		}
+
+		return new WP_REST_Response( [ 'status' => 'pending' ], 200 );
 	}
 
 	// Payment is pending (or not yet in DB) — check Stripe directly.
@@ -291,7 +394,7 @@ function clientoctopus_rest_payment_status( WP_REST_Request $request ): WP_REST_
 		return new WP_REST_Response( [ 'status' => 'pending' ], 200 );
 	}
 
-	$stripe_session = ClientOctopus_Stripe::retrieve_session( $session_id );
+	$stripe_session = ClientOctopus_Stripe::retrieve_session( $gateway_id );
 	if ( is_wp_error( $stripe_session ) ) {
 		return new WP_REST_Response( [ 'status' => 'pending' ], 200 );
 	}
@@ -302,7 +405,7 @@ function clientoctopus_rest_payment_status( WP_REST_Request $request ): WP_REST_
 		// session_id, and clientoctopus_proposal_accepted checks status before creating a project.
 		clientoctopus_handle_checkout_complete( $stripe_session );
 
-		$payment = ClientOctopus_Payment::get_by_session_id( $session_id );
+		$payment = ClientOctopus_Payment::get_by_gateway_id( $gateway_id, $provider );
 		if ( ! is_wp_error( $payment ) ) {
 			return new WP_REST_Response( $make_response( $payment ), 200 );
 		}
@@ -371,22 +474,174 @@ function clientoctopus_rest_payment_webhook( WP_REST_Request $request ): WP_REST
 }
 
 /**
- * Handle checkout.session.completed event.
+ * POST /clientoctopus/v1/payments/paypal/webhook
+ *
+ * PayPal webhook endpoint. Verifies via PayPal's own verify-webhook-signature
+ * REST API (see ClientOctopus_PayPal::verify_webhook_signature()), then
+ * processes CHECKOUT.ORDER.APPROVED / PAYMENT.CAPTURE.COMPLETED events.
+ */
+function clientoctopus_rest_payment_paypal_webhook( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+	$payload    = $request->get_body();
+	$webhook_id = ClientOctopus_PayPal::get_webhook_id();
+
+	if ( ! $webhook_id ) {
+		return new WP_Error(
+			'webhook_not_configured',
+			'PayPal webhook ID is not configured.',
+			[ 'status' => 403 ]
+		);
+	}
+
+	if ( ! ClientOctopus_PayPal::verify_webhook_signature( $request->get_headers(), $payload, $webhook_id ) ) {
+		return new WP_Error(
+			'webhook_signature_invalid',
+			__( 'Webhook signature verification failed.', 'clientoctopus' ),
+			[ 'status' => 400 ]
+		);
+	}
+
+	$event = json_decode( $payload, true );
+
+	if ( ! is_array( $event ) || empty( $event['event_type'] ) ) {
+		return new WP_Error( 'invalid_payload', 'Invalid event payload.', [ 'status' => 400 ] );
+	}
+
+	// ── Route by event type ───────────────────────────────────────────────────
+	switch ( $event['event_type'] ) {
+		case 'CHECKOUT.ORDER.APPROVED':
+			$order_id = $event['resource']['id'] ?? '';
+			if ( $order_id ) {
+				$order = ClientOctopus_PayPal::capture_order( $order_id );
+				if ( ! is_wp_error( $order ) && 'COMPLETED' === ( $order['status'] ?? '' ) ) {
+					clientoctopus_handle_paypal_order_complete( $order );
+				}
+			}
+			break;
+
+		case 'PAYMENT.CAPTURE.COMPLETED':
+			// Order id is the capture's `supplementary_data.related_ids.order_id` — if present,
+			// fetch the full order so clientoctopus_handle_paypal_order_complete() gets the same
+			// shape it expects from capture_order(). Skip if this arrives from a duplicate/retry
+			// after CHECKOUT.ORDER.APPROVED already handled it (idempotency guard is downstream).
+			$order_id = $event['resource']['supplementary_data']['related_ids']['order_id'] ?? '';
+			if ( $order_id ) {
+				$order = ClientOctopus_PayPal::get_order( $order_id );
+				if ( ! is_wp_error( $order ) && 'COMPLETED' === ( $order['status'] ?? '' ) ) {
+					clientoctopus_handle_paypal_order_complete( $order );
+				}
+			}
+			break;
+
+		case 'PAYMENT.CAPTURE.DENIED':
+		case 'CHECKOUT.ORDER.VOIDED':
+			$order_id = $event['resource']['id'] ?? ( $event['resource']['supplementary_data']['related_ids']['order_id'] ?? '' );
+			if ( $order_id ) {
+				ClientOctopus_Payment::mark_failed( $order_id, 'paypal' );
+			}
+			break;
+	}
+
+	// Always return 200 — PayPal will retry on any non-2xx response.
+	return new WP_REST_Response( [ 'received' => true ], 200 );
+}
+
+/**
+ * Handle checkout.session.completed event (Stripe adapter).
+ *
+ * Extracts Stripe-session-shaped fields into the gateway-agnostic
+ * $normalized shape and hands off to clientoctopus_handle_payment_complete().
+ * Existing call sites (webhook, invoice write-through) keep calling this
+ * exact function, unchanged — zero behavioral risk to Stripe.
+ *
+ * @param array $session Stripe session object from event data.
+ */
+function clientoctopus_handle_checkout_complete( array $session ): void {
+	$metadata = is_array( $session['metadata'] ?? null ) ? $session['metadata'] : [];
+
+	clientoctopus_handle_payment_complete( [
+		'gateway_id'     => (string) ( $session['id'] ?? '' ),
+		'provider'       => 'stripe',
+		'transaction_id' => (string) ( $session['payment_intent'] ?? '' ),
+		'customer_id'    => $session['customer'] ?? null,
+		'metadata'       => $metadata,
+		'amount'         => (float) ( $session['amount_total'] ?? 0 ) / 100,
+		'currency'       => strtoupper( (string) ( $session['currency'] ?? '' ) ),
+	] );
+}
+
+/**
+ * Handle a completed/captured PayPal order (PayPal adapter).
+ *
+ * Extracts PayPal-order-shaped fields (as returned by
+ * ClientOctopus_PayPal::capture_order()) into the gateway-agnostic
+ * $normalized shape and hands off to clientoctopus_handle_payment_complete().
+ *
+ * @param array $order PayPal order object (post-capture).
+ */
+function clientoctopus_handle_paypal_order_complete( array $order ): void {
+	$purchase_unit = $order['purchase_units'][0] ?? [];
+
+	// PayPal's "Show order details" (GET) response doesn't always echo custom_id on
+	// purchase_units the way the capture response does — if we were handed an order
+	// object without it (e.g. a concurrent request already captured it and we only
+	// have a fresh GET), re-fetch explicitly before giving up on the metadata that
+	// carries our invoice/proposal reference.
+	if ( empty( $purchase_unit['custom_id'] ) && ! empty( $order['id'] ) && class_exists( 'ClientOctopus_PayPal' ) ) {
+		$refetched = ClientOctopus_PayPal::get_order( (string) $order['id'] );
+		if ( ! is_wp_error( $refetched ) && ! empty( $refetched['purchase_units'][0]['custom_id'] ) ) {
+			$order         = $refetched;
+			$purchase_unit = $order['purchase_units'][0] ?? [];
+		}
+	}
+
+	$capture        = $purchase_unit['payments']['captures'][0] ?? [];
+	$capture_amount = $capture['amount'] ?? ( $purchase_unit['amount'] ?? [] );
+
+	$metadata = json_decode( (string) ( $purchase_unit['custom_id'] ?? '' ), true );
+	if ( ! is_array( $metadata ) ) {
+		$metadata = [];
+	}
+
+	clientoctopus_handle_payment_complete( [
+		'gateway_id'     => (string) ( $order['id'] ?? '' ),
+		'provider'       => 'paypal',
+		'transaction_id' => (string) ( $capture['id'] ?? '' ),
+		'customer_id'    => $order['payer']['payer_id'] ?? null,
+		'metadata'       => $metadata,
+		'amount'         => (float) ( $capture_amount['value'] ?? 0 ),
+		'currency'       => strtoupper( (string) ( $capture_amount['currency_code'] ?? '' ) ),
+	] );
+}
+
+/**
+ * Gateway-agnostic payment completion core.
  *
  * 1. Mark payment completed in our DB.
  * 2. Ensure proposal status is 'accepted' (in case the client paid without clicking Accept).
  * 3. Send owner notification email.
  *
- * @param array $session Stripe session object from event data.
+ * @param array $normalized {
+ *     @type string     $gateway_id     Stripe session ID or PayPal order ID.
+ *     @type string     $provider       'stripe' | 'paypal'.
+ *     @type string     $transaction_id Stripe PaymentIntent ID or PayPal capture ID.
+ *     @type mixed      $customer_id    Stripe Customer ID or PayPal payer ID, if present.
+ *     @type array      $metadata       Same shape as Stripe's session metadata
+ *                                      (type, invoice_id|proposal_id, token, deposit_pct).
+ *     @type float      $amount         Charge amount, in the currency's major unit.
+ *     @type string     $currency       ISO 4217 currency code, uppercase.
+ * }
  */
-function clientoctopus_handle_checkout_complete( array $session ): void {
-	$session_id        = $session['id']              ?? '';
-	$payment_intent_id = $session['payment_intent']  ?? '';
-	$customer_id       = $session['customer']        ?? null;
-	$metadata          = $session['metadata']        ?? [];
-	$proposal_id       = (int) ( $metadata['proposal_id'] ?? 0 );
+function clientoctopus_handle_payment_complete( array $normalized ): void {
+	$gateway_id      = (string) ( $normalized['gateway_id'] ?? '' );
+	$provider        = 'paypal' === ( $normalized['provider'] ?? 'stripe' ) ? 'paypal' : 'stripe';
+	$transaction_id  = (string) ( $normalized['transaction_id'] ?? '' );
+	$customer_id     = $normalized['customer_id'] ?? null;
+	$metadata        = is_array( $normalized['metadata'] ?? null ) ? $normalized['metadata'] : [];
+	$amount          = (float) ( $normalized['amount'] ?? 0 );
+	$currency        = strtoupper( (string) ( $normalized['currency'] ?? '' ) );
+	$proposal_id     = (int) ( $metadata['proposal_id'] ?? 0 );
 
-	if ( ! $session_id ) {
+	if ( ! $gateway_id ) {
 		return;
 	}
 
@@ -398,7 +653,7 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 			require_once $invoice_class;
 		}
 		if ( class_exists( 'ClientOctopus_Invoice' ) ) {
-			ClientOctopus_Invoice::mark_paid( $invoice_id, $session_id, (string) $payment_intent_id );
+			ClientOctopus_Invoice::mark_paid_for_provider( $invoice_id, $gateway_id, $transaction_id, $provider );
 		}
 		return;
 	}
@@ -410,14 +665,14 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 
 	// Idempotency guard — if this session was already processed (webhook fired twice
 	// or status endpoint triggered write-through concurrently) skip all side-effects.
-	$existing = ClientOctopus_Payment::get_by_session_id( $session_id );
+	$existing = ClientOctopus_Payment::get_by_gateway_id( $gateway_id, $provider );
 	if ( ! is_wp_error( $existing ) && 'completed' === $existing['status'] ) {
 		return;
 	}
 
 	// Mark payment complete.
-	ClientOctopus_Payment::mark_complete( $session_id, (string) $payment_intent_id, $customer_id ?: null );
-	$payment = ClientOctopus_Payment::get_by_session_id( $session_id );
+	ClientOctopus_Payment::mark_complete_for_provider( $gateway_id, $transaction_id, $customer_id ?: null, $provider );
+	$payment = ClientOctopus_Payment::get_by_gateway_id( $gateway_id, $provider );
 
 	// Ensure proposal is accepted.
 	global $wpdb;
@@ -497,29 +752,30 @@ function clientoctopus_handle_checkout_complete( array $session ): void {
 			'proposal_id' => $proposal_id,
 			'event_type'  => 'payment_completed',
 			'user_ip'     => '',
-			'user_agent'  => 'stripe-webhook',
+			'user_agent'  => $provider . '-webhook',
 			'timestamp'   => current_time( 'mysql' ),
 			'metadata'    => wp_json_encode( [
-				'session_id'  => $session_id,
-				'amount'      => $session['amount_total'] ?? 0,
-				'currency'    => $session['currency']     ?? '',
+				'session_id' => $gateway_id,
+				'amount'     => (int) round( $amount * 100 ),
+				'currency'   => strtolower( $currency ),
 			] ),
 		],
 		[ '%d', '%s', '%s', '%s', '%s', '%s' ]
 	);
 
 	// Email owner.
-	clientoctopus_notify_owner_payment_complete( (int) $proposal['owner_id'], $proposal, $session );
+	clientoctopus_notify_owner_payment_complete( (int) $proposal['owner_id'], $proposal, $amount, $currency );
 }
 
 /**
  * Send the owner an email when their proposal is paid.
  *
- * @param int   $owner_id WordPress user ID.
- * @param array $proposal Raw proposal row.
- * @param array $session  Stripe session object.
+ * @param int    $owner_id WordPress user ID.
+ * @param array  $proposal Raw proposal row.
+ * @param float  $amount   Charge amount, in the currency's major unit.
+ * @param string $currency ISO 4217 currency code, uppercase.
  */
-function clientoctopus_notify_owner_payment_complete( int $owner_id, array $proposal, array $session ): void {
+function clientoctopus_notify_owner_payment_complete( int $owner_id, array $proposal, float $amount, string $currency ): void {
 	global $wpdb;
 
 	$owner = get_userdata( $owner_id );
@@ -527,9 +783,8 @@ function clientoctopus_notify_owner_payment_complete( int $owner_id, array $prop
 		return;
 	}
 
-	$amount_raw    = ( $session['amount_total'] ?? 0 ) / 100;
-	$currency      = strtoupper( $session['currency'] ?? 'GBP' );
-	$amount_fmt    = $currency . ' ' . number_format( $amount_raw, 2 );
+	$currency       = $currency ?: 'GBP';
+	$amount_fmt     = $currency . ' ' . number_format( $amount, 2 );
 	$proposal_title = esc_html( $proposal['title'] ?? 'Proposal' );
 
 	// Owner notification.

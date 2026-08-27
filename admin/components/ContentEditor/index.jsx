@@ -20,18 +20,11 @@ import {
 	addSection,
 	buildContentPayload,
 } from './utils';
+import { injectStyles } from '../../../shared/injectStyles';
 
 const canUseAi = window.clientoctopusData?.featureAccess?.use_ai ?? false;
 
 // ─── Style injection ──────────────────────────────────────────────────────────
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
 
 const CSS = `
 /* ── Wrapper ────────────────────────────────────────────────── */

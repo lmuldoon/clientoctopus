@@ -10,6 +10,7 @@
  *   errors   {object}
  */
 import { useState } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
 
 const CURRENCIES = [
 	{ value: 'GBP', label: '£ GBP — British Pound' },
@@ -212,14 +213,6 @@ max-width:unset;
   font-weight: 500;
 }
 `;
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
 
 // Get today + 30 days as default expiry
 function defaultExpiry() {

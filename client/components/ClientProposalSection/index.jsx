@@ -1,17 +1,10 @@
+import { injectStyles } from '../../../shared/injectStyles';
 /**
  * ClientProposalSection
  *
  * Renders a single content block from the proposal's sections array.
  * Types: heading | text | list | pricing
  */
-
-const injectStyles = ( id, css ) => {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-};
 
 const CSS = `
 /* ── Heading ───────────────────────────────────────────────── */

@@ -106,4 +106,67 @@
 			bgSelectBtn.textContent   = 'Select Image';
 		} );
 	}
+
+	// ── Payment Provider toggle ──────────────────────────────────────────────
+	var providerSelect  = document.getElementById( 'co-payment-provider' );
+	var stripeFieldEls  = document.querySelectorAll( '.co-gateway-fields--stripe' );
+	var paypalFieldEls  = document.querySelectorAll( '.co-gateway-fields--paypal' );
+
+	if ( providerSelect && ( stripeFieldEls.length || paypalFieldEls.length ) ) {
+		providerSelect.addEventListener( 'change', function () {
+			var showPaypal = 'paypal' === providerSelect.value;
+			for ( var i = 0; i < stripeFieldEls.length; i++ ) {
+				stripeFieldEls[ i ].style.display = showPaypal ? 'none' : '';
+			}
+			for ( var j = 0; j < paypalFieldEls.length; j++ ) {
+				paypalFieldEls[ j ].style.display = showPaypal ? '' : 'none';
+			}
+		} );
+	}
+
+	// ── Webhook URL copy buttons ─────────────────────────────────────────────
+	// navigator.clipboard is only available in secure contexts (HTTPS/localhost),
+	// so fall back to a hidden-textarea + execCommand('copy') on plain HTTP dev sites.
+	var copyButtons = document.querySelectorAll( '.co-copy-btn[data-copy-target]' );
+
+	for ( var k = 0; k < copyButtons.length; k++ ) {
+		( function ( btn ) {
+			var targetInput = document.getElementById( btn.getAttribute( 'data-copy-target' ) );
+			if ( ! targetInput ) {
+				return;
+			}
+
+			btn.addEventListener( 'click', function () {
+				var originalLabel = btn.textContent;
+				var showCopied = function () {
+					btn.textContent = 'Copied!';
+					setTimeout( function () {
+						btn.textContent = originalLabel;
+					}, 2000 );
+				};
+				var fallbackCopy = function () {
+					var scratch = document.createElement( 'textarea' );
+					scratch.value = targetInput.value;
+					scratch.style.position = 'fixed';
+					scratch.style.opacity = '0';
+					document.body.appendChild( scratch );
+					scratch.focus();
+					scratch.select();
+					try {
+						document.execCommand( 'copy' );
+						showCopied();
+					} catch ( err ) {
+						// Copy failed silently — nothing more we can do without user gesture context.
+					}
+					document.body.removeChild( scratch );
+				};
+
+				if ( window.navigator.clipboard && window.isSecureContext ) {
+					window.navigator.clipboard.writeText( targetInput.value ).then( showCopied, fallbackCopy );
+				} else {
+					fallbackCopy();
+				}
+			} );
+		}( copyButtons[ k ] ) );
+	}
 }());

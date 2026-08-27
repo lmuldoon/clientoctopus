@@ -1,20 +1,31 @@
 /**
  * InvoicesApp
  *
- * Admin UI for standalone invoices. Two views:
+ * Admin UI for standalone invoices, plus recurring invoices as a second tab
+ * within the same screen (RecurringApp is a fully self-contained sub-app —
+ * its own list/editor/data-fetching — so it's just mounted here, not merged
+ * into this file's own state/logic).
+ *
+ * "Invoices" tab, two views:
  *   1. Invoice list — sortable by status, quick actions
  *   2. Invoice editor — create / edit form
  *
  * Design matches ProposalList / ClientsApp: same CSS vars, same card layout,
  * same status badge pattern, same field classes.
  */
-import { useState, useEffect, useMemo, useCallback } from '@wordpress/element';
+import { useState, useEffect, useCallback } from '@wordpress/element';
+import { injectStyles } from '../../../shared/injectStyles';
+import { fmt, SYMBOLS } from '../../../shared/currency';
+import RecurringApp from '../RecurringApp';
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 async function coFetch( path, options = {} ) {
 	const { apiUrl, nonce } = window.clientoctopusData || {};
-	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + path;
+	// Ensure the resource path (not the query string) ends in a trailing slash —
+	// some hosts 301-redirect a request missing it, which can drop the method/body.
+	const [ base, qs ] = path.split( '?' );
+	const url = ( apiUrl || '/wp-json/clientoctopus/v1/' ) + base.replace( /\/?$/, '/' ) + ( qs ? `?${ qs }` : '' );
 	const res = await fetch( url, {
 		headers: {
 			'Content-Type': 'application/json',
@@ -42,8 +53,6 @@ const CURRENCIES = [
 	{ value: 'AUD', label: '$ AUD — Australian Dollar' },
 ];
 
-const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€', CAD: '$', AUD: '$' };
-
 const STATUS_CONFIG = {
 	draft:     { bg: 'var(--co-slate-100)', color: 'var(--co-slate-600)',  label: 'Draft'     },
 	sent:      { bg: 'var(--co-indigo-bg)', color: 'var(--co-indigo)',     label: 'Sent'      },
@@ -62,13 +71,6 @@ const TABS = [
 ];
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id; s.textContent = css;
-	document.head.appendChild( s );
-}
 
 const CSS = `
 .co-inv {
@@ -111,10 +113,21 @@ const CSS = `
 .co-inv-btn-primary:hover { opacity:.88; }
 .co-inv-btn-ghost {
   background:none; border:1.5px solid var(--inv-s2);
-  color:var(--inv-s6); padding:8px 14px; border-radius:8px;
+  color:var(--inv-s6); padding:10px 18px; border-radius:8px;
   font-size:13px; font-weight:500; cursor:pointer; transition:border-color .15s;
 }
 .co-inv-btn-ghost:hover { border-color:var(--inv-indigo); color:var(--inv-indigo); }
+
+/* Section tabs (Invoices / Recurring Invoices) — underline style, distinct from the pill-style status tabs below */
+.co-inv-section-tabs {
+  display:flex; gap:24px; border-bottom:1.5px solid var(--inv-s2); margin-bottom:24px;
+}
+.co-inv-section-tab {
+  background:none; border:none; padding:0 0 12px; font-size:15px; font-weight:600; color:var(--inv-s4);
+  cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:color .15s, border-color .15s;
+}
+.co-inv-section-tab:hover { color:var(--inv-navy); }
+.co-inv-section-tab.active { color:var(--inv-indigo); border-color:var(--inv-indigo); }
 
 /* Tabs */
 .co-inv-tabs {
@@ -135,6 +148,18 @@ const CSS = `
   border-radius:999px; padding:1px 7px; min-width:20px; text-align:center;
 }
 .co-inv-tab.active .co-inv-tab-count { background:rgba(255,255,255,.22); color:#fff; }
+
+.co-inv-pager { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:20px; }
+.co-inv-page-btn {
+  min-width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; border:1.5px solid var(--inv-s2); background:#fff;
+  font-size:13px; font-weight:600; color:var(--inv-s6); cursor:pointer;
+  transition:border-color .12s, background .12s, color .12s;
+}
+.co-inv-page-btn:hover:not(:disabled) { border-color:var(--inv-indigo); color:var(--inv-indigo); background:#EEF2FF; }
+.co-inv-page-btn.active { background:var(--inv-indigo); color:#fff; border-color:var(--inv-indigo); }
+.co-inv-page-btn:disabled { opacity:.4; cursor:not-allowed; }
+.co-inv-page-btn svg { width:14px; height:14px; stroke:currentColor; stroke-width:2; }
 
 /* Table */
 .co-inv-table-wrap { background:#fff; border-radius:12px; border:1px solid var(--inv-s2); overflow-x:auto; overflow-y:hidden; box-shadow: 0 1px 3px rgba(26,26,46,.04), 0 6px 24px rgba(26,26,46,.06); }
@@ -233,7 +258,11 @@ const CSS = `
 /* Line items */
 .co-inv-items { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
 .co-inv-item { display:grid; grid-template-columns:1fr 130px 36px; gap:8px; align-items:center; }
-.co-inv-item input { margin:0; }
+.co-inv-item input {
+  margin:0; width:100%; height:41px; padding:9px 12px; border:1.5px solid var(--inv-s2); border-radius:8px;
+  font-size:14px; color:var(--inv-navy); background:#fff; box-sizing:border-box; transition:border-color .15s;
+}
+.co-inv-item input:focus { outline:none; border-color:var(--inv-indigo); box-shadow:0 0 0 3px rgba(99,102,241,.1); }
 .co-inv-item-del {
   background:none; border:none; color:var(--inv-s3); cursor:pointer; font-size:18px; line-height:1;
   padding:4px; border-radius:6px; transition:color .15s;
@@ -259,6 +288,12 @@ const CSS = `
 
 /* Client picker */
 .co-inv-client-picker { position:relative; }
+.co-inv-client-search-row { display:flex; gap:8px; align-items:center; }
+.co-inv-client-search-row input {
+  flex:1; height:41px; padding:9px 12px; border:1.5px solid var(--inv-s2); border-radius:8px;
+  font-size:14px; color:var(--inv-navy); background:#fff; box-sizing:border-box; transition:border-color .15s;
+}
+.co-inv-client-search-row input:focus { outline:none; border-color:var(--inv-indigo); box-shadow:0 0 0 3px rgba(99,102,241,.1); }
 .co-inv-client-results {
   position:absolute; top:100%; left:0; right:0; z-index:20;
   background:#fff; border:1.5px solid var(--inv-s2); border-top:none;
@@ -299,8 +334,7 @@ function formatDate( iso ) {
 }
 
 function formatCurrency( amount, currency ) {
-	const sym = CURRENCY_SYMBOLS[ currency ] || '';
-	return `${ sym }${ parseFloat( amount || 0 ).toFixed( 2 ) }`;
+	return fmt( parseFloat( amount || 0 ), currency );
 }
 
 function computeTotals( lineItems, discountType, discountValue, vatPct ) {
@@ -384,15 +418,18 @@ function ClientPicker( { value, label, onChange } ) {
 
 	return (
 		<div className="co-inv-client-picker">
-			<input
-				type="text"
-				placeholder="Search existing client or type to create new…"
-				value={ query }
-				onChange={ e => { setQuery( e.target.value ); setOpen( true ); } }
-				onFocus={ () => setOpen( true ) }
-				onBlur={ () => setTimeout( () => setOpen( false ), 200 ) }
-			/>
-			{ open && ( query.length > 0 || results.length > 0 ) && (
+			<div className="co-inv-client-search-row">
+				<input
+					type="text"
+					placeholder="Search existing client…"
+					value={ query }
+					onChange={ e => { setQuery( e.target.value ); setOpen( true ); } }
+					onFocus={ () => setOpen( true ) }
+					onBlur={ () => setTimeout( () => setOpen( false ), 200 ) }
+				/>
+				<button className="co-inv-btn-ghost" onClick={ () => setCreating( true ) } type="button">+ Add New Client</button>
+			</div>
+			{ open && results.length > 0 && (
 				<div className="co-inv-client-results">
 					{ results.map( c => (
 						<div
@@ -403,14 +440,6 @@ function ClientPicker( { value, label, onChange } ) {
 							{ c.name }{ c.company ? ` — ${ c.company }` : '' }
 						</div>
 					) ) }
-					{ query.length > 1 && (
-						<div
-							className="co-inv-client-opt create"
-							onMouseDown={ () => { setCreating( true ); setOpen( false ); } }
-						>
-							+ Create &ldquo;{ query }&rdquo; as new client
-						</div>
-					) }
 				</div>
 			) }
 			{ creating && (
@@ -454,7 +483,7 @@ function LineItems( { items, currency, onChange } ) {
 		onChange( items.filter( ( _, idx ) => idx !== i ) );
 	}
 
-	const sym = CURRENCY_SYMBOLS[ currency ] || '';
+	const sym = SYMBOLS[ currency ] || '';
 
 	return (
 		<>
@@ -487,7 +516,6 @@ function LineItems( { items, currency, onChange } ) {
 // ── Totals display ────────────────────────────────────────────────────────────
 
 function TotalsBlock( { lineItems, discountType, discountValue, vatPct, currency } ) {
-	const sym = CURRENCY_SYMBOLS[ currency ] || '';
 	const { subtotal, discAmt, vatAmt, total } = computeTotals( lineItems, discountType, discountValue, vatPct );
 	const showDiscount = parseFloat( discountValue || 0 ) > 0;
 	const showVat      = parseFloat( vatPct || 0 ) > 0;
@@ -496,23 +524,23 @@ function TotalsBlock( { lineItems, discountType, discountValue, vatPct, currency
 		<div className="co-inv-totals">
 			<div className="co-inv-totals-row">
 				<span className="co-inv-totals-label">Subtotal</span>
-				<span className="co-inv-totals-value">{ sym }{ subtotal.toFixed( 2 ) }</span>
+				<span className="co-inv-totals-value">{ fmt( subtotal, currency ) }</span>
 			</div>
 			{ showDiscount && (
 				<div className="co-inv-totals-row">
 					<span className="co-inv-totals-label">Discount</span>
-					<span className="co-inv-totals-value" style={ { color: '#10B981' } }>−{ sym }{ discAmt.toFixed( 2 ) }</span>
+					<span className="co-inv-totals-value" style={ { color: '#10B981' } }>−{ fmt( discAmt, currency ) }</span>
 				</div>
 			) }
 			{ showVat && (
 				<div className="co-inv-totals-row">
 					<span className="co-inv-totals-label">VAT ({ parseFloat( vatPct ).toFixed( 0 ) }%)</span>
-					<span className="co-inv-totals-value">{ sym }{ vatAmt.toFixed( 2 ) }</span>
+					<span className="co-inv-totals-value">{ fmt( vatAmt, currency ) }</span>
 				</div>
 			) }
 			<div className="co-inv-totals-row co-inv-totals-total" style={ { borderTop: '1.5px solid #E2E8F0', paddingTop: 8, marginTop: 4 } }>
 				<span className="co-inv-totals-label">Total</span>
-				<span className="co-inv-totals-value">{ sym }{ total.toFixed( 2 ) }</span>
+				<span className="co-inv-totals-value">{ fmt( total, currency ) }</span>
 			</div>
 		</div>
 	);
@@ -717,22 +745,18 @@ function InvoiceEditor( { invoice, onSaved, onBack } ) {
 
 // ── Invoice list ──────────────────────────────────────────────────────────────
 
-function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoading } ) {
-	const [ tab, setTab ] = useState( 'all' );
+function InvoiceList( { invoices, pages = 1, counts = {}, query, onQueryChange, loading, onNew, onEdit, onAction, actionLoading } ) {
+	const tab      = query.status || 'all';
+	const filtered = invoices;
+	const page     = query.page || 1;
 
-	const filtered = useMemo( () => {
-		if ( tab === 'all' ) return invoices;
-		return invoices.filter( i => i.status === tab );
-	}, [ invoices, tab ] );
+	function setTab( id ) {
+		onQueryChange( q => ( { ...q, status: id === 'all' ? '' : id, page: 1 } ) );
+	}
 
-	// Count per tab
-	const counts = useMemo( () => {
-		const c = { all: invoices.length };
-		TABS.slice( 1 ).forEach( t => {
-			c[ t.id ] = invoices.filter( i => i.status === t.id ).length;
-		} );
-		return c;
-	}, [ invoices ] );
+	function setPage( updater ) {
+		onQueryChange( q => ( { ...q, page: typeof updater === 'function' ? updater( q.page ) : updater } ) );
+	}
 
 	if ( loading ) return <div className="co-inv-loading">Loading invoices…</div>;
 
@@ -792,7 +816,6 @@ function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoadin
 						<tbody>
 							{ filtered.map( inv => {
 								const isOverdue = inv.status === 'overdue';
-								const sym = CURRENCY_SYMBOLS[ inv.currency ] || '';
 								const busy = actionLoading === inv.id;
 								return (
 									<tr key={ inv.id }>
@@ -801,7 +824,7 @@ function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoadin
 											{ inv.title && <div style={ { fontSize: 12, color: '#94A3B8', marginTop: 2 } }>{ inv.title }</div> }
 										</td>
 										<td className="co-inv-client">{ inv._client_name || '—' }</td>
-										<td className="co-inv-amount">{ sym }{ parseFloat( inv.total_amount ).toFixed( 2 ) } <span style={ { color: '#94A3B8', fontWeight: 400 } }>{ inv.currency }</span></td>
+										<td className="co-inv-amount">{ fmt( parseFloat( inv.total_amount ), inv.currency ) } <span style={ { color: '#94A3B8', fontWeight: 400 } }>{ inv.currency }</span></td>
 										<td>
 											<span className={ `co-inv-due${ isOverdue ? ' overdue' : '' }` }>
 												{ formatDate( inv.due_date ) }
@@ -835,6 +858,57 @@ function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoadin
 					</table>
 				</div>
 			) }
+
+			{ pages > 1 && (
+				<div className="co-inv-pager">
+					<button
+						type="button"
+						className="co-inv-page-btn"
+						disabled={ page === 1 }
+						onClick={ () => setPage( p => p - 1 ) }
+						aria-label="Previous page"
+					>
+						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+						</svg>
+					</button>
+
+					{ Array.from( { length: pages }, ( _, i ) => i + 1 )
+						.filter( p => p === 1 || p === pages || Math.abs( p - page ) <= 1 )
+						.reduce( ( acc, p, idx, arr ) => {
+							if ( idx > 0 && p - arr[ idx - 1 ] > 1 ) acc.push( '…' );
+							acc.push( p );
+							return acc;
+						}, [] )
+						.map( ( p, i ) =>
+							p === '…' ? (
+								<span key={ `ellipsis-${ i }` } style={ { padding: '0 4px', color: '#94A3B8' } }>…</span>
+							) : (
+								<button
+									key={ p }
+									type="button"
+									className={ `co-inv-page-btn${ page === p ? ' active' : '' }` }
+									onClick={ () => setPage( p ) }
+								>
+									{ p }
+								</button>
+							)
+						)
+					}
+
+					<button
+						type="button"
+						className="co-inv-page-btn"
+						disabled={ page === pages }
+						onClick={ () => setPage( p => p + 1 ) }
+						aria-label="Next page"
+					>
+						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+						</svg>
+					</button>
+				</div>
+			) }
 		</>
 	);
 }
@@ -844,18 +918,29 @@ function InvoiceList( { invoices, loading, onNew, onEdit, onAction, actionLoadin
 export default function InvoicesApp() {
 	injectStyles( 'co-inv-styles', CSS );
 
+	const [ section, setSection ]     = useState( 'invoices' ); // 'invoices' | 'recurring'
 	const [ view, setView ]           = useState( 'list' );
-	const [ invoices, setInvoices ]   = useState( [] );
+	const [ query, setQuery ]         = useState( { status: '', page: 1 } );
+	const [ list, setList ]           = useState( { invoices: [], total: 0, pages: 1, counts: {} } );
 	const [ loading, setLoading ]     = useState( true );
 	const [ editInvoice, setEdit ]    = useState( null );
 	const [ error, setError ]         = useState( null );
 	const [ actionLoading, setActing ] = useState( null );
 
 	async function fetchInvoices() {
+		setLoading( true );
 		try {
-			const data = await coFetch( 'invoices/' );
-			// Merge in client names from a second call if available (not blocking).
-			setInvoices( data.invoices || [] );
+			const params = new URLSearchParams();
+			if ( query.status ) params.set( 'status', query.status );
+			params.set( 'page', String( query.page ) );
+			params.set( 'per_page', '20' );
+			const data = await coFetch( `invoices/?${ params.toString() }` );
+			setList( {
+				invoices: data.invoices || [],
+				total:    data.total    || 0,
+				pages:    data.pages    || 1,
+				counts:   data.counts   || {},
+			} );
 		} catch( e ) {
 			setError( e.message );
 		} finally {
@@ -863,7 +948,11 @@ export default function InvoicesApp() {
 		}
 	}
 
-	useEffect( () => { fetchInvoices(); }, [] );
+	useEffect( () => { fetchInvoices(); }, [ query ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	function refetch() {
+		setQuery( q => ( { ...q } ) );
+	}
 
 	function openNew() {
 		setEdit( null );
@@ -876,15 +965,7 @@ export default function InvoicesApp() {
 	}
 
 	function onSaved( inv ) {
-		setInvoices( prev => {
-			const idx = prev.findIndex( i => i.id === inv.id );
-			if ( idx >= 0 ) {
-				const next = [ ...prev ];
-				next[ idx ] = inv;
-				return next;
-			}
-			return [ inv, ...prev ];
-		} );
+		refetch();
 		setView( 'list' );
 	}
 
@@ -894,14 +975,11 @@ export default function InvoicesApp() {
 		try {
 			if ( action === 'delete' ) {
 				await coFetch( `invoices/${ inv.id }/`, { method: 'DELETE' } );
-				setInvoices( prev => prev.filter( i => i.id !== inv.id ) );
 			} else {
 				const pathMap = { send: 'send', resend: 'send', 'mark-paid': 'mark-paid', cancel: 'cancel' };
-				const data    = await coFetch( `invoices/${ inv.id }/${ pathMap[ action ] }/`, { method: 'POST', body: '{}' } );
-				if ( data.invoice ) {
-					setInvoices( prev => prev.map( i => i.id === data.invoice.id ? data.invoice : i ) );
-				}
+				await coFetch( `invoices/${ inv.id }/${ pathMap[ action ] }/`, { method: 'POST', body: '{}' } );
 			}
+			refetch();
 		} catch( e ) {
 			alert( e.message );
 		} finally {
@@ -911,23 +989,50 @@ export default function InvoicesApp() {
 
 	return (
 		<div className="co-inv">
-			{ error && <div className="co-inv-error">{ error }</div> }
-			{ view === 'list' && (
-				<InvoiceList
-					invoices={ invoices }
-					loading={ loading }
-					onNew={ openNew }
-					onEdit={ openEdit }
-					onAction={ handleAction }
-					actionLoading={ actionLoading }
-				/>
-			) }
-			{ view === 'editor' && (
-				<InvoiceEditor
-					invoice={ editInvoice }
-					onSaved={ onSaved }
-					onBack={ () => setView( 'list' ) }
-				/>
+			<div className="co-inv-section-tabs">
+				<button
+					className={ `co-inv-section-tab${ section === 'invoices' ? ' active' : '' }` }
+					onClick={ () => setSection( 'invoices' ) }
+					type="button"
+				>
+					Invoices
+				</button>
+				<button
+					className={ `co-inv-section-tab${ section === 'recurring' ? ' active' : '' }` }
+					onClick={ () => setSection( 'recurring' ) }
+					type="button"
+				>
+					Recurring Invoices
+				</button>
+			</div>
+
+			{ section === 'recurring' ? (
+				<RecurringApp />
+			) : (
+				<>
+					{ error && <div className="co-inv-error">{ error }</div> }
+					{ view === 'list' && (
+						<InvoiceList
+							invoices={ list.invoices }
+							pages={ list.pages }
+							counts={ list.counts }
+							query={ query }
+							onQueryChange={ setQuery }
+							loading={ loading }
+							onNew={ openNew }
+							onEdit={ openEdit }
+							onAction={ handleAction }
+							actionLoading={ actionLoading }
+						/>
+					) }
+					{ view === 'editor' && (
+						<InvoiceEditor
+							invoice={ editInvoice }
+							onSaved={ onSaved }
+							onBack={ () => setView( 'list' ) }
+						/>
+					) }
+				</>
 			) }
 		</div>
 	);

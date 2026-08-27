@@ -8,6 +8,7 @@
  */
 import { useState, useEffect } from '@wordpress/element';
 import { coFetch } from '../ProjectsApp';
+import { injectStyles } from '../../../shared/injectStyles';
 
 const STATUS_TABS = [
 	{ id: '',          label: 'All'       },
@@ -22,16 +23,8 @@ const STATUS_CONFIG = {
 	'completed': { bg: 'var(--co-emerald-bg)', color: 'var(--co-emerald)',  label: 'Completed' },
 };
 
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
-
 const CSS = `
-.co-pl-wrap { display: flex; flex-direction: column; }
+.co-pl-wrap { display: flex; flex-direction: column; padding: 32px 28px 64px; }
 
 .co-pl-header {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -63,6 +56,26 @@ const CSS = `
   border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
 .co-pl-tab.active .co-pl-tab-count { background: rgba(255,255,255,.22); color: #fff; }
+
+.co-pl-pager {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; margin-top: 20px;
+}
+.co-pl-page-btn {
+  min-width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  border: 1.5px solid var(--co-slate-200);
+  background: #fff;
+  font-size: 13px; font-weight: 600; font-family: var(--co-font);
+  color: var(--co-slate-500);
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.co-pl-page-btn:hover:not(:disabled) { border-color: var(--co-indigo); color: var(--co-indigo); background: var(--co-indigo-bg); }
+.co-pl-page-btn.active { background: var(--co-indigo); color: white; border-color: var(--co-indigo); }
+.co-pl-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+.co-pl-page-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; }
 
 .co-pl-grid {
   display: grid;
@@ -223,20 +236,31 @@ export default function ProjectList( { onViewProject } ) {
 	const settingsUrl = ( window.clientoctopusData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
 
 	const [ projects, setProjects ] = useState( [] );
+	const [ total, setTotal ]       = useState( 0 );
+	const [ pageCount, setPageCount ] = useState( 1 );
+	const [ counts, setCounts ]     = useState( { '': 0 } );
 	const [ loading, setLoading ]   = useState( true );
 	const [ error, setError ]       = useState( null );
 	const [ tab, setTab ]           = useState( '' );
+	const [ page, setPage ]         = useState( 1 );
 
 	useEffect( () => {
 		fetchProjects();
-	}, [] );
+	}, [ tab, page ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	async function fetchProjects() {
 		setLoading( true );
 		setError( null );
 		try {
-			const data = await coFetch( 'projects/' );
+			const params = new URLSearchParams();
+			if ( tab ) params.set( 'status', tab );
+			params.set( 'page', String( page ) );
+			params.set( 'per_page', '20' );
+			const data = await coFetch( `projects/?${ params.toString() }` );
 			setProjects( data.projects || [] );
+			setTotal( data.total || 0 );
+			setPageCount( data.pages || 1 );
+			setCounts( data.counts || { '': 0 } );
 		} catch ( e ) {
 			setError( e.message );
 		} finally {
@@ -244,15 +268,12 @@ export default function ProjectList( { onViewProject } ) {
 		}
 	}
 
-	const filtered = tab
-		? projects.filter( p => p.status === tab )
-		: projects;
+	const filtered = projects;
 
-	// Count per tab
-	const counts = { '': projects.length };
-	STATUS_TABS.slice( 1 ).forEach( t => {
-		counts[ t.id ] = projects.filter( p => p.status === t.id ).length;
-	} );
+	function handleTabChange( id ) {
+		setTab( id );
+		setPage( 1 );
+	}
 
 	return (
 		<div className="co-pl-wrap">
@@ -301,7 +322,7 @@ export default function ProjectList( { onViewProject } ) {
 					<button
 						key={ t.id }
 						className={ `co-pl-tab${ tab === t.id ? ' active' : '' }` }
-						onClick={ () => setTab( t.id ) }
+						onClick={ () => handleTabChange( t.id ) }
 					>
 						{ t.label }
 						<span className="co-pl-tab-count">{ counts[ t.id ] || 0 }</span>
@@ -338,6 +359,57 @@ export default function ProjectList( { onViewProject } ) {
 					) )
 				) }
 			</div>
+
+			{ pageCount > 1 && (
+				<div className="co-pl-pager">
+					<button
+						type="button"
+						className="co-pl-page-btn"
+						disabled={ page === 1 }
+						onClick={ () => setPage( p => p - 1 ) }
+						aria-label="Previous page"
+					>
+						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+						</svg>
+					</button>
+
+					{ Array.from( { length: pageCount }, ( _, i ) => i + 1 )
+						.filter( p => p === 1 || p === pageCount || Math.abs( p - page ) <= 1 )
+						.reduce( ( acc, p, idx, arr ) => {
+							if ( idx > 0 && p - arr[ idx - 1 ] > 1 ) acc.push( '…' );
+							acc.push( p );
+							return acc;
+						}, [] )
+						.map( ( p, i ) =>
+							p === '…' ? (
+								<span key={ `ellipsis-${ i }` } style={ { padding: '0 4px', color: 'var(--co-slate-400)' } }>…</span>
+							) : (
+								<button
+									key={ p }
+									type="button"
+									className={ `co-pl-page-btn${ page === p ? ' active' : '' }` }
+									onClick={ () => setPage( p ) }
+								>
+									{ p }
+								</button>
+							)
+						)
+					}
+
+					<button
+						type="button"
+						className="co-pl-page-btn"
+						disabled={ page === pageCount }
+						onClick={ () => setPage( p => p + 1 ) }
+						aria-label="Next page"
+					>
+						<svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+							<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+						</svg>
+					</button>
+				</div>
+			) }
 		</div>
 	);
 }

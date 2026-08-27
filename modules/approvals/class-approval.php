@@ -106,6 +106,7 @@ class ClientOctopus_Approval {
 			return [];
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at DESC",
@@ -128,6 +129,7 @@ class ClientOctopus_Approval {
 	public static function get( int $id, int $owner_id ): array|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT a.* FROM " . self::table() . " a
@@ -161,6 +163,7 @@ class ClientOctopus_Approval {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at DESC",
@@ -192,6 +195,7 @@ class ClientOctopus_Approval {
 		}
 
 		// Load approval and verify access.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE id = %d",
@@ -249,6 +253,7 @@ class ClientOctopus_Approval {
 		self::notify_owner( $id, $status );
 		do_action( 'clientoctopus_approval_responded', (int) $row['requested_by'], $id, $status );
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$updated = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM " . self::table() . " WHERE id = %d", $id ),
 			ARRAY_A
@@ -270,6 +275,7 @@ class ClientOctopus_Approval {
 	public static function delete( int $id, int $owner_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$result = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE a FROM " . self::table() . " a
@@ -346,6 +352,7 @@ class ClientOctopus_Approval {
 	private static function notify_owner( int $approval_id, string $status ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT a.type, a.description, p.name AS project_name,
@@ -388,6 +395,7 @@ class ClientOctopus_Approval {
 	private static function notify_client( int $approval_id ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT a.type, a.description, p.name AS project_name,

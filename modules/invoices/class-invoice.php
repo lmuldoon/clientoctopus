@@ -30,7 +30,7 @@ class ClientOctopus_Invoice {
 	 * @param int   $owner_id
 	 * @param array $data     {title, currency, client_id, line_items, discount_type,
 	 *                         discount_value, vat_pct, vat_number, notes, due_date,
-	 *                         issue_date, payment_terms, po_number}
+	 *                         issue_date, payment_terms, po_number, recurring_profile_id}
 	 * @return array|WP_Error Newly created invoice row, or error.
 	 */
 	public static function create( int $owner_id, array $data ): array|WP_Error {
@@ -49,30 +49,31 @@ class ClientOctopus_Invoice {
 		$inserted = $wpdb->insert(
 			$table,
 			[
-				'owner_id'       => $owner_id,
-				'client_id'      => ! empty( $data['client_id'] ) ? (int) $data['client_id'] : null,
-				'invoice_number' => $invoice_number,
-				'token'          => $token,
-				'status'         => 'draft',
-				'title'          => sanitize_text_field( $data['title'] ?? '' ),
-				'currency'       => strtoupper( sanitize_text_field( $data['currency'] ?? 'GBP' ) ),
-				'line_items'     => $line_items,
-				'discount_type'  => in_array( $data['discount_type'] ?? '', [ 'percentage', 'fixed' ], true )
+				'owner_id'             => $owner_id,
+				'client_id'            => ! empty( $data['client_id'] ) ? (int) $data['client_id'] : null,
+				'invoice_number'       => $invoice_number,
+				'token'                => $token,
+				'status'               => 'draft',
+				'title'                => sanitize_text_field( $data['title'] ?? '' ),
+				'currency'             => strtoupper( sanitize_text_field( $data['currency'] ?? 'GBP' ) ),
+				'line_items'           => $line_items,
+				'discount_type'        => in_array( $data['discount_type'] ?? '', [ 'percentage', 'fixed' ], true )
 				                     ? $data['discount_type']
 				                     : 'percentage',
-				'discount_value' => max( 0, (float) ( $data['discount_value'] ?? 0 ) ),
-				'vat_pct'        => max( 0, min( 100, (float) ( $data['vat_pct'] ?? 0 ) ) ),
-				'vat_number'     => ! empty( $data['vat_number'] ) ? sanitize_text_field( $data['vat_number'] ) : null,
-				'notes'          => ! empty( $data['notes'] ) ? sanitize_textarea_field( $data['notes'] ) : null,
-				'due_date'       => ! empty( $data['due_date'] ) ? sanitize_text_field( $data['due_date'] ) : null,
-				'issue_date'     => ! empty( $data['issue_date'] ) ? sanitize_text_field( $data['issue_date'] ) : gmdate( 'Y-m-d' ),
-				'payment_terms'  => ! empty( $data['payment_terms'] ) ? sanitize_text_field( $data['payment_terms'] ) : null,
-				'po_number'      => ! empty( $data['po_number'] ) ? sanitize_text_field( $data['po_number'] ) : null,
-				'total_amount'   => $total,
-				'created_at'     => $now,
-				'updated_at'     => $now,
+				'discount_value'       => max( 0, (float) ( $data['discount_value'] ?? 0 ) ),
+				'vat_pct'              => max( 0, min( 100, (float) ( $data['vat_pct'] ?? 0 ) ) ),
+				'vat_number'           => ! empty( $data['vat_number'] ) ? sanitize_text_field( $data['vat_number'] ) : null,
+				'notes'                => ! empty( $data['notes'] ) ? sanitize_textarea_field( $data['notes'] ) : null,
+				'due_date'             => ! empty( $data['due_date'] ) ? sanitize_text_field( $data['due_date'] ) : null,
+				'issue_date'           => ! empty( $data['issue_date'] ) ? sanitize_text_field( $data['issue_date'] ) : gmdate( 'Y-m-d' ),
+				'payment_terms'        => ! empty( $data['payment_terms'] ) ? sanitize_text_field( $data['payment_terms'] ) : null,
+				'po_number'            => ! empty( $data['po_number'] ) ? sanitize_text_field( $data['po_number'] ) : null,
+				'total_amount'         => $total,
+				'recurring_profile_id' => ! empty( $data['recurring_profile_id'] ) ? (int) $data['recurring_profile_id'] : null,
+				'created_at'           => $now,
+				'updated_at'           => $now,
 			],
-			[ '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%f', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%f', '%s', '%s' ]
+			[ '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%f', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%f', '%d', '%s', '%s' ]
 		);
 
 		if ( ! $inserted ) {
@@ -220,6 +221,19 @@ class ClientOctopus_Invoice {
 	 * @param string $intent_id
 	 */
 	public static function mark_paid( int $id, string $session_id, string $intent_id ): void {
+		self::mark_paid_for_provider( $id, $session_id, $intent_id, 'stripe' );
+	}
+
+	/**
+	 * Mark invoice as paid via a gateway webhook/write-through, provider-aware —
+	 * no owner check (webhook/redirect context).
+	 *
+	 * @param int    $id         Invoice ID.
+	 * @param string $gateway_id Stripe session ID or PayPal order ID.
+	 * @param string $charge_id  Stripe PaymentIntent ID or PayPal capture ID.
+	 * @param string $provider   'stripe' | 'paypal'. Defaults to 'stripe'.
+	 */
+	public static function mark_paid_for_provider( int $id, string $gateway_id, string $charge_id, string $provider = 'stripe' ): void {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'clientoctopus_invoices';
@@ -238,17 +252,22 @@ class ClientOctopus_Invoice {
 			return;
 		}
 
-		$wpdb->update(
-			$table,
-			[
-				'status'                    => 'paid',
-				'stripe_session_id'         => $session_id,
-				'stripe_payment_intent_id'  => $intent_id,
-				'paid_at'                   => current_time( 'mysql' ),
-				'updated_at'                => current_time( 'mysql' ),
-			],
-			[ 'id' => $id ]
-		);
+		$fields = [
+			'status'     => 'paid',
+			'provider'   => 'paypal' === $provider ? 'paypal' : 'stripe',
+			'paid_at'    => current_time( 'mysql' ),
+			'updated_at' => current_time( 'mysql' ),
+		];
+
+		if ( 'paypal' === $provider ) {
+			$fields['paypal_order_id']   = $gateway_id;
+			$fields['paypal_capture_id'] = $charge_id;
+		} else {
+			$fields['stripe_session_id']        = $gateway_id;
+			$fields['stripe_payment_intent_id'] = $charge_id;
+		}
+
+		$wpdb->update( $table, $fields, [ 'id' => $id ] );
 
 		do_action( 'clientoctopus_invoice_paid', $id, (int) $row['owner_id'] );
 	}
@@ -264,9 +283,13 @@ class ClientOctopus_Invoice {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'clientoctopus_invoices';
+		$ct    = $wpdb->prefix . 'clientoctopus_clients';
 		$row   = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$table} WHERE id = %d AND owner_id = %d AND deleted_at IS NULL LIMIT 1",
+				"SELECT i.*, c.name AS _client_name
+				 FROM {$table} i
+				 LEFT JOIN {$ct} c ON c.id = i.client_id
+				 WHERE i.id = %d AND i.owner_id = %d AND i.deleted_at IS NULL LIMIT 1",
 				$id,
 				$owner_id
 			),
@@ -290,9 +313,13 @@ class ClientOctopus_Invoice {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'clientoctopus_invoices';
+		$ct    = $wpdb->prefix . 'clientoctopus_clients';
 		$row   = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$table} WHERE token = %s AND deleted_at IS NULL LIMIT 1",
+				"SELECT i.*, c.name AS _client_name
+				 FROM {$table} i
+				 LEFT JOIN {$ct} c ON c.id = i.client_id
+				 WHERE i.token = %s AND i.deleted_at IS NULL LIMIT 1",
 				$token
 			),
 			ARRAY_A
@@ -316,42 +343,65 @@ class ClientOctopus_Invoice {
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'clientoctopus_invoices';
+		$ct    = $wpdb->prefix . 'clientoctopus_clients';
 
 		$allowed_statuses = [ 'draft', 'sent', 'paid', 'overdue', 'cancelled' ];
 		$status_filter    = isset( $filters['status'] ) && in_array( $filters['status'], $allowed_statuses, true )
 			? $filters['status']
 			: null;
 
-		$ct = $wpdb->prefix . 'clientoctopus_clients';
+		$page     = max( 1, (int) ( $filters['page'] ?? 1 ) );
+		$per_page = min( 100, max( 1, (int) ( $filters['per_page'] ?? 20 ) ) );
+		$offset   = ( $page - 1 ) * $per_page;
 
+		$where = [ $wpdb->prepare( 'i.owner_id = %d', $owner_id ), 'i.deleted_at IS NULL' ];
 		if ( $status_filter ) {
-			$rows = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT i.*, c.name AS _client_name
-					 FROM {$table} i
-					 LEFT JOIN {$ct} c ON c.id = i.client_id
-					 WHERE i.owner_id = %d AND i.status = %s AND i.deleted_at IS NULL
-					 ORDER BY i.created_at DESC",
-					$owner_id,
-					$status_filter
-				),
-				ARRAY_A
-			);
-		} else {
-			$rows = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT i.*, c.name AS _client_name
-					 FROM {$table} i
-					 LEFT JOIN {$ct} c ON c.id = i.client_id
-					 WHERE i.owner_id = %d AND i.deleted_at IS NULL
-					 ORDER BY i.created_at DESC",
-					$owner_id
-				),
-				ARRAY_A
-			);
+			$where[] = $wpdb->prepare( 'i.status = %s', $status_filter );
+		}
+		$where_sql = implode( ' AND ', $where );
+
+		// $where_sql components are individually prepared above; no outer prepare() needed.
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} i WHERE {$where_sql}" );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT i.*, c.name AS _client_name
+				 FROM {$table} i
+				 LEFT JOIN {$ct} c ON c.id = i.client_id
+				 WHERE {$where_sql}
+				 ORDER BY i.created_at DESC
+				 LIMIT %d OFFSET %d",
+				$per_page,
+				$offset
+			),
+			ARRAY_A
+		);
+
+		// Per-status counts for the tab badges — always reflects the full,
+		// unfiltered-by-status set (matches the pre-pagination client-side
+		// behavior, which counted the entire fetched list regardless of tab).
+		$counts = array_fill_keys( $allowed_statuses, 0 );
+		$counts['all'] = 0;
+		$count_rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT status, COUNT(*) AS c FROM {$table} WHERE owner_id = %d AND deleted_at IS NULL GROUP BY status", $owner_id )
+		);
+		foreach ( $count_rows as $row ) {
+			if ( isset( $counts[ $row->status ] ) ) {
+				$counts[ $row->status ] = (int) $row->c;
+			}
+			$counts['all'] += (int) $row->c;
 		}
 
-		return array_map( [ self::class, 'format_row' ], $rows ?: [] );
+		return [
+			'invoices' => array_map( [ self::class, 'format_row' ], $rows ?: [] ),
+			'total'    => $total,
+			'pages'    => (int) ceil( $total / $per_page ),
+			'page'     => $page,
+			'per_page' => $per_page,
+			'counts'   => $counts,
+		];
 	}
 
 	/**
@@ -502,6 +552,9 @@ class ClientOctopus_Invoice {
 		$row['discount_value'] = (float) $row['discount_value'];
 		$row['vat_pct']        = (float) $row['vat_pct'];
 		$row['total_amount']   = (float) $row['total_amount'];
+		$row['recurring_profile_id'] = isset( $row['recurring_profile_id'] ) && '' !== $row['recurring_profile_id']
+			? (int) $row['recurring_profile_id']
+			: null;
 		$row['line_items']     = ! empty( $row['line_items'] )
 			? json_decode( $row['line_items'], true )
 			: [];

@@ -46,7 +46,8 @@ class ClientOctopus_Payment {
 	 *     @type float  $amount      Charge amount in the proposal currency.
 	 *     @type string $currency    ISO 4217 currency code.
 	 *     @type int    $deposit_pct Percentage of total being charged (1-100).
-	 *     @type string $session_id  Stripe Checkout Session ID (cs_xxx).
+	 *     @type string $session_id  Gateway checkout/order ID (Stripe cs_xxx or PayPal order id).
+	 *     @type string $provider    'stripe' | 'paypal'. Defaults to 'stripe'.
 	 *     @type int    $client_id   Optional FK to clientoctopus_clients.
 	 * }
 	 *
@@ -55,7 +56,8 @@ class ClientOctopus_Payment {
 	public static function create( int $proposal_id, int $owner_id, array $data ): int|WP_Error {
 		global $wpdb;
 
-		$now = current_time( 'mysql' );
+		$now      = current_time( 'mysql' );
+		$provider = 'paypal' === ( $data['provider'] ?? 'stripe' ) ? 'paypal' : 'stripe';
 
 		$row = [
 			'proposal_id'      => $proposal_id,
@@ -64,11 +66,17 @@ class ClientOctopus_Payment {
 			'amount'           => (float) ( $data['amount'] ?? 0 ),
 			'currency'         => strtoupper( (string) ( $data['currency'] ?? 'GBP' ) ),
 			'deposit_pct'      => max( 1, min( 100, (int) ( $data['deposit_pct'] ?? 100 ) ) ),
-			'stripe_session_id' => $data['session_id'] ?? null,
+			'provider'         => $provider,
 			'status'           => 'pending',
 			'created_at'       => $now,
 			'updated_at'       => $now,
 		];
+
+		if ( 'paypal' === $provider ) {
+			$row['paypal_order_id'] = $data['session_id'] ?? null;
+		} else {
+			$row['stripe_session_id'] = $data['session_id'] ?? null;
+		}
 
 		$inserted = $wpdb->insert( self::table(), $row );
 
@@ -93,12 +101,26 @@ class ClientOctopus_Payment {
 	 * @return array|WP_Error
 	 */
 	public static function get_by_session_id( string $session_id ): array|WP_Error {
+		return self::get_by_gateway_id( $session_id, 'stripe' );
+	}
+
+	/**
+	 * Look up a payment by its gateway checkout/order ID, provider-aware.
+	 *
+	 * @param string $gateway_id Stripe session ID (cs_xxx) or PayPal order ID.
+	 * @param string $provider   'stripe' | 'paypal'. Defaults to 'stripe'.
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function get_by_gateway_id( string $gateway_id, string $provider = 'stripe' ): array|WP_Error {
 		global $wpdb;
+
+		$column = 'paypal' === $provider ? 'paypal_order_id' : 'stripe_session_id';
 
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM " . self::table() . " WHERE stripe_session_id = %s",
-				$session_id
+				"SELECT * FROM " . self::table() . " WHERE {$column} = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $column is one of two hardcoded constants above, not user input.
+				$gateway_id
 			),
 			ARRAY_A
 		);
@@ -124,6 +146,7 @@ class ClientOctopus_Payment {
 	public static function get_for_proposal( int $proposal_id ): array {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE proposal_id = %d ORDER BY created_at DESC",
@@ -145,6 +168,7 @@ class ClientOctopus_Payment {
 	public static function has_completed_payment( int $proposal_id ): bool {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$count = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM " . self::table() . " WHERE proposal_id = %d AND status = 'completed'",
@@ -171,21 +195,44 @@ class ClientOctopus_Payment {
 		string $payment_intent_id,
 		?string $customer_id = null
 	): true|WP_Error {
+		return self::mark_complete_for_provider( $session_id, $payment_intent_id, $customer_id, 'stripe' );
+	}
+
+	/**
+	 * Mark a payment as completed after a successful gateway confirmation, provider-aware.
+	 *
+	 * @param string      $gateway_id   Stripe session ID or PayPal order ID.
+	 * @param string      $charge_id    Stripe PaymentIntent ID or PayPal capture ID.
+	 * @param string|null $customer_id  Stripe Customer ID (if present). Unused for PayPal.
+	 * @param string      $provider     'stripe' | 'paypal'. Defaults to 'stripe'.
+	 *
+	 * @return true|WP_Error
+	 */
+	public static function mark_complete_for_provider(
+		string $gateway_id,
+		string $charge_id,
+		?string $customer_id = null,
+		string $provider = 'stripe'
+	): true|WP_Error {
 		global $wpdb;
 
-		$now = current_time( 'mysql' );
+		$now    = current_time( 'mysql' );
+		$column = 'paypal' === $provider ? 'paypal_order_id' : 'stripe_session_id';
 
-		$result = $wpdb->update(
-			self::table(),
-			[
-				'status'                     => 'completed',
-				'stripe_payment_intent_id'   => $payment_intent_id,
-				'stripe_customer_id'         => $customer_id,
-				'completed_at'               => $now,
-				'updated_at'                 => $now,
-			],
-			[ 'stripe_session_id' => $session_id ]
-		);
+		$fields = [
+			'status'       => 'completed',
+			'completed_at' => $now,
+			'updated_at'   => $now,
+		];
+
+		if ( 'paypal' === $provider ) {
+			$fields['paypal_capture_id'] = $charge_id;
+		} else {
+			$fields['stripe_payment_intent_id'] = $charge_id;
+			$fields['stripe_customer_id']       = $customer_id;
+		}
+
+		$result = $wpdb->update( self::table(), $fields, [ $column => $gateway_id ] );
 
 		if ( false === $result ) {
 			return new WP_Error(
@@ -197,7 +244,7 @@ class ClientOctopus_Payment {
 
 		// Fire hook so analytics cache is invalidated.
 		$payment = $wpdb->get_row(
-			$wpdb->prepare( "SELECT id, owner_id FROM " . self::table() . " WHERE stripe_session_id = %s", $session_id )
+			$wpdb->prepare( "SELECT id, owner_id FROM " . self::table() . " WHERE {$column} = %s", $gateway_id ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $column is one of two hardcoded constants above, not user input.
 		);
 		if ( $payment ) {
 			do_action( 'clientoctopus_payment_completed', (int) $payment->id, (int) $payment->owner_id );
@@ -210,16 +257,19 @@ class ClientOctopus_Payment {
 	 * Mark a payment as failed.
 	 *
 	 * @param string $session_id
+	 * @param string $provider   'stripe' | 'paypal'. Defaults to 'stripe'.
 	 *
 	 * @return true|WP_Error
 	 */
-	public static function mark_failed( string $session_id ): true|WP_Error {
+	public static function mark_failed( string $session_id, string $provider = 'stripe' ): true|WP_Error {
 		global $wpdb;
+
+		$column = 'paypal' === $provider ? 'paypal_order_id' : 'stripe_session_id';
 
 		$result = $wpdb->update(
 			self::table(),
 			[ 'status' => 'failed', 'updated_at' => current_time( 'mysql' ) ],
-			[ 'stripe_session_id' => $session_id ]
+			[ $column => $session_id ]
 		);
 
 		if ( false === $result ) {

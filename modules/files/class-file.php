@@ -158,6 +158,7 @@ class ClientOctopus_File {
 			return [];
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at DESC",
@@ -180,6 +181,7 @@ class ClientOctopus_File {
 	public static function get( int $id, int $owner_id ): array|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT f.* FROM " . self::table() . " f
@@ -214,6 +216,7 @@ class ClientOctopus_File {
 		global $wpdb;
 
 		// Raw query — we need file_url which prepare_row() strips from the public getter.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT f.* FROM " . self::table() . " f
@@ -250,6 +253,7 @@ class ClientOctopus_File {
 	public static function delete_for_project( int $project_id, int $owner_id ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT file_url, file_size_kb FROM " . self::table() . " WHERE project_id = %d",
@@ -266,6 +270,7 @@ class ClientOctopus_File {
 			self::delete_from_disk( $row['file_url'] );
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM " . self::table() . " WHERE project_id = %d",
@@ -382,6 +387,7 @@ class ClientOctopus_File {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM " . self::table() . " WHERE project_id = %d ORDER BY created_at DESC",
@@ -403,6 +409,7 @@ class ClientOctopus_File {
 	public static function stream_for_client_by_email( int $id, string $client_email, int $project_id ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT f.* FROM " . self::table() . " f WHERE f.id = %d AND f.project_id = %d",

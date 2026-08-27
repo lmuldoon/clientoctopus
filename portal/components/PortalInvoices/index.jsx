@@ -6,6 +6,9 @@
  */
 
 const { useState, useEffect } = wp.element;
+import { injectStyles } from '../../../shared/injectStyles';
+import { getContrastColor, getBrandButtonColors } from '../../../shared/colors';
+import { fmt } from '../../../shared/currency';
 
 const apiFetch = ( path ) =>
 	fetch( window.coPortalData.apiUrl + path, {
@@ -14,38 +17,6 @@ const apiFetch = ( path ) =>
 			'Content-Type': 'application/json',
 		},
 	} ).then( r => r.json() );
-
-const fmt = ( amount, currency = 'GBP' ) =>
-	new Intl.NumberFormat( 'en-GB', { style: 'currency', currency } ).format( amount );
-
-function getContrastColor( hex ) {
-	const c = ( hex || '#6366F1' ).replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 ) / 255;
-	const g = parseInt( c.substring( 2, 4 ), 16 ) / 255;
-	const b = parseInt( c.substring( 4, 6 ), 16 ) / 255;
-	const lin = x => x <= 0.04045 ? x / 12.92 : Math.pow( ( x + 0.055 ) / 1.055, 2.4 );
-	const L = 0.2126 * lin( r ) + 0.7152 * lin( g ) + 0.0722 * lin( b );
-	return L > 0.35 ? '#1A1A2E' : '#ffffff';
-}
-
-function getBrandButtonColors( hex ) {
-	const base = hex || '#6366F1';
-	const c = base.replace( '#', '' );
-	const r = parseInt( c.substring( 0, 2 ), 16 );
-	const g = parseInt( c.substring( 2, 4 ), 16 );
-	const b = parseInt( c.substring( 4, 6 ), 16 );
-	const darken = ( v ) => Math.max( 0, Math.round( v * 0.85 ) );
-	const hoverHex = '#' + [ darken( r ), darken( g ), darken( b ) ]
-		.map( v => v.toString( 16 ).padStart( 2, '0' ) )
-		.join( '' );
-	return {
-		bg:           base,
-		hover:        hoverHex,
-		text:         getContrastColor( base ),
-		shadow:       `rgba(${ r },${ g },${ b },.3)`,
-		shadowStrong: `rgba(${ r },${ g },${ b },.4)`,
-	};
-}
 
 const STATUS_COLORS = {
 	sent:      { bg: '#DBEAFE', text: '#1D4ED8' },

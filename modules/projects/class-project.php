@@ -189,12 +189,27 @@ class ClientOctopus_Project {
 			ARRAY_A
 		);
 
+		// Per-status counts for the tab badges — always reflects the full,
+		// unfiltered-by-status/search set (matches the pre-pagination client-side
+		// behavior, which counted the entire fetched list regardless of tab).
+		$counts = [ 'active' => 0, 'on-hold' => 0, 'completed' => 0, '' => 0 ];
+		$count_rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT status, COUNT(*) AS c FROM $t WHERE owner_id = %d AND deleted_at IS NULL GROUP BY status", $owner_id )
+		);
+		foreach ( $count_rows as $row ) {
+			if ( isset( $counts[ $row->status ] ) ) {
+				$counts[ $row->status ] = (int) $row->c;
+			}
+			$counts[''] += (int) $row->c;
+		}
+
 		return [
 			'projects' => array_map( [ __CLASS__, 'prepare_row' ], $rows ?: [] ),
 			'total'    => $total,
 			'pages'    => (int) ceil( $total / $per_page ),
 			'page'     => $page,
 			'per_page' => $per_page,
+			'counts'   => $counts,
 		];
 	}
 
@@ -208,6 +223,7 @@ class ClientOctopus_Project {
 	public static function get_by_proposal( int $proposal_id ): array|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$id = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT id FROM " . self::table() . " WHERE proposal_id = %d LIMIT 1",
@@ -262,6 +278,7 @@ class ClientOctopus_Project {
 		}
 
 		if ( 0 === $result ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM " . self::table() . " WHERE id = %d AND owner_id = %d", $id, $owner_id ) );
 			if ( ! $exists ) {
 				return new WP_Error( 'project_not_found', __( 'Project not found.', 'clientoctopus' ), [ 'status' => 404 ] );
@@ -284,6 +301,7 @@ class ClientOctopus_Project {
 	public static function delete( int $id, int $owner_id ): true|WP_Error {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$exists = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT id FROM " . self::table() . " WHERE id = %d AND owner_id = %d AND deleted_at IS NULL",

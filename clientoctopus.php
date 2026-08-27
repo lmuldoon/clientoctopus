@@ -3,7 +3,7 @@
  * Plugin Name: Client Octopus
  * Plugin URI:  https://clientoctopus.com
  * Description: All-in-one client workflow management for WordPress — proposals, invoices, payments, projects, and client portals.
- * Version:     1.1.2
+ * Version:     1.1.3
  * Author:      codievolt
  * Author URI:  https://codievolt.com
  * License:     GPL-2.0-or-later
@@ -127,6 +127,7 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 			'clientoctopus_automations',
 			'clientoctopus_reminder_log',
 			'clientoctopus_invoices',
+			'clientoctopus_recurring_profiles',
 		];
 		foreach ( $tables as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall hook: drops plugin-owned tables only; table names are hardcoded, not user input.
@@ -202,8 +203,8 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '1.1.2' );
-define( 'CLIENTOCTOPUS_DB_VERSION',     '18' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.1.3' );
+define( 'CLIENTOCTOPUS_DB_VERSION',     '27' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '4' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'CLIENTOCTOPUS_URL',        plugin_dir_url( __FILE__ ) );
@@ -1040,6 +1041,27 @@ final class ClientOctopus {
 				wp_schedule_event( time(), 'daily', 'clientoctopus_daily_automations' );
 			}
 		} );
+
+		//@fs_premium_only
+		// Recurring invoices — daily cron generates + sends the next invoice for
+		// every profile due today or earlier. Pro/Agency only, matching the
+		// entitlement gate on the REST routes and admin nav item.
+		add_action( 'clientoctopus_process_recurring_profiles', static function (): void {
+			$path = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+			if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) && file_exists( $path ) ) {
+				require_once $path;
+			}
+			if ( class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+				ClientOctopus_Recurring_Profile::process_due();
+			}
+		} );
+
+		add_action( 'init', static function (): void {
+			if ( ! wp_next_scheduled( 'clientoctopus_process_recurring_profiles' ) ) {
+				wp_schedule_event( time(), 'daily', 'clientoctopus_process_recurring_profiles' );
+			}
+		} );
+		//@end:fs_premium_only
 	}
 
 	// ── REST API ─────────────────────────────────────────────────────────────
@@ -1061,6 +1083,7 @@ final class ClientOctopus {
 			CLIENTOCTOPUS_DIR . 'rest-api/onboarding.php',
 			CLIENTOCTOPUS_DIR . 'rest-api/automations.php',
 			CLIENTOCTOPUS_DIR . 'rest-api/invoices.php',
+			CLIENTOCTOPUS_DIR . 'rest-api/recurring-profiles.php',
 		];
 
 		// Premium-only routes: only loaded for paying users.
@@ -1510,10 +1533,16 @@ final class ClientOctopus {
  */
 function clientoctopus_activate(): void {
 	require_once CLIENTOCTOPUS_DIR . 'database/schema.php';
-	clientoctopus_create_tables();
+
+	// Skip the ~40-query dbDelta/migration replay when the schema is already
+	// current (e.g. deactivate/reactivate with no version change) — mirrors
+	// the same version-gate used for the admin_init migration check below.
+	if ( (string) get_option( 'clientoctopus_db_version', '0' ) !== CLIENTOCTOPUS_DB_VERSION ) {
+		clientoctopus_create_tables();
+		update_option( 'clientoctopus_db_version', CLIENTOCTOPUS_DB_VERSION );
+	}
 
 	add_option( 'clientoctopus_version',        CLIENTOCTOPUS_VERSION );
-	add_option( 'clientoctopus_db_version',     CLIENTOCTOPUS_DB_VERSION );
 	add_option( 'clientoctopus_owner_user_id',  get_current_user_id() );
 
 	if ( ! wp_next_scheduled( 'clientoctopus_monthly_reset' ) ) {

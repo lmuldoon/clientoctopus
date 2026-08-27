@@ -12,8 +12,10 @@
  *   onEditProposal  {fn}      — onEditProposal(id)
  *   onRefresh       {fn}
  */
-import { useState, useMemo } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
 import { coFetch } from '../../App';
+import { injectStyles } from '../../../shared/injectStyles';
+import { fmt } from '../../../shared/currency';
 
 const TABS = [
 	{ id: 'all',       label: 'All'       },
@@ -35,10 +37,6 @@ const STATUS_CONFIG = {
 	expired:            { bg: 'var(--co-slate-100)',   color: 'var(--co-slate-400)',   label: 'Expired'           },
 	revision_requested: { bg: '#FEF3C7',               color: '#92400E',               label: 'Changes Requested' },
 };
-
-const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€', CAD: '$', AUD: '$' };
-
-const PER_PAGE = 20;
 
 const CSS = `
 /* Layout */
@@ -644,14 +642,6 @@ const CSS = `
 }
 `;
 
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
-
 function formatDate( dateStr ) {
 	if ( ! dateStr ) return '—';
 	try {
@@ -663,8 +653,7 @@ function formatDate( dateStr ) {
 
 function formatAmount( amount, currency ) {
 	if ( ! amount ) return '—';
-	const sym = CURRENCY_SYMBOLS[ currency ] || '£';
-	return `${ sym }${ parseFloat( amount ).toLocaleString( 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 } ) }`;
+	return fmt( amount, currency );
 }
 
 function StatusBadge( { status } ) {
@@ -678,6 +667,11 @@ function StatusBadge( { status } ) {
 
 export default function ProposalList( {
 	proposals = [],
+	total = 0,
+	pages = 1,
+	counts = {},
+	query = { status: '', search: '', page: 1 },
+	onQueryChange,
 	loading = false,
 	error = null,
 	onNewProposal,
@@ -692,9 +686,24 @@ export default function ProposalList( {
 	const settingsUrl           = ( window.clientoctopusData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-settings';
 	const senderEmailConfigured = window.clientoctopusData?.senderEmailConfigured ?? true;
 
-	const [ activeTab, setActiveTab ]         = useState( 'all' );
-	const [ search, setSearch ]               = useState( '' );
-	const [ page, setPage ]                   = useState( 1 );
+	// activeTab mirrors query.status, but 'all' is represented as '' server-side.
+	const activeTab = query.status || 'all';
+	const page      = query.page || 1;
+	const pageCount = pages;
+
+	// Local, immediately-reflected search input — debounced before it reaches
+	// query.search (and therefore the server) so typing doesn't fire a request
+	// per keystroke.
+	const [ search, setSearchInput ] = useState( query.search || '' );
+	useEffect( () => {
+		const t = setTimeout( () => {
+			if ( search !== query.search ) {
+				onQueryChange( q => ( { ...q, search, page: 1 } ) );
+			}
+		}, 300 );
+		return () => clearTimeout( t );
+	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
 	const [ deletingId, setDeletingId ]       = useState( null );
 	const [ sendingId, setSendingId ]         = useState( null );
 	const [ refreshing, setRefreshing ]       = useState( false );
@@ -718,47 +727,20 @@ export default function ProposalList( {
 		}
 	}
 
-	// Count per tab
-	const counts = useMemo( () => {
-		const c = { all: proposals.length };
-		TABS.slice( 1 ).forEach( t => {
-			c[ t.id ] = proposals.filter( p => p.status === t.id ).length;
-		} );
-		return c;
-	}, [ proposals ] );
-
-	// Filter
-	const filtered = useMemo( () => {
-		let list = proposals;
-
-		if ( activeTab !== 'all' ) {
-			list = list.filter( p => p.status === activeTab );
-		}
-
-		if ( search.trim() ) {
-			const q = search.toLowerCase();
-			list = list.filter( p =>
-				( p.client_name || '' ).toLowerCase().includes( q ) ||
-				( p.title || '' ).toLowerCase().includes( q ) ||
-				( p.client_email || '' ).toLowerCase().includes( q )
-			);
-		}
-
-		return list;
-	}, [ proposals, activeTab, search ] );
-
-	// Pagination
-	const pageCount = Math.ceil( filtered.length / PER_PAGE );
-	const paginated = filtered.slice( ( page - 1 ) * PER_PAGE, page * PER_PAGE );
+	// proposals/total/pages/counts all come from the server for the current
+	// query (status/search/page) — no client-side filtering or slicing needed.
+	const paginated = proposals;
 
 	function handleTabChange( id ) {
-		setActiveTab( id );
-		setPage( 1 );
+		onQueryChange( q => ( { ...q, status: id === 'all' ? '' : id, page: 1 } ) );
 	}
 
 	function handleSearch( e ) {
-		setSearch( e.target.value );
-		setPage( 1 );
+		setSearchInput( e.target.value );
+	}
+
+	function setPage( updater ) {
+		onQueryChange( q => ( { ...q, page: typeof updater === 'function' ? updater( q.page ) : updater } ) );
 	}
 
 	async function handleDelete( id ) {
@@ -924,7 +906,6 @@ export default function ProposalList( {
 					{ error }
 				</div>
 			) }
-
 
 			{/* Tabs + search */ }
 			<div className="co-list-controls">

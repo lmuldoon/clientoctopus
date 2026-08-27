@@ -1,12 +1,5 @@
 import { useState, useEffect, useRef } from '@wordpress/element';
-
-function injectStyles( id, css ) {
-	if ( document.getElementById( id ) ) return;
-	const s = document.createElement( 'style' );
-	s.id = id;
-	s.textContent = css;
-	document.head.appendChild( s );
-}
+import { injectStyles } from '../../../shared/injectStyles';
 
 const CSS = `
 /* ── Section shell ─────────────────────────────────────────────── */
