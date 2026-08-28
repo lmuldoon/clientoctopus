@@ -1003,6 +1003,7 @@ export default function ProposalList( {
 
 									{/* Amount */ }
 									<td className="co-list-amount">
+										{ proposal.content?.pricing_mode === 'packages' && ! [ 'accepted', 'completed' ].includes( proposal.status ) && 'From ' }
 										{ formatAmount( proposal.total_amount, proposal.currency ) }
 									</td>
 

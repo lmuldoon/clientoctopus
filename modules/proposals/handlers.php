@@ -426,7 +426,7 @@ class ClientOctopus_Proposal_Handlers {
 	 *
 	 * @return float
 	 */
-	private static function calculate_total( array $line_items, float $discount_pct, float $vat_pct ): float {
+	public static function calculate_total( array $line_items, float $discount_pct, float $vat_pct ): float {
 		$subtotal     = 0.0;
 
 		foreach ( $line_items as $item ) {
@@ -519,7 +519,7 @@ class ClientOctopus_Proposal_Handlers {
 	 *
 	 * @return float
 	 */
-	private static function calculate_cheapest_tier_total( array $packages, float $discount_pct, float $vat_pct ): float {
+	public static function calculate_cheapest_tier_total( array $packages, float $discount_pct, float $vat_pct ): float {
 		$tiers = $packages['tiers'] ?? [];
 		if ( empty( $tiers ) ) {
 			return 0.0;

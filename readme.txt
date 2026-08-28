@@ -4,7 +4,7 @@ Tags: proposal, invoices, client portal, client management, payments
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.3
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,7 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Unlimited clients
 * Standalone invoices — create, send, and manually mark as paid
 * Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule and Client Octopus automatically generates and sends a fresh invoice each cycle
+* Package Selector pricing — offer multiple pricing tiers with optional add-ons on a single proposal; the client picks a tier, toggles add-ons, and sees the total update live before accepting
 * Proposal templates
 * Proposal status tracking (draft, sent, accepted, declined)
 * Client e-signature on proposal acceptance
@@ -159,6 +160,11 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 - Privacy Policy: https://freemius.com/privacy/
 
 == Changelog ==
+
+= 1.2.0 =
+
+* New: Package Selector pricing mode for proposals — toggle between Flat Pricing and Package Selector when building a proposal; define unlimited pricing tiers (each with its own independent line items) plus optional add-ons. The client picks a tier, toggles any add-ons, and sees the total recalculate live before accepting; their selection is resolved and recorded at acceptance.
+* Improved: The Pricing block in the proposal Content Editor can now be moved up and down like any other section, and renders on the client-facing proposal in the position it's assigned instead of always appearing at the end.
 
 = 1.1.3 =
 

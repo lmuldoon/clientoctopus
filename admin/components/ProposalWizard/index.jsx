@@ -17,6 +17,7 @@ import TemplateSelector from '../TemplateSelector';
 import ClientDetailsForm from '../ClientDetailsForm';
 import ProposalSettings from '../ProposalSettings';
 import PricingSetup from '../PricingSetup';
+import PackageSelectorSetup from '../PackageSelectorSetup';
 import { coFetch } from '../../App';
 import { injectStyles } from '../../../shared/injectStyles';
 import { fmt } from '../../../shared/currency';
@@ -295,13 +296,46 @@ const CSS = `
   color: var(--co-slate-700);
 }
 .co-review-item-row:last-child { border-bottom: none; }
+
+/* Pricing mode toggle */
+.co-wiz-mode-toggle {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--co-slate-100);
+  border-radius: 9px;
+  margin-bottom: 22px;
+}
+.co-wiz-mode-btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--co-font);
+  color: var(--co-slate-500);
+  cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.co-wiz-mode-btn.active {
+  background: var(--co-white);
+  color: var(--co-slate-800);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
 `;
 
 // ─── Review Step ──────────────────────────────────────────────────────────────
 function ReviewStep( { data } ) {
-	const { client, settings, lineItems, discountPct, vatPct, templateId, currency } = data;
+	const { client, settings, lineItems, pricingMode, tiers = [], addons = [], discountPct, vatPct, templateId, currency } = data;
 
-	const subtotal     = lineItems.reduce( ( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0 );
+	const isPackages = pricingMode === 'packages';
+
+	const tierTotals = tiers.map( t => ( t.line_items || [] ).reduce(
+		( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0
+	) );
+	const cheapestTier = tierTotals.length ? Math.min( ...tierTotals ) : 0;
+
+	const subtotal     = isPackages ? cheapestTier : lineItems.reduce( ( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0 );
 	const discountAmt  = subtotal * ( discountPct / 100 );
 	const vatAmt       = ( subtotal - discountAmt ) * ( vatPct / 100 );
 	const grand        = subtotal - discountAmt + vatAmt;
@@ -331,23 +365,45 @@ function ReviewStep( { data } ) {
 					<div className="co-review-row"><span className="k">Email</span><span className="v">{ client.email || '—' }</span></div>
 					{ client.company && <div className="co-review-row"><span className="k">Company</span><span className="v">{ client.company }</span></div> }
 				</div>
-				{/* Line items */ }
-				{ lineItems.length > 0 && (
-					<div className="co-review-section co-review-items">
-						<div className="co-review-section-title">Line Items</div>
-						{ lineItems.map( ( r ) => (
-							<div key={ r.id } className="co-review-item-row">
-								<span>{ r.description || 'Unnamed item' } × { r.qty }</span>
-								<span style={ { fontWeight: 600 } }>
-									{ fmt( ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), currency ) }
-								</span>
-							</div>
-						) ) }
-					</div>
+				{/* Line items / packages */ }
+				{ isPackages ? (
+					tiers.length > 0 && (
+						<div className="co-review-section co-review-items">
+							<div className="co-review-section-title">Tiers</div>
+							{ tiers.map( t => (
+								<div key={ t.id } className="co-review-item-row">
+									<span>{ t.name || 'Unnamed tier' } ({ ( t.line_items || [] ).length } items)</span>
+									<span style={ { fontWeight: 600 } }>
+										{ fmt( ( t.line_items || [] ).reduce( ( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0 ), currency ) }
+									</span>
+								</div>
+							) ) }
+							{ addons.length > 0 && addons.map( a => (
+								<div key={ a.id } className="co-review-item-row">
+									<span>+ { a.description || 'Unnamed add-on' }</span>
+									<span style={ { fontWeight: 600 } }>{ fmt( parseFloat( a.unit_price ) || 0, currency ) }</span>
+								</div>
+							) ) }
+						</div>
+					)
+				) : (
+					lineItems.length > 0 && (
+						<div className="co-review-section co-review-items">
+							<div className="co-review-section-title">Line Items</div>
+							{ lineItems.map( ( r ) => (
+								<div key={ r.id } className="co-review-item-row">
+									<span>{ r.description || 'Unnamed item' } × { r.qty }</span>
+									<span style={ { fontWeight: 600 } }>
+										{ fmt( ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), currency ) }
+									</span>
+								</div>
+							) ) }
+						</div>
+					)
 				) }
 				{/* Grand total */ }
 				<div className="co-review-total">
-					<div className="label">Grand Total</div>
+					<div className="label">{ isPackages ? 'Starting At' : 'Grand Total' }</div>
 					<div className="amount">{ fmt( grand, currency ) }</div>
 				</div>
 			</div>
@@ -386,7 +442,10 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 		deposit_pct:     parsedContent.deposit_pct     ?? 25,
 		require_deposit: parsedContent.require_deposit ?? false,
 	} : { title: '', currency: 'GBP', expiry_date: '', deposit_pct: 25, require_deposit: false } );
+	const [ pricingMode, setPricingMode ] = useState( parsedContent.pricing_mode === 'packages' ? 'packages' : 'flat' );
 	const [ lineItems, setLineItems ] = useState( parsedContent.line_items   || [] );
+	const [ tiers, setTiers ]         = useState( parsedContent.packages?.tiers  || [] );
+	const [ addons, setAddons ]       = useState( parsedContent.packages?.addons || [] );
 	const [ discountPct, setDiscountPct ] = useState( parsedContent.discount_pct ?? 0 );
 	const [ vatPct, setVatPct ]       = useState( parsedContent.vat_pct      ?? 20 );
 	const [ errors, setErrors ]       = useState( {} );
@@ -443,12 +502,29 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 		setVatPct( vat_pct );
 	}
 
+	function handlePackagesUpdate( { tiers: newTiers, addons: newAddons, discount_pct, vat_pct } ) {
+		setTiers( newTiers );
+		setAddons( newAddons );
+		setDiscountPct( discount_pct );
+		setVatPct( vat_pct );
+	}
+
+	function cheapestTierTotal() {
+		if ( ! tiers.length ) return 0;
+		const totals = tiers.map( t => ( t.line_items || [] ).reduce(
+			( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0
+		) );
+		return Math.min( ...totals );
+	}
+
 	async function handleCreate() {
 		if ( ! validate() ) return;
 		setSubmitting( true );
 		setSubmitError( null );
 
-		const subtotal    = lineItems.reduce( ( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0 );
+		const subtotal    = pricingMode === 'packages'
+			? cheapestTierTotal()
+			: lineItems.reduce( ( s, r ) => s + ( parseFloat( r.qty ) || 0 ) * ( parseFloat( r.unit_price ) || 0 ), 0 );
 		const discountAmt = subtotal * ( discountPct / 100 );
 		const vatAmt      = ( subtotal - discountAmt ) * ( vatPct / 100 );
 		const grand       = subtotal - discountAmt + vatAmt;
@@ -465,7 +541,9 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 			client_email:    client.email,
 			client_company:  client.company,
 			client_phone:    client.phone,
-			line_items:      lineItems,
+			pricing_mode:    pricingMode,
+			line_items:      pricingMode === 'packages' ? [] : lineItems,
+			packages:        pricingMode === 'packages' ? { tiers, addons } : {},
 			discount_pct:    discountPct,
 			vat_pct:         vatPct,
 		};
@@ -514,20 +592,50 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 			heading: 'Pricing',
 			sub: 'Add your services and fees. Everything is editable after creation.',
 			content: (
-				<PricingSetup
-					items={ lineItems }
-					currency={ settings.currency || 'GBP' }
-					discountPct={ discountPct }
-					vatPct={ vatPct }
-					onUpdate={ handlePricingUpdate }
-				/>
+				<div>
+					<div className="co-wiz-mode-toggle">
+						<button
+							type="button"
+							className={ `co-wiz-mode-btn${ pricingMode === 'flat' ? ' active' : '' }` }
+							onClick={ () => setPricingMode( 'flat' ) }
+						>
+							Flat Pricing
+						</button>
+						<button
+							type="button"
+							className={ `co-wiz-mode-btn${ pricingMode === 'packages' ? ' active' : '' }` }
+							onClick={ () => setPricingMode( 'packages' ) }
+						>
+							Package Selector
+						</button>
+					</div>
+
+					{ pricingMode === 'flat' ? (
+						<PricingSetup
+							items={ lineItems }
+							currency={ settings.currency || 'GBP' }
+							discountPct={ discountPct }
+							vatPct={ vatPct }
+							onUpdate={ handlePricingUpdate }
+						/>
+					) : (
+						<PackageSelectorSetup
+							tiers={ tiers }
+							addons={ addons }
+							currency={ settings.currency || 'GBP' }
+							discountPct={ discountPct }
+							vatPct={ vatPct }
+							onUpdate={ handlePackagesUpdate }
+						/>
+					) }
+				</div>
 			),
 		},
 		5: {
 			heading: 'Review & Create',
 			sub: 'Check everything looks right before creating your proposal.',
 			content: (
-				<ReviewStep data={ { client, settings, lineItems, discountPct, vatPct, templateId, currency: settings.currency || 'GBP' } } />
+				<ReviewStep data={ { client, settings, lineItems, pricingMode, tiers, addons, discountPct, vatPct, templateId, currency: settings.currency || 'GBP' } } />
 			),
 		},
 	};

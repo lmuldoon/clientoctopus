@@ -980,7 +980,7 @@ function SectionCard( { section, index, total, onChange, onMoveUp, onMoveDown, o
 						type="button"
 						className="co-ce-ctrl-btn"
 						title="Move up"
-						disabled={ index === 0 || isPricing }
+						disabled={ index === 0 }
 						onClick={ onMoveUp }
 						aria-label="Move section up"
 					>
@@ -992,7 +992,7 @@ function SectionCard( { section, index, total, onChange, onMoveUp, onMoveDown, o
 						type="button"
 						className="co-ce-ctrl-btn"
 						title="Move down"
-						disabled={ index === total - 1 || isPricing }
+						disabled={ index === total - 1 }
 						onClick={ onMoveDown }
 						aria-label="Move section down"
 					>

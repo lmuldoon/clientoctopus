@@ -63,7 +63,7 @@ class ClientOctopus_Portal_Data {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.id, p.owner_id, p.title, p.status, p.token, p.total_amount, p.currency,
-				        p.expiry_date, p.sent_at, p.created_at, p.updated_at
+				        p.expiry_date, p.sent_at, p.created_at, p.updated_at, p.content
 				 FROM   {$pt} p
 				 JOIN   {$ct} c ON c.id = p.client_id
 				 WHERE  c.email = %s
@@ -73,6 +73,16 @@ class ClientOctopus_Portal_Data {
 			),
 			ARRAY_A
 		);
+
+		// Only expose pricing_mode (needed for the "From $X" floor-price treatment
+		// on unaccepted package-mode proposals) — never leak the full content blob
+		// (line items, tier/addon definitions) to the portal list view.
+		foreach ( $rows as &$row ) {
+			$decoded = json_decode( $row['content'] ?? '', true );
+			$row['pricing_mode'] = is_array( $decoded ) ? ( $decoded['pricing_mode'] ?? 'flat' ) : 'flat';
+			unset( $row['content'] );
+		}
+		unset( $row );
 
 		return $rows ?: [];
 	}

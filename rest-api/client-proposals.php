@@ -71,8 +71,15 @@ add_action( 'rest_api_init', static function (): void {
 		'callback'            => 'clientoctopus_rest_client_accept_proposal',
 		'permission_callback' => '__return_true', // Token in URL path is the credential — no WP auth required.
 		'args'                => [
-			'token'       => [ 'type' => 'string', 'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
-			'signed_name' => [ 'type' => 'string', 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
+			'token'              => [ 'type' => 'string', 'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
+			'signed_name'        => [ 'type' => 'string', 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ],
+			'selected_tier_id'   => [ 'type' => 'string', 'required' => false, 'default' => '', 'sanitize_callback' => 'sanitize_key' ],
+			'selected_addon_ids' => [
+				'type'     => 'array',
+				'required' => false,
+				'default'  => [],
+				'items'    => [ 'type' => 'string' ],
+			],
 		],
 	] );
 
@@ -209,9 +216,11 @@ function clientoctopus_rest_client_track_view( WP_REST_Request $request ): WP_RE
  * Client accepts the proposal.
  */
 function clientoctopus_rest_client_accept_proposal( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$token       = (string) $request->get_param( 'token' );
-	$signed_name = (string) $request->get_param( 'signed_name' );
-	$result      = ClientOctopus_Proposal_Client::accept( $token, $signed_name );
+	$token              = (string) $request->get_param( 'token' );
+	$signed_name        = (string) $request->get_param( 'signed_name' );
+	$selected_tier_id   = (string) $request->get_param( 'selected_tier_id' );
+	$selected_addon_ids = array_map( 'sanitize_key', (array) $request->get_param( 'selected_addon_ids' ) );
+	$result             = ClientOctopus_Proposal_Client::accept( $token, $signed_name, $selected_tier_id, $selected_addon_ids );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;

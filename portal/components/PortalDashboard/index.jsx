@@ -386,7 +386,9 @@ export default function PortalDashboard() {
 									</td>
 									<td><StatusBadge status={ p.status } /></td>
 									<td className="mono">
-										{ p.total_amount ? fmt( p.total_amount, p.currency || 'GBP' ) : '—' }
+										{ p.total_amount
+											? <>{ p.pricing_mode === 'packages' && ! [ 'accepted', 'completed' ].includes( p.status ) && 'From ' }{ fmt( p.total_amount, p.currency || 'GBP' ) }</>
+											: '—' }
 									</td>
 									<td style={{ color: '#9CA3AF', fontSize: 13 }}>
 										{ formatDate( p.created_at ) }

@@ -13,6 +13,7 @@ const { useState, useEffect, useCallback, useRef } = wp.element;
 import ClientProposalHeader  from '../ClientProposalHeader';
 import ClientProposalSection from '../ClientProposalSection';
 import ClientPricingTable    from '../ClientPricingTable';
+import PackageSelector       from '../PackageSelector';
 import ClientActionButtons   from '../ClientActionButtons';
 import PaymentModal          from '../PaymentModal';
 import { injectStyles } from '../../../shared/injectStyles';
@@ -639,6 +640,8 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 	const [ showSigModal,       setShowSigModal       ] = useState( false );
 	const [ sigName,            setSigName            ] = useState( '' );
 	const [ sigAgreed,          setSigAgreed          ] = useState( false );
+	const [ selectedTierId,    setSelectedTierId    ] = useState( null );
+	const [ selectedAddonIds,  setSelectedAddonIds  ] = useState( [] );
 	const viewTracked = useRef( false );
 
 	/* Toast helper */
@@ -681,16 +684,21 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 		setActionLoading( true );
 		setShowSigModal( false );
 		try {
-			const body = signedName ? JSON.stringify( { signed_name: signedName } ) : undefined;
-			await apiFetch( `client/proposals/${ token }/accept/`, { method: 'POST', body } );
-			setProposal( p => ( { ...p, status: 'accepted', accepted_at: new Date().toISOString() } ) );
+			const payload = signedName ? { signed_name: signedName } : {};
+			if ( proposal?.content?.pricing_mode === 'packages' ) {
+				payload.selected_tier_id   = selectedTierId;
+				payload.selected_addon_ids = selectedAddonIds;
+			}
+			const body = Object.keys( payload ).length ? JSON.stringify( payload ) : undefined;
+			const result = await apiFetch( `client/proposals/${ token }/accept/`, { method: 'POST', body } );
+			setProposal( p => ( { ...p, ...( result.proposal || {} ), status: 'accepted', accepted_at: result.proposal?.accepted_at || new Date().toISOString() } ) );
 			toast( 'Proposal accepted! We\'ll be in touch shortly.' );
 		} catch ( err ) {
 			toast( err.message || 'Could not accept the proposal. Please try again.', 'error' );
 		} finally {
 			setActionLoading( false );
 		}
-	}, [ token ] );
+	}, [ token, proposal, selectedTierId, selectedAddonIds ] );
 
 	/* Decline */
 	const handleDecline = useCallback( async ( reason = '' ) => {
@@ -755,6 +763,35 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 	const content   = proposal.content   || {};
 	const sections  = content.sections   || [];
 	const lineItems = content.line_items || [];
+	const isPackageMode     = content.pricing_mode === 'packages';
+	const isUnresolvedPackage = isPackageMode && ! [ 'accepted', 'completed' ].includes( proposal.status );
+
+	const hasPricingSection = sections.some( s => s.type === 'pricing' );
+
+	function renderPricingBlock( key ) {
+		return isUnresolvedPackage ? (
+			<PackageSelector
+				key={ key }
+				packages={ content.packages || { tiers: [], addons: [] } }
+				discountPct={ content.discount_pct || 0 }
+				vatPct={ content.vat_pct || 0 }
+				currency={ proposal.currency || 'GBP' }
+				onChange={ ( { selectedTierId: tId, selectedAddonIds: aIds } ) => {
+					setSelectedTierId( tId );
+					setSelectedAddonIds( aIds );
+				} }
+			/>
+		) : lineItems.length > 0 ? (
+			<ClientPricingTable
+				key={ key }
+				items={ lineItems }
+				discountPct={ content.discount_pct || 0 }
+				vatPct={ content.vat_pct || 0 }
+				currency={ proposal.currency || 'GBP' }
+				totalAmount={ proposal.total_amount }
+			/>
+		) : null;
+	}
 
 	const isExpired    = proposal.status === 'expired';
 	const daysUntilExpiry = proposal.expiry_date
@@ -775,22 +812,16 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 				/>
 
 				<div className="cfv-body">
-					{ sections.map( ( section, i ) => (
-						<ClientProposalSection key={ i } section={ section } />
-					) ) }
-
-					{ lineItems.length > 0 && (
-						<>
-							<div className="cfv-divider" />
-							<ClientPricingTable
-								items={ lineItems }
-								discountPct={ content.discount_pct || 0 }
-								vatPct={ content.vat_pct || 0 }
-								currency={ proposal.currency || 'GBP' }
-								totalAmount={ proposal.total_amount }
-							/>
-						</>
+					{ sections.map( ( section, i ) =>
+						section.type === 'pricing'
+							? renderPricingBlock( i )
+							: <ClientProposalSection key={ i } section={ section } />
 					) }
+
+					{ /* Legacy fallback: proposals saved before the pricing marker existed
+					     in `sections` had their pricing rendered at the end unconditionally —
+					     preserve that only when no pricing section is present at all. */ }
+					{ ! hasPricingSection && renderPricingBlock( 'pricing-fallback' ) }
 				</div>
 			</div>
 

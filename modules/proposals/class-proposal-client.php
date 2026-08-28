@@ -146,12 +146,14 @@ class ClientOctopus_Proposal_Client {
 	 * Only proposals in draft / sent / viewed state can be accepted.
 	 * Logs an event and sends a notification email to the owner.
 	 *
-	 * @param string $token       Public proposal token.
-	 * @param string $signed_name Client's typed full name for e-signature (optional).
+	 * @param string $token              Public proposal token.
+	 * @param string $signed_name        Client's typed full name for e-signature (optional).
+	 * @param string $selected_tier_id   Chosen tier id (Package Selector proposals only).
+	 * @param array  $selected_addon_ids Chosen add-on ids (Package Selector proposals only).
 	 *
 	 * @return array|WP_Error Updated proposal row, or WP_Error on failure.
 	 */
-	public static function accept( string $token, string $signed_name = '' ): array|WP_Error {
+	public static function accept( string $token, string $signed_name = '', string $selected_tier_id = '', array $selected_addon_ids = [] ): array|WP_Error {
 		global $wpdb;
 
 		$proposal = self::get_by_token( $token );
@@ -175,6 +177,76 @@ class ClientOctopus_Proposal_Client {
 			);
 		}
 
+		$content = is_array( $proposal['content'] ) ? $proposal['content'] : [];
+
+		// ── Package Selector: resolve the client's tier + add-on choice into the
+		// ordinary flat line_items/total_amount shape BEFORE the proposal is
+		// marked accepted, so every downstream consumer (project/milestone
+		// auto-creation, webhooks, analytics) keeps working unmodified — they
+		// only ever see the resolved flat shape, never the tier/addon definitions.
+		//
+		// Descriptions and prices are always looked up from the proposal's own
+		// stored content.packages, never trusted from the request — the only
+		// thing the client controls is *which* tier/addon ids are selected, and
+		// those are validated against this proposal's own definitions below.
+		$resolved_content = null;
+		$resolved_total   = null;
+
+		if ( 'packages' === ( $content['pricing_mode'] ?? 'flat' ) ) {
+			$tiers  = $content['packages']['tiers']  ?? [];
+			$addons = $content['packages']['addons'] ?? [];
+
+			$tier = null;
+			foreach ( $tiers as $t ) {
+				if ( ( $t['id'] ?? '' ) === $selected_tier_id ) {
+					$tier = $t;
+					break;
+				}
+			}
+
+			if ( ! $tier ) {
+				return new WP_Error(
+					'invalid_tier',
+					__( 'Please select a valid pricing tier.', 'clientoctopus' ),
+					[ 'status' => 422 ]
+				);
+			}
+
+			$valid_addon_ids = array_column( $addons, 'id' );
+			foreach ( $selected_addon_ids as $addon_id ) {
+				if ( ! in_array( $addon_id, $valid_addon_ids, true ) ) {
+					return new WP_Error(
+						'invalid_addon',
+						__( 'One of the selected add-ons is not valid for this proposal.', 'clientoctopus' ),
+						[ 'status' => 422 ]
+					);
+				}
+			}
+
+			$resolved_line_items = $tier['line_items'] ?? [];
+			foreach ( $addons as $addon ) {
+				if ( in_array( $addon['id'], $selected_addon_ids, true ) ) {
+					$resolved_line_items[] = [
+						'id'          => $addon['id'],
+						'description' => $addon['description'] ?? '',
+						'qty'         => 1,
+						'unit_price'  => $addon['unit_price'] ?? 0,
+					];
+				}
+			}
+
+			$resolved_content = $content;
+			$resolved_content['line_items']         = $resolved_line_items;
+			$resolved_content['selected_tier_id']   = $selected_tier_id;
+			$resolved_content['selected_addon_ids'] = array_values( $selected_addon_ids );
+
+			$resolved_total = ClientOctopus_Proposal_Handlers::calculate_total(
+				$resolved_line_items,
+				(float) ( $content['discount_pct'] ?? 0 ),
+				(float) ( $content['vat_pct'] ?? 0 )
+			);
+		}
+
 		$now        = current_time( 'mysql' );
 		$client_ip  = substr( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) ), 0, 45 );
 
@@ -184,6 +256,13 @@ class ClientOctopus_Proposal_Client {
 			'updated_at'  => $now,
 		];
 		$update_format = [ '%s', '%s', '%s' ];
+
+		if ( null !== $resolved_content ) {
+			$update_data['content']      = wp_json_encode( $resolved_content );
+			$update_data['total_amount'] = $resolved_total;
+			$update_format[]             = '%s';
+			$update_format[]             = '%f';
+		}
 
 		if ( '' !== $signed_name ) {
 			$update_data['signed_name'] = substr( sanitize_text_field( $signed_name ), 0, 255 );

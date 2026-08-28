@@ -95,8 +95,11 @@ export function addSection( sections, type ) {
  * Merge edited sections back into the proposal's full content object
  * and return a JSON string ready for the API.
  *
- * Preserves template_id, line_items, discount_pct, vat_pct,
- * deposit_pct, require_deposit.
+ * Spreads the existing content object and overrides only `sections`, so
+ * every other field (pricing_mode, packages, line_items, discount_pct,
+ * vat_pct, deposit_pct, require_deposit, and anything added later) survives
+ * a content-only edit automatically instead of relying on a hardcoded
+ * whitelist that has to be updated every time a new content field is added.
  *
  * @param {object} proposal  Original proposal (with decoded content object).
  * @param {Array}  sections  Edited sections array.
@@ -114,12 +117,7 @@ export function buildContentPayload( proposal, sections ) {
 	}
 
 	const payload = {
-		template_id:      base?.template_id      ?? '',
-		line_items:       base?.line_items        ?? [],
-		discount_pct:     base?.discount_pct      ?? 0,
-		vat_pct:          base?.vat_pct           ?? 0,
-		deposit_pct:      base?.deposit_pct       ?? 0,
-		require_deposit:  base?.require_deposit   ?? false,
+		...( base || {} ),
 		sections,
 	};
 

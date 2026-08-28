@@ -3,7 +3,9 @@ import { injectStyles } from '../../../shared/injectStyles';
  * ClientProposalSection
  *
  * Renders a single content block from the proposal's sections array.
- * Types: heading | text | list | pricing
+ * Types: heading | text | list
+ * ('pricing' sections are intercepted and rendered by ProposalClientView
+ * itself, since only it has the actual line-item/package data to show.)
  */
 
 const CSS = `
@@ -69,22 +71,6 @@ const CSS = `
 	margin-top: 8px;
 }
 
-/* ── Pricing placeholder ────────────────────────────────────── */
-.cfs-pricing-hint {
-	margin: 28px 0 0;
-	display: inline-flex;
-	align-items: center;
-	gap: 7px;
-	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
-	font-size: 13px;
-	font-style: italic;
-	color: #9CA3AF;
-	padding: 10px 16px;
-	background: #F9FAFB;
-	border: 1.5px dashed #E5E7EB;
-	border-radius: 8px;
-}
-
 /* ── Print ──────────────────────────────────────────────────── */
 @media print {
 	.cfs-heading h2 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -95,7 +81,7 @@ const CSS = `
 export default function ClientProposalSection( { section } ) {
 	injectStyles( 'co-section-s', CSS );
 
-	const { type, content, items, note } = section;
+	const { type, content, items } = section;
 
 	if ( type === 'heading' ) {
 		return (
@@ -143,17 +129,6 @@ export default function ClientProposalSection( { section } ) {
 					) ) }
 				</ul>
 			</div>
-		);
-	}
-
-	if ( type === 'pricing' ) {
-		return (
-			<p className="cfs-pricing-hint">
-				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C4B5FD" strokeWidth="2">
-					<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-				</svg>
-				See pricing breakdown below ↓
-			</p>
 		);
 	}
 

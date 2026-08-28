@@ -314,6 +314,7 @@ export default function PortalProposals() {
 								<StatusBadge status={ p.status } />
 								{ p.total_amount && (
 									<span className="cpp-card-amount">
+										{ p.pricing_mode === 'packages' && ! [ 'accepted', 'completed' ].includes( p.status ) && 'From ' }
 										{ fmt( p.total_amount, p.currency || 'GBP' ) }
 									</span>
 								) }

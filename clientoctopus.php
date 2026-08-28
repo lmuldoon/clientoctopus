@@ -203,7 +203,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '1.1.3' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.2.0' );
 define( 'CLIENTOCTOPUS_DB_VERSION',     '27' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '4' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
@@ -855,12 +855,14 @@ final class ClientOctopus {
 			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
 			$proposal = ClientOctopus_Proposal::get( $proposal_id, $owner_id );
 			if ( is_wp_error( $proposal ) ) return;
+			$sent_content = is_array( $proposal['content'] ?? null ) ? $proposal['content'] : [];
 			clientoctopus_webhook_dispatch( 'proposal.sent', $owner_id, [
-				'proposal_id' => $proposal_id,
-				'title'       => $proposal['title'] ?? '',
-				'total'       => $proposal['total_amount'] ?? null,
-				'currency'    => $proposal['currency'] ?? 'GBP',
-				'status'      => $proposal['status'] ?? '',
+				'proposal_id'  => $proposal_id,
+				'title'        => $proposal['title'] ?? '',
+				'total'        => $proposal['total_amount'] ?? null,
+				'pricing_mode' => $sent_content['pricing_mode'] ?? 'flat',
+				'currency'     => $proposal['currency'] ?? 'GBP',
+				'status'       => $proposal['status'] ?? '',
 			] );
 		}, 99, 2 );
 

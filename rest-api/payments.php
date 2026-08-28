@@ -142,7 +142,16 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 	}
 
 	// ── Check status allows payment ──────────────────────────────────────────
-	$payable = [ 'accepted', 'draft', 'sent', 'viewed', 'completed' ];
+	// Package Selector proposals must be accepted (i.e. a tier/add-on selection
+	// has already been resolved into total_amount) before a checkout session can
+	// be created — otherwise a client could pay before, or instead of, choosing
+	// a tier, and clientoctopus_handle_payment_complete() would then retroactively
+	// mark the proposal accepted with no selection ever having been made.
+	$proposal_content = is_array( $proposal['content'] ) ? $proposal['content'] : [];
+	$is_package_mode  = ( $proposal_content['pricing_mode'] ?? 'flat' ) === 'packages';
+	$payable          = $is_package_mode
+		? [ 'accepted', 'completed' ]
+		: [ 'accepted', 'draft', 'sent', 'viewed', 'completed' ];
 	if ( ! in_array( $proposal['status'], $payable, true ) ) {
 		return new WP_Error(
 			'invalid_proposal_status',
@@ -164,7 +173,7 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 
 	// ── Calculate charge amount ──────────────────────────────────────────────
 	$total           = (float) ( $proposal['total_amount'] ?? 0 );
-	$content         = is_array( $proposal['content'] ) ? $proposal['content'] : [];
+	$content         = $proposal_content;
 	$require_deposit = ! empty( $content['require_deposit'] );
 	$deposit_pct_raw = (int) ( $content['deposit_pct'] ?? 0 );
 	$deposit_pct     = ( $require_deposit && $deposit_pct_raw > 0 )

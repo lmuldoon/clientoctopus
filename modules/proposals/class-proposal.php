@@ -445,10 +445,28 @@ $now      = current_time( 'mysql' );
 			return $source;
 		}
 
+		$content      = is_array( $source['content'] ) ? $source['content'] : [];
+		$total_amount = $source['total_amount'];
+
+		// A package-mode proposal may already have a client's resolved selection
+		// (content.line_items/selected_tier_id/selected_addon_ids, written at
+		// accept time) baked in. A duplicate is a fresh draft, not a copy of one
+		// client's choice, so reset the selection back to unresolved and the
+		// total back to the cheapest-tier floor — mirroring the expiry_date reset.
+		if ( 'packages' === ( $content['pricing_mode'] ?? 'flat' ) ) {
+			unset( $content['selected_tier_id'], $content['selected_addon_ids'] );
+			$content['line_items'] = [];
+			$total_amount          = ClientOctopus_Proposal_Handlers::calculate_cheapest_tier_total(
+				$content['packages'] ?? [],
+				(float) ( $content['discount_pct'] ?? 0 ),
+				(float) ( $content['vat_pct'] ?? 0 )
+			);
+		}
+
 		$new_data = [
 			'title'        => __( 'Copy of ', 'clientoctopus' ) . $source['title'],
-			'content'      => is_array( $source['content'] ) ? wp_json_encode( $source['content'] ) : $source['content'],
-			'total_amount' => $source['total_amount'],
+			'content'      => wp_json_encode( $content ),
+			'total_amount' => $total_amount,
 			'currency'     => $source['currency'],
 			'expiry_date'  => null, // Reset expiry on duplicate.
 			'client_id'    => $source['client_id'],
