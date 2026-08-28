@@ -1,5 +1,5 @@
 === Client Octopus ===
-Contributors: codievolt
+Contributors: codievolt, freemius
 Tags: proposal, invoices, client portal, client management, payments
 Requires at least: 6.0
 Tested up to: 7.1
@@ -21,6 +21,7 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Unlimited proposals
 * Unlimited clients
 * Standalone invoices — create, send, and manually mark as paid
+* Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule and Client Octopus automatically generates and sends a fresh invoice each cycle
 * Proposal templates
 * Proposal status tracking (draft, sent, accepted, declined)
 * Client e-signature on proposal acceptance
@@ -100,6 +101,10 @@ Client Octopus is a self-hosted WordPress plugin, not a SaaS platform. Your prop
 = Can I send invoices without a proposal? =
 
 Yes. Standalone invoices are available on all plans. Create an invoice, assign a client, add line items with VAT and discount options, and send it directly. Free plan clients pay via bank transfer; Pro plan clients get a "Pay Now" button (Stripe or PayPal, whichever is configured) on their invoice page.
+
+= Can I set up automatic recurring invoices? =
+
+Yes, on all plans. Create a recurring invoice profile for a client, choose weekly, monthly, quarterly, or yearly billing, and Client Octopus automatically generates and sends a fresh invoice each cycle — the client still pays each one manually via the same Pay Now flow as any other invoice.
 
 == Screenshots ==
 

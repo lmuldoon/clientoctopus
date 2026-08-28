@@ -67,17 +67,24 @@ class ClientOctopus_Proposal_Handlers {
 			return $client_id;
 		}
 
-		// ── Line items → total ───────────────────────────────────────────────
+		// ── Line items / packages → total ─────────────────────────────────────
+		$pricing_mode = ( $payload['pricing_mode'] ?? 'flat' ) === 'packages' ? 'packages' : 'flat';
 		$line_items   = is_array( $payload['line_items'] ?? null ) ? $payload['line_items'] : [];
 		$discount_pct = (float) ( $payload['discount_pct'] ?? 0 );
 		$vat_pct      = (float) ( $payload['vat_pct']      ?? 0 );
-		$total_amount = self::calculate_total( $line_items, $discount_pct, $vat_pct );
+		$packages     = 'packages' === $pricing_mode ? self::sanitize_packages( $payload['packages'] ?? [] ) : null;
+
+		$total_amount = 'packages' === $pricing_mode
+			? self::calculate_cheapest_tier_total( $packages, $discount_pct, $vat_pct )
+			: self::calculate_total( $line_items, $discount_pct, $vat_pct );
 
 		// ── Build content block ──────────────────────────────────────────────
 		// Merge template default sections with wizard pricing data.
 		$default_content = json_decode( ClientOctopus_Proposal_Template::default_content( $template_id ), true ) ?: [];
 		$content         = array_merge( $default_content, [
+			'pricing_mode'    => $pricing_mode,
 			'line_items'      => self::sanitize_line_items( $line_items ),
+			'packages'        => $packages,
 			'discount_pct'    => $discount_pct,
 			'vat_pct'         => $vat_pct,
 			'deposit_pct'     => (int) ( $payload['deposit_pct']    ?? 0 ),
@@ -152,18 +159,25 @@ class ClientOctopus_Proposal_Handlers {
 			);
 		}
 
-		// ── Line items → total ───────────────────────────────────────────────
+		// ── Line items / packages → total ─────────────────────────────────────
+		$pricing_mode = ( $payload['pricing_mode'] ?? 'flat' ) === 'packages' ? 'packages' : 'flat';
 		$line_items   = is_array( $payload['line_items'] ?? null ) ? $payload['line_items'] : [];
 		$discount_pct = (float) ( $payload['discount_pct'] ?? 0 );
 		$vat_pct      = (float) ( $payload['vat_pct']      ?? 0 );
-		$total_amount = self::calculate_total( $line_items, $discount_pct, $vat_pct );
+		$packages     = 'packages' === $pricing_mode ? self::sanitize_packages( $payload['packages'] ?? [] ) : null;
+
+		$total_amount = 'packages' === $pricing_mode
+			? self::calculate_cheapest_tier_total( $packages, $discount_pct, $vat_pct )
+			: self::calculate_total( $line_items, $discount_pct, $vat_pct );
 
 		// ── Build content block ──────────────────────────────────────────────
 		$template_id     = sanitize_key( $payload['template_id'] ?? 'blank' );
 		$default_content = json_decode( ClientOctopus_Proposal_Template::default_content( $template_id ), true ) ?: [];
 		$content         = array_merge( $default_content, [
 			'template_id'     => $template_id,
+			'pricing_mode'    => $pricing_mode,
 			'line_items'      => self::sanitize_line_items( $line_items ),
+			'packages'        => $packages,
 			'discount_pct'    => $discount_pct,
 			'vat_pct'         => $vat_pct,
 			'deposit_pct'     => (int) ( $payload['deposit_pct']    ?? 0 ),
@@ -452,6 +466,74 @@ class ClientOctopus_Proposal_Handlers {
 		}
 
 		return $clean;
+	}
+
+	/**
+	 * Sanitize and normalise a Package Selector pricing block.
+	 *
+	 * Each tier carries its own independent line-item list (validated via the
+	 * same rules as flat pricing's line items); each add-on is a single
+	 * description + price, not a nested bundle.
+	 *
+	 * @param array $packages { tiers: [{id, name, line_items}], addons: [{id, description, unit_price}] }
+	 *
+	 * @return array
+	 */
+	private static function sanitize_packages( array $packages ): array {
+		$tiers = [];
+		foreach ( (array) ( $packages['tiers'] ?? [] ) as $tier ) {
+			if ( ! is_array( $tier ) ) {
+				continue;
+			}
+			$tiers[] = [
+				'id'         => sanitize_key( $tier['id'] ?? uniqid( 'tier_', true ) ),
+				'name'       => sanitize_text_field( $tier['name'] ?? '' ),
+				'line_items' => self::sanitize_line_items( is_array( $tier['line_items'] ?? null ) ? $tier['line_items'] : [] ),
+			];
+		}
+
+		$addons = [];
+		foreach ( (array) ( $packages['addons'] ?? [] ) as $addon ) {
+			if ( ! is_array( $addon ) ) {
+				continue;
+			}
+			$addons[] = [
+				'id'          => sanitize_key( $addon['id'] ?? uniqid( 'addon_', true ) ),
+				'description' => sanitize_text_field( $addon['description'] ?? '' ),
+				'unit_price'  => max( 0, (float) ( $addon['unit_price'] ?? 0 ) ),
+			];
+		}
+
+		return [ 'tiers' => $tiers, 'addons' => $addons ];
+	}
+
+	/**
+	 * Compute a "starting from" floor total for a package-mode proposal —
+	 * the cheapest tier's own total, with no add-ons, before any client
+	 * selection exists. Recomputed for real once the client accepts and
+	 * picks a specific tier + add-ons (see ClientOctopus_Proposal_Client::accept()).
+	 *
+	 * @param array $packages     Sanitized packages block (tiers/addons).
+	 * @param float $discount_pct
+	 * @param float $vat_pct
+	 *
+	 * @return float
+	 */
+	private static function calculate_cheapest_tier_total( array $packages, float $discount_pct, float $vat_pct ): float {
+		$tiers = $packages['tiers'] ?? [];
+		if ( empty( $tiers ) ) {
+			return 0.0;
+		}
+
+		$cheapest = null;
+		foreach ( $tiers as $tier ) {
+			$tier_total = self::calculate_total( $tier['line_items'] ?? [], $discount_pct, $vat_pct );
+			if ( null === $cheapest || $tier_total < $cheapest ) {
+				$cheapest = $tier_total;
+			}
+		}
+
+		return $cheapest ?? 0.0;
 	}
 
 	/**
