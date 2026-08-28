@@ -209,6 +209,7 @@ function clientoctopus_proposal_create_args(): array {
 		'vat_pct'         => [ 'type' => 'number',  'required' => false, 'default' => 0 ],
 		'pricing_mode'    => [ 'type' => 'string',  'required' => false, 'default' => 'flat', 'enum' => [ 'flat', 'packages' ] ],
 		'packages'        => [ 'type' => 'object',  'required' => false, 'default' => [] ],
+		'recurring'       => [ 'type' => 'object',  'required' => false, 'default' => [] ],
 	];
 }
 

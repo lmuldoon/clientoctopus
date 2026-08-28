@@ -4,9 +4,6 @@ import { injectStyles } from '../../../shared/injectStyles';
 
 const CSS = `
 /* ── Section shell ─────────────────────────────────────────────── */
-.co-pa {
-	margin-top: 36px;
-}
 
 .co-pa-header {
 	display: flex;
@@ -96,8 +93,8 @@ const CSS = `
 	letter-spacing: .04em;
 }
 
-.co-pa-select,
-.co-pa-textarea {
+select.co-pa-select,
+textarea.co-pa-textarea {
 	width: 100%;
 	font-family: var(--co-font);
 	font-size: 13.5px;
@@ -110,17 +107,17 @@ const CSS = `
 	transition: border-color .15s, box-shadow .15s;
 	box-sizing: border-box;
 }
-.co-pa-select:focus,
-.co-pa-textarea:focus {
+select.co-pa-select:focus,
+textarea.co-pa-textarea:focus {
 	border-color: var(--co-indigo);
 	box-shadow: var(--co-input-focus);
 }
-.co-pa-textarea {
+textarea.co-pa-textarea {
 	resize: vertical;
 	min-height: 80px;
 	line-height: 1.55;
 }
-.co-pa-textarea::placeholder { color: var(--co-slate-300); }
+textarea.co-pa-textarea::placeholder { color: var(--co-slate-300); }
 
 .co-pa-form-actions {
 	display: flex;

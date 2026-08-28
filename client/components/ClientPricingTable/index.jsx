@@ -13,6 +13,10 @@ import { fmt } from '../../../shared/currency';
  *   vatPct      {number} VAT percentage (0–100)
  *   currency    {string} ISO currency code (GBP | USD | EUR | …)
  *   totalAmount {number|null} Pre-calculated total from DB (authoritative)
+ *   recurring   {object|null} { enabled, frequency, start_date } — when set,
+ *                              shows the actual configured billing schedule
+ *                              instead of just the total, e.g. "Billed
+ *                              monthly, starting 1 Oct 2026".
  */
 
 const CSS = `
@@ -150,6 +154,14 @@ const CSS = `
 	letter-spacing: -0.5px;
 	line-height: 1;
 }
+.cfp-recurring-note {
+	margin-top: 8px;
+	text-align: right;
+	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+	font-size: 12.5px;
+	color: #9CA3AF;
+	font-style: italic;
+}
 
 /* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 600px) {
@@ -174,7 +186,7 @@ const CSS = `
 }
 `;
 
-export default function ClientPricingTable( { items = [], discountPct = 0, vatPct = 0, currency = 'GBP', totalAmount } ) {
+export default function ClientPricingTable( { items = [], discountPct = 0, vatPct = 0, currency = 'GBP', totalAmount, recurring } ) {
 	injectStyles( 'co-pricing-s', CSS );
 
 	if ( ! items.length ) return null;
@@ -232,9 +244,16 @@ export default function ClientPricingTable( { items = [], discountPct = 0, vatPc
 					) }
 
 					<div className="cfp-grand">
-						<span className="cfp-grand-lbl">Total Due</span>
+						<span className="cfp-grand-lbl">{ recurring?.enabled ? 'Billed Per Cycle' : 'Total Due' }</span>
 						<span className="cfp-grand-val" style={ { color: grandValColor } }>{ fmt( grandTotal, currency ) }</span>
 					</div>
+
+					{ recurring?.enabled && (
+						<div className="cfp-recurring-note">
+							Billed { recurring.frequency || 'monthly' }
+							{ recurring.start_date && `, starting ${ new Date( recurring.start_date ).toLocaleDateString( 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' } ) }` }
+						</div>
+					) }
 				</div>
 			</div>
 		</div>

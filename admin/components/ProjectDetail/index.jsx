@@ -91,43 +91,49 @@ const CSS = `
 }
 
 /* ─── Status pill select ───────────────────────────────────────────── */
-.co-pd-status-select {
+/* Status marker — one neutral chip shape (same border/fill for every status);
+   colour is carried by the text alone. Avoids the pale-badge-with-matching-
+   border cliché where every status gets its own tinted background. */
+select.co-pd-status-select,
+span.co-pd-status-select {
   appearance: none;
   -webkit-appearance: none;
-  padding: 7px 28px 7px 12px;
-  border-radius: 999px;
+  border-radius: var(--co-radius-sm);
   font-family: var(--co-font);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
+  letter-spacing: .01em;
+  border: 1.5px solid var(--co-slate-200);
+  background-color: var(--co-white);
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+select.co-pd-status-select {
+  padding: 7px 30px 7px 14px;
   cursor: pointer;
   outline: none;
-  border: 1.5px solid transparent;
-  transition: box-shadow .15s;
   background-repeat: no-repeat;
-  background-position: right 9px center;
-  background-size: 10px 6px;
-  flex-shrink: 0;
+  background-position: right 10px center;
+  background-size: 9px 6px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' stroke='%2394A3B8' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
-.co-pd-status-select:focus {
-  box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+select.co-pd-status-select:hover {
+  border-color: var(--co-slate-300);
+  background-color: var(--co-slate-50);
 }
-.co-pd-status-active {
-  background-color: var(--co-emerald-bg);
-  border-color: rgba(16,185,129,.3);
-  color: var(--co-emerald);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2310b981' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+select.co-pd-status-select.co-pd-status-active    { color: var(--co-emerald); }
+select.co-pd-status-select.co-pd-status-on-hold   { color: var(--co-amber); }
+select.co-pd-status-select.co-pd-status-completed,
+span.co-pd-status-select.co-pd-status-completed   { color: var(--co-indigo); }
+select.co-pd-status-select:focus {
+  border-color: var(--co-indigo);
+  box-shadow: var(--co-input-focus);
 }
-.co-pd-status-on-hold {
-  background-color: var(--co-amber-bg);
-  border-color: rgba(245,158,11,.3);
-  color: var(--co-amber);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23f59e0b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-}
-.co-pd-status-completed {
-  background-color: var(--co-indigo-bg);
-  border-color: rgba(99,102,241,.3);
-  color: var(--co-indigo);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236366f1' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+
+/* Locked (completed + paid) — plain label, no dropdown affordance since it's inert */
+span.co-pd-status-select {
+  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ─── Tab bar ──────────────────────────────────────────────────────── */
@@ -271,7 +277,7 @@ const CSS = `
   .co-pd-add-btn  { grid-column: 1 / -1; }
 }
 
-.co-pd-add-input {
+input.co-pd-add-input {
   padding: 9px 12px;
   border-radius: var(--co-radius-sm);
   border: var(--co-input-border);
@@ -281,9 +287,9 @@ const CSS = `
   color: var(--co-navy);
   transition: border-color .12s, box-shadow .12s;
 }
-.co-pd-add-input:focus { outline: none; border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
+input.co-pd-add-input:focus { outline: none; border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
 
-.co-pd-add-date {
+input.co-pd-add-date {
   padding: 9px 10px;
   border-radius: var(--co-radius-sm);
   border: var(--co-input-border);
@@ -292,7 +298,7 @@ const CSS = `
   background: var(--co-slate-50);
   color: var(--co-slate-600);
 }
-.co-pd-add-date:focus { outline: none; border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
+input.co-pd-add-date:focus { outline: none; border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
 
 .co-pd-add-btn {
   padding: 9px 16px;
@@ -477,7 +483,7 @@ const CSS = `
 /* ─── Notes section ────────────────────────────────────────────────── */
 .co-pd-notes { margin-top: 28px; }
 
-.co-pd-notes-textarea {
+textarea.co-pd-notes-textarea {
   width: 100%;
   min-height: 120px;
   resize: vertical;
@@ -492,7 +498,7 @@ const CSS = `
   transition: border-color .12s, box-shadow .12s;
   box-sizing: border-box;
 }
-.co-pd-notes-textarea:focus { outline: none; border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
+textarea.co-pd-notes-textarea:focus { outline: none; border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
 
 .co-pd-notes-foot {
   display: flex;

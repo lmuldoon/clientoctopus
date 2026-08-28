@@ -78,6 +78,12 @@ class ClientOctopus_Proposal_Handlers {
 			? self::calculate_cheapest_tier_total( $packages, $discount_pct, $vat_pct )
 			: self::calculate_total( $line_items, $discount_pct, $vat_pct );
 
+		// ── Recurring billing ─────────────────────────────────────────────────
+		// Recurring proposals never take a deposit or direct payment — billing
+		// happens exclusively through the recurring-invoice profile auto-created
+		// on acceptance, so deposit fields are forced off regardless of payload.
+		$recurring = self::sanitize_recurring( $payload['recurring'] ?? [] );
+
 		// ── Build content block ──────────────────────────────────────────────
 		// Merge template default sections with wizard pricing data.
 		$default_content = json_decode( ClientOctopus_Proposal_Template::default_content( $template_id ), true ) ?: [];
@@ -87,8 +93,9 @@ class ClientOctopus_Proposal_Handlers {
 			'packages'        => $packages,
 			'discount_pct'    => $discount_pct,
 			'vat_pct'         => $vat_pct,
-			'deposit_pct'     => (int) ( $payload['deposit_pct']    ?? 0 ),
-			'require_deposit' => ! empty( $payload['require_deposit'] ),
+			'deposit_pct'     => $recurring['enabled'] ? 0 : (int) ( $payload['deposit_pct'] ?? 0 ),
+			'require_deposit' => $recurring['enabled'] ? false : ! empty( $payload['require_deposit'] ),
+			'recurring'       => $recurring,
 		] );
 
 		// ── Expiry date ──────────────────────────────────────────────────────
@@ -170,6 +177,9 @@ class ClientOctopus_Proposal_Handlers {
 			? self::calculate_cheapest_tier_total( $packages, $discount_pct, $vat_pct )
 			: self::calculate_total( $line_items, $discount_pct, $vat_pct );
 
+		// ── Recurring billing ─────────────────────────────────────────────────
+		$recurring = self::sanitize_recurring( $payload['recurring'] ?? [] );
+
 		// ── Build content block ──────────────────────────────────────────────
 		$template_id     = sanitize_key( $payload['template_id'] ?? 'blank' );
 		$default_content = json_decode( ClientOctopus_Proposal_Template::default_content( $template_id ), true ) ?: [];
@@ -180,8 +190,9 @@ class ClientOctopus_Proposal_Handlers {
 			'packages'        => $packages,
 			'discount_pct'    => $discount_pct,
 			'vat_pct'         => $vat_pct,
-			'deposit_pct'     => (int) ( $payload['deposit_pct']    ?? 0 ),
-			'require_deposit' => ! empty( $payload['require_deposit'] ),
+			'deposit_pct'     => $recurring['enabled'] ? 0 : (int) ( $payload['deposit_pct'] ?? 0 ),
+			'require_deposit' => $recurring['enabled'] ? false : ! empty( $payload['require_deposit'] ),
+			'recurring'       => $recurring,
 		] );
 
 		// ── Update proposal ──────────────────────────────────────────────────
@@ -505,6 +516,53 @@ class ClientOctopus_Proposal_Handlers {
 		}
 
 		return [ 'tiers' => $tiers, 'addons' => $addons ];
+	}
+
+	/**
+	 * Sanitize and normalise a proposal's recurring-billing configuration.
+	 *
+	 * Available on any proposal regardless of template — not gated behind any
+	 * plan, matching Recurring Invoices itself (available on all plans).
+	 *
+	 * @param array $recurring { enabled, frequency, start_date, end_date, max_occurrences, payment_terms, notes }
+	 *
+	 * @return array
+	 */
+	private static function sanitize_recurring( array $recurring ): array {
+		if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+			$path = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+			if ( file_exists( $path ) ) {
+				require_once $path;
+			}
+		}
+
+		$enabled = ! empty( $recurring['enabled'] );
+
+		if ( ! $enabled ) {
+			return [
+				'enabled'         => false,
+				'frequency'       => 'monthly',
+				'start_date'      => null,
+				'end_date'        => null,
+				'max_occurrences' => null,
+				'payment_terms'   => '',
+				'notes'           => '',
+			];
+		}
+
+		$frequency = in_array( $recurring['frequency'] ?? '', ClientOctopus_Recurring_Profile::FREQUENCIES, true )
+			? $recurring['frequency']
+			: 'monthly';
+
+		return [
+			'enabled'         => true,
+			'frequency'       => $frequency,
+			'start_date'      => ! empty( $recurring['start_date'] ) ? sanitize_text_field( $recurring['start_date'] ) : gmdate( 'Y-m-d' ),
+			'end_date'        => ! empty( $recurring['end_date'] ) ? sanitize_text_field( $recurring['end_date'] ) : null,
+			'max_occurrences' => ! empty( $recurring['max_occurrences'] ) ? max( 1, (int) $recurring['max_occurrences'] ) : null,
+			'payment_terms'   => sanitize_text_field( $recurring['payment_terms'] ?? '' ),
+			'notes'           => sanitize_textarea_field( $recurring['notes'] ?? '' ),
+		];
 	}
 
 	/**

@@ -17,7 +17,7 @@ const TEMPLATES = [
 	{
 		id: 'web-design',
 		label: 'Web Design',
-		description: 'Full website project scope with design, development & launch phases.',
+		description: 'End-to-end website project — discovery, design, build, and launch, priced as a one-off with milestone-based delivery.',
 		tier: 'free',
 		accent: '#6366F1',
 		accentBg: '#EEF2FF',
@@ -39,7 +39,7 @@ const TEMPLATES = [
 	{
 		id: 'retainer',
 		label: 'Retainer',
-		description: 'Monthly ongoing services with recurring scope and deliverables.',
+		description: 'Ongoing services billed on a recurring schedule — accepting it automatically sets up recurring invoicing, no manual setup needed.',
 		tier: 'free',
 		accent: '#10B981',
 		accentBg: '#ECFDF5',
@@ -55,8 +55,8 @@ const TEMPLATES = [
 	{
 		id: 'marketing',
 		label: 'Marketing Campaign',
-		description: 'SEO, paid ads & content strategy scope for growth campaigns.',
-		tier: 'pro',
+		description: 'SEO, paid ads, and content strategy for a fixed-length growth campaign, with monthly performance reviews built in.',
+		tier: 'free',
 		accent: '#F59E0B',
 		accentBg: '#FFFBEB',
 		icon: (
@@ -71,7 +71,7 @@ const TEMPLATES = [
 	{
 		id: 'blank',
 		label: 'Blank Proposal',
-		description: 'Start from scratch with a fully customisable empty canvas.',
+		description: 'A blank canvas — full control to build any proposal structure from scratch.',
 		tier: 'free',
 		accent: '#94A3B8',
 		accentBg: '#F8FAFC',

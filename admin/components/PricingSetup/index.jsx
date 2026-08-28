@@ -60,11 +60,11 @@ export const CSS = `
 .co-pricing-row:hover .co-pricing-handle { color: var(--co-slate-400); }
 
 /* Cell inputs */
-.co-pricing-input {
+input.co-pricing-input {
   width: 100%;
   padding: 8px 10px;
   border: 1.5px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--co-radius-sm);
   font-size: 13.5px;
   font-family: var(--co-font);
   color: var(--co-slate-800);
@@ -73,13 +73,13 @@ export const CSS = `
   outline: none;
   -webkit-appearance: none;
 }
-.co-pricing-input:hover { border-color: var(--co-slate-200); background: var(--co-white); }
-.co-pricing-input:focus {
+input.co-pricing-input:hover { border-color: var(--co-slate-200); background: var(--co-white); }
+input.co-pricing-input:focus {
   border-color: var(--co-indigo);
   background: var(--co-white);
   box-shadow: 0 0 0 3px rgba(99,102,241,.1);
 }
-.co-pricing-input.num { text-align: right; font-variant-numeric: tabular-nums; }
+input.co-pricing-input.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Row total */
 .co-pricing-row-total {
@@ -170,11 +170,11 @@ export const CSS = `
 .co-pricing-total-divider { height: 1px; background: var(--co-slate-200); margin: 2px 0; }
 
 /* Modifier inputs */
-.co-pricing-mod-input {
+input.co-pricing-mod-input {
   width: 70px;
   padding: 5px 8px;
   border: var(--co-input-border);
-  border-radius: 6px;
+  border-radius: var(--co-radius-sm);
   font-size: 13px;
   font-family: var(--co-font);
   font-weight: 600;
@@ -184,7 +184,7 @@ export const CSS = `
   transition: border-color .12s, box-shadow .12s;
   -webkit-appearance: none;
 }
-.co-pricing-mod-input:focus {
+input.co-pricing-mod-input:focus {
   border-color: var(--co-indigo);
   box-shadow: 0 0 0 3px rgba(99,102,241,.1);
 }

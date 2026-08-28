@@ -354,7 +354,15 @@ function ReviewStep( { data } ) {
 					<div className="co-review-row"><span className="k">Title</span><span className="v">{ settings.title || '—' }</span></div>
 					<div className="co-review-row"><span className="k">Expiry</span><span className="v">{ settings.expiry_date || '—' }</span></div>
 					<div className="co-review-row"><span className="k">Currency</span><span className="v">{ settings.currency || 'GBP' }</span></div>
-					{ settings.require_deposit && (
+					{ settings.recurring?.enabled ? (
+						<div className="co-review-row">
+							<span className="k">Billing</span>
+							<span className="v" style={ { textTransform: 'capitalize' } }>
+								Recurring — { settings.recurring.frequency || 'monthly' }
+								{ settings.recurring.start_date && `, starting ${ new Date( settings.recurring.start_date ).toLocaleDateString( 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' } ) }` }
+							</span>
+						</div>
+					) : settings.require_deposit && (
 						<div className="co-review-row"><span className="k">Deposit</span><span className="v">{ settings.deposit_pct }%</span></div>
 					) }
 				</div>
@@ -441,7 +449,8 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 		expiry_date:     initialProposal.expiry_date   || '',
 		deposit_pct:     parsedContent.deposit_pct     ?? 25,
 		require_deposit: parsedContent.require_deposit ?? false,
-	} : { title: '', currency: 'GBP', expiry_date: '', deposit_pct: 25, require_deposit: false } );
+		recurring:       parsedContent.recurring       || null,
+	} : { title: '', currency: 'GBP', expiry_date: '', deposit_pct: 25, require_deposit: false, recurring: null } );
 	const [ pricingMode, setPricingMode ] = useState( parsedContent.pricing_mode === 'packages' ? 'packages' : 'flat' );
 	const [ lineItems, setLineItems ] = useState( parsedContent.line_items   || [] );
 	const [ tiers, setTiers ]         = useState( parsedContent.packages?.tiers  || [] );
@@ -496,6 +505,16 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 		if ( errors[ field ] ) setErrors( prev => { const e = { ...prev }; delete e[ field ]; return e; } );
 	}
 
+	function handleTemplateSelect( id ) {
+		setTemplateId( id );
+		// Default new proposals to Recurring billing when the Retainer template
+		// is picked — a UX default only, still changeable in Step 3, and not
+		// applied if the sender already configured billing type themselves.
+		if ( ! isEdit && id === 'retainer' && ! settings.recurring?.enabled ) {
+			setSettings( prev => ( { ...prev, recurring: { ...( prev.recurring || {} ), enabled: true } } ) );
+		}
+	}
+
 	function handlePricingUpdate( { items, discount_pct, vat_pct } ) {
 		setLineItems( items );
 		setDiscountPct( discount_pct );
@@ -529,13 +548,15 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 		const vatAmt      = ( subtotal - discountAmt ) * ( vatPct / 100 );
 		const grand       = subtotal - discountAmt + vatAmt;
 
+		const isRecurring = !! settings.recurring?.enabled;
+
 		const body = {
 			template_id:     templateId,
 			title:           settings.title,
 			currency:        settings.currency || 'GBP',
 			expiry_date:     settings.expiry_date,
-			deposit_pct:     settings.deposit_pct,
-			require_deposit: settings.require_deposit,
+			deposit_pct:     isRecurring ? 0 : settings.deposit_pct,
+			require_deposit: isRecurring ? false : settings.require_deposit,
 			total_amount:    grand,
 			client_name:     client.name,
 			client_email:    client.email,
@@ -546,6 +567,7 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 			packages:        pricingMode === 'packages' ? { tiers, addons } : {},
 			discount_pct:    discountPct,
 			vat_pct:         vatPct,
+			recurring:       settings.recurring || { enabled: false },
 		};
 
 		try {
@@ -576,7 +598,7 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 		1: {
 			heading: 'Choose a Template',
 			sub: 'Pick a starting point — you can customise everything after.',
-			content: <TemplateSelector selected={ templateId } onSelect={ setTemplateId } userPlan={ userPlan } />,
+			content: <TemplateSelector selected={ templateId } onSelect={ handleTemplateSelect } userPlan={ userPlan } />,
 		},
 		2: {
 			heading: 'Client Details',

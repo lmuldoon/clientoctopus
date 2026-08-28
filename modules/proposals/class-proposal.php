@@ -86,6 +86,15 @@ $now      = current_time( 'mysql' );
 			$row['payment_enabled'] = 1;
 		}
 
+		// Recurring-billing proposals never take a deposit or direct payment —
+		// billing happens exclusively through the recurring-invoice profile
+		// auto-created on acceptance. Enforced here (not by individual callers)
+		// so every path that can create a proposal — the wizard, duplicate(),
+		// any future caller — is covered uniformly.
+		if ( self::content_is_recurring( $row['content'] ?? null ) ) {
+			$row['payment_enabled'] = 0;
+		}
+
 		$inserted = $wpdb->insert( self::table(), $row );
 
 		if ( false === $inserted ) {
@@ -99,6 +108,18 @@ $now      = current_time( 'mysql' );
 		$id = (int) $wpdb->insert_id;
 
 		return $id;
+	}
+
+	/**
+	 * Whether a (possibly JSON-encoded) content blob has recurring billing enabled.
+	 *
+	 * @param array|string|null $content
+	 */
+	private static function content_is_recurring( array|string|null $content ): bool {
+		if ( is_string( $content ) ) {
+			$content = json_decode( $content, true );
+		}
+		return is_array( $content ) && ! empty( $content['recurring']['enabled'] );
 	}
 
 	// ── Read ──────────────────────────────────────────────────────────────────
@@ -266,13 +287,20 @@ $now      = current_time( 'mysql' );
 
 		$allowed = [
 			'title', 'content', 'total_amount', 'currency',
-			'expiry_date', 'client_id', 'status', 'template_id',
+			'expiry_date', 'client_id', 'status', 'template_id', 'payment_enabled',
 		];
 
 		$update = array_intersect_key( $data, array_flip( $allowed ) );
 
 		if ( empty( $update ) ) {
 			return new WP_Error( 'no_data', __( 'No valid fields to update.', 'clientoctopus' ), [ 'status' => 400 ] );
+		}
+
+		// Same enforcement as create(): a proposal being saved with recurring
+		// billing enabled can never have payment_enabled on, regardless of what
+		// the caller passed (or didn't pass).
+		if ( array_key_exists( 'content', $update ) && self::content_is_recurring( $update['content'] ) ) {
+			$update['payment_enabled'] = 0;
 		}
 
 		// Auto-reset declined proposals to draft when content is being edited,
@@ -462,6 +490,12 @@ $now      = current_time( 'mysql' );
 				(float) ( $content['vat_pct'] ?? 0 )
 			);
 		}
+
+		// Strip accept-time recurring-profile audit state — a duplicate is a
+		// fresh, unaccepted draft, so it must not falsely imply a recurring
+		// invoice profile already exists for it. The recurring schedule
+		// configuration itself (frequency/start_date/etc.) is left intact.
+		unset( $content['recurring_profile_id'] );
 
 		$new_data = [
 			'title'        => __( 'Copy of ', 'clientoctopus' ) . $source['title'],

@@ -54,11 +54,11 @@ const CSS = `
   gap: 10px;
   margin-bottom: 12px;
 }
-.co-pkg-tier-name {
+input.co-pkg-tier-name {
   flex: 1;
   padding: 8px 10px;
   border: 1.5px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--co-radius-sm);
   font-size: 14px;
   font-weight: 600;
   font-family: var(--co-font-display);
@@ -67,8 +67,8 @@ const CSS = `
   outline: none;
   transition: border-color .12s, background .12s;
 }
-.co-pkg-tier-name:hover { border-color: var(--co-slate-200); background: var(--co-slate-50); }
-.co-pkg-tier-name:focus {
+input.co-pkg-tier-name:hover { border-color: var(--co-slate-200); background: var(--co-slate-50); }
+input.co-pkg-tier-name:focus {
   border-color: var(--co-indigo);
   background: var(--co-white);
   box-shadow: 0 0 0 3px rgba(99,102,241,.1);
@@ -172,11 +172,11 @@ const CSS = `
   color: var(--co-indigo);
 }
 .co-pkg-total-divider { height: 1px; background: var(--co-slate-200); margin: 2px 0; }
-.co-pkg-mod-input {
+input.co-pkg-mod-input {
   width: 70px;
   padding: 5px 8px;
   border: var(--co-input-border);
-  border-radius: 6px;
+  border-radius: var(--co-radius-sm);
   font-size: 13px;
   font-family: var(--co-font);
   font-weight: 600;
@@ -186,7 +186,7 @@ const CSS = `
   transition: border-color .12s, box-shadow .12s;
   -webkit-appearance: none;
 }
-.co-pkg-mod-input:focus {
+input.co-pkg-mod-input:focus {
   border-color: var(--co-indigo);
   box-shadow: 0 0 0 3px rgba(99,102,241,.1);
 }

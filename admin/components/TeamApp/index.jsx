@@ -258,7 +258,7 @@ const TEAM_CSS = `
   font-weight: 600;
   color: var(--co-slate-600);
 }
-.co-tm-input, .co-tm-select {
+input.co-tm-input, select.co-tm-select {
   height: 40px;
   border: 1.5px solid var(--co-slate-200);
   border-radius: var(--co-radius-sm);
@@ -270,7 +270,7 @@ const TEAM_CSS = `
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
-.co-tm-input:focus, .co-tm-select:focus {
+input.co-tm-input:focus, select.co-tm-select:focus {
   border-color: var(--co-indigo);
   box-shadow: 0 0 0 3px rgba(99,102,241,.12);
 }

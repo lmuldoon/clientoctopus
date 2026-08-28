@@ -21,7 +21,7 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Unlimited proposals
 * Unlimited clients
 * Standalone invoices — create, send, and manually mark as paid
-* Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule and Client Octopus automatically generates and sends a fresh invoice each cycle
+* Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule (manually, or automatically from an accepted proposal) and Client Octopus generates and sends a fresh invoice each cycle
 * Package Selector pricing — offer multiple pricing tiers with optional add-ons on a single proposal; the client picks a tier, toggles add-ons, and sees the total update live before accepting
 * Proposal templates
 * Proposal status tracking (draft, sent, accepted, declined)
@@ -105,7 +105,7 @@ Yes. Standalone invoices are available on all plans. Create an invoice, assign a
 
 = Can I set up automatic recurring invoices? =
 
-Yes, on all plans. Create a recurring invoice profile for a client, choose weekly, monthly, quarterly, or yearly billing, and Client Octopus automatically generates and sends a fresh invoice each cycle — the client still pays each one manually via the same Pay Now flow as any other invoice.
+Yes, on all plans. Create a recurring invoice profile for a client, choose weekly, monthly, quarterly, or yearly billing, and Client Octopus automatically generates and sends a fresh invoice each cycle — the client still pays each one manually via the same Pay Now flow as any other invoice. You can also mark a proposal itself as Recurring — accepting it automatically creates the recurring profile for you, with no manual setup.
 
 == Screenshots ==
 
@@ -164,7 +164,10 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 = 1.2.0 =
 
 * New: Package Selector pricing mode for proposals — toggle between Flat Pricing and Package Selector when building a proposal; define unlimited pricing tiers (each with its own independent line items) plus optional add-ons. The client picks a tier, toggles any add-ons, and sees the total recalculate live before accepting; their selection is resolved and recorded at acceptance.
+* New: Recurring Billing for proposals — toggle a proposal to Recurring billing instead of one-off/deposit pricing, set the frequency, start date, and end condition, and Client Octopus automatically creates a real Recurring Invoice profile the moment the client accepts — fully editable afterward just like a manually-created one. Recurring proposals never take a deposit or direct payment; billing runs exclusively through the generated invoice.
 * Improved: The Pricing block in the proposal Content Editor can now be moved up and down like any other section, and renders on the client-facing proposal in the position it's assigned instead of always appearing at the end.
+* Fix: Form fields (text, email, number, date, select, textarea) across the admin could render with the wrong border colour or square corners instead of the plugin's intended styling, because WordPress's own default admin styles were unintentionally overriding them in most places.
+* Fix: A recurring invoice profile created with a future start date would incorrectly bill immediately instead of waiting for that date.
 
 = 1.1.3 =
 

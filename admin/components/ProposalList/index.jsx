@@ -166,7 +166,7 @@ const CSS = `
   pointer-events: none;
   display:none;
 }
-.co-list-search {
+input.co-list-search {
   padding: 9px 14px 9px 36px;
   border: var(--co-input-border);
   border-radius: var(--co-radius-sm);
@@ -178,8 +178,8 @@ const CSS = `
   width: 220px;
   transition: border-color .15s, box-shadow .15s;
 }
-.co-list-search::placeholder { color: var(--co-slate-300); }
-.co-list-search:focus { border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
+input.co-list-search::placeholder { color: var(--co-slate-300); }
+input.co-list-search:focus { border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
 
 /* Table */
 .co-list-table-wrap {
@@ -223,6 +223,23 @@ const CSS = `
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.co-list-recurring-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--co-indigo-bg);
+  color: var(--co-indigo);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-decoration: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+a.co-list-recurring-badge:hover { background: var(--co-indigo); color: #fff; }
 
 /* Amount */
 .co-list-amount {
@@ -531,7 +548,7 @@ const CSS = `
   color: var(--co-slate-500);
   margin-bottom: 6px;
 }
-.co-send-modal-input {
+input.co-send-modal-input {
   width: 100%;
   padding: 10px 13px;
   border: var(--co-input-border);
@@ -544,8 +561,8 @@ const CSS = `
   transition: border-color .15s, box-shadow .15s;
   box-sizing: border-box;
 }
-.co-send-modal-input::placeholder { color: var(--co-slate-300); }
-.co-send-modal-input:focus {
+input.co-send-modal-input::placeholder { color: var(--co-slate-300); }
+input.co-send-modal-input:focus {
   border-color: var(--co-indigo);
   box-shadow: var(--co-input-focus);
 }
@@ -999,6 +1016,20 @@ export default function ProposalList( {
 									{/* Title */ }
 									<td className="co-list-proposal-title" title={ proposal.title }>
 										{ proposal.title || 'Untitled' }
+										{ proposal.content?.recurring?.enabled && (
+											proposal.content?.recurring_profile_id ? (
+												<a
+													href={ ( window.clientoctopusData?.adminUrl || '/wp-admin/' ) + 'admin.php?page=clientoctopus-invoices&tab=recurring' }
+													className="co-list-recurring-badge"
+													title="Recurring invoice profile created — view in Recurring Invoices"
+													onClick={ e => e.stopPropagation() }
+												>
+													↻ Recurring
+												</a>
+											) : (
+												<span className="co-list-recurring-badge" title="Recurring billing configured">↻ Recurring</span>
+											)
+										) }
 									</td>
 
 									{/* Amount */ }

@@ -97,12 +97,21 @@ class ClientOctopus_Recurring_Profile {
 		// tomorrow's cron — matches the instant result creating a normal invoice
 		// gives. Non-fatal if this fails: the profile still exists and next_run_date
 		// is left untouched on failure, so the cron retries this same cycle.
-		$first_invoice_id      = self::generate_next_invoice( $profile_id );
-		$profile['first_invoice'] = ( ! is_wp_error( $first_invoice_id ) && class_exists( 'ClientOctopus_Invoice' ) )
-			? ClientOctopus_Invoice::get( $first_invoice_id, $owner_id )
-			: null;
-		if ( is_wp_error( $profile['first_invoice'] ?? null ) ) {
-			$profile['first_invoice'] = null;
+		//
+		// Only do this if the start date has already arrived — otherwise the
+		// profile's own next_run_date (= start_date, set above) is already in
+		// the future, and the existing process_due() cron will pick it up on
+		// that date. Without this guard, a profile created with a future start
+		// date would still bill immediately, ignoring the chosen start date.
+		$profile['first_invoice'] = null;
+		if ( $start_date <= gmdate( 'Y-m-d' ) ) {
+			$first_invoice_id = self::generate_next_invoice( $profile_id );
+			$profile['first_invoice'] = ( ! is_wp_error( $first_invoice_id ) && class_exists( 'ClientOctopus_Invoice' ) )
+				? ClientOctopus_Invoice::get( $first_invoice_id, $owner_id )
+				: null;
+			if ( is_wp_error( $profile['first_invoice'] ?? null ) ) {
+				$profile['first_invoice'] = null;
+			}
 		}
 
 		// Re-fetch so the returned profile reflects the advanced next_run_date /

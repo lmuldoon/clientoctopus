@@ -44,7 +44,7 @@ class ClientOctopus_Proposal_Template {
 			[
 				'id'          => 'web-design',
 				'label'       => __( 'Web Design', 'clientoctopus' ),
-				'description' => __( 'Full website project scope with design, development & launch phases.', 'clientoctopus' ),
+				'description' => __( 'End-to-end website project — discovery, design, build, and launch, priced as a one-off with milestone-based delivery.', 'clientoctopus' ),
 				'tier'        => 'free',
 				'sections'    => [
 					[
@@ -93,7 +93,7 @@ class ClientOctopus_Proposal_Template {
 			[
 				'id'          => 'retainer',
 				'label'       => __( 'Retainer', 'clientoctopus' ),
-				'description' => __( 'Monthly ongoing services with recurring scope and deliverables.', 'clientoctopus' ),
+				'description' => __( 'Ongoing services billed on a recurring schedule — accepting it automatically sets up recurring invoicing, no manual setup needed.', 'clientoctopus' ),
 				'tier'        => 'free',
 				'sections'    => [
 					[
@@ -102,28 +102,28 @@ class ClientOctopus_Proposal_Template {
 					],
 					[
 						'type'    => 'text',
-						'content' => 'This proposal outlines the terms of an ongoing monthly retainer arrangement. Services are billed on the 1st of each month and are non-refundable.',
+						'content' => 'This proposal outlines the terms of an ongoing retainer arrangement. Services are billed automatically on the recurring schedule shown below and are non-refundable.',
 					],
 					[
 						'type'    => 'heading',
-						'content' => 'Monthly Deliverables',
+						'content' => 'Recurring Deliverables',
 					],
 					[
 						'type'    => 'list',
 						'items'   => [
 							'Up to X hours of service (adjust as needed)',
-							'Monthly progress report',
+							'Regular progress report',
 							'Dedicated Slack/email support',
-							'Monthly strategy call (30 min)',
+							'Regular strategy call (30 min)',
 						],
 					],
 					[
 						'type'    => 'heading',
-						'content' => 'Monthly Investment',
+						'content' => 'Recurring Investment',
 					],
 					[
 						'type'    => 'pricing',
-						'note'    => 'Billed monthly. Cancel with 30 days written notice.',
+						'note'    => 'Billed automatically on the schedule shown below. Cancel with 30 days written notice.',
 					],
 					[
 						'type'    => 'heading',
@@ -131,7 +131,7 @@ class ClientOctopus_Proposal_Template {
 					],
 					[
 						'type'    => 'text',
-						'content' => 'This retainer renews automatically each month. Either party may terminate with 30 days written notice.',
+						'content' => 'This retainer renews automatically according to the schedule below. Either party may terminate with 30 days written notice.',
 					],
 				],
 			],
@@ -140,8 +140,8 @@ class ClientOctopus_Proposal_Template {
 			[
 				'id'          => 'marketing',
 				'label'       => __( 'Marketing Campaign', 'clientoctopus' ),
-				'description' => __( 'SEO, paid ads & content strategy scope for growth campaigns.', 'clientoctopus' ),
-				'tier'        => 'pro',   // Locked for free users.
+				'description' => __( 'SEO, paid ads, and content strategy for a fixed-length growth campaign, with monthly performance reviews built in.', 'clientoctopus' ),
+				'tier'        => 'free',
 				'sections'    => [
 					[
 						'type'    => 'heading',
@@ -188,7 +188,7 @@ class ClientOctopus_Proposal_Template {
 			[
 				'id'          => 'blank',
 				'label'       => __( 'Blank Proposal', 'clientoctopus' ),
-				'description' => __( 'Start from scratch with a fully customisable empty canvas.', 'clientoctopus' ),
+				'description' => __( 'A blank canvas — full control to build any proposal structure from scratch.', 'clientoctopus' ),
 				'tier'        => 'free',
 				'sections'    => [
 					[

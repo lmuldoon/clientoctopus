@@ -110,12 +110,12 @@ const CSS = `
   pointer-events: none;
   display:none;
 }
-.co-cl-search {
+input.co-cl-search {
   width: 100%;
   box-sizing: border-box;
   padding: 9px 12px 9px 36px;
   border: 1.5px solid var(--cl-slate2);
-  border-radius: 10px;
+  border-radius: 8px;
   font-family: 'Archivo', sans-serif;
   font-size: 13.5px;
   color: var(--cl-navy);
@@ -123,7 +123,7 @@ const CSS = `
   transition: border-color .15s, box-shadow .15s;
   outline: none;
 }
-.co-cl-search:focus {
+input.co-cl-search:focus {
   border-color: var(--cl-indigo);
   box-shadow: 0 0 0 3px rgba(99,102,241,.12);
 }

@@ -815,6 +815,86 @@ final class ClientOctopus {
 			}
 		}, 10, 2 );
 
+		// Hook: auto-create a recurring-invoice profile when a recurring-billing
+		// proposal is accepted. Re-fetches the proposal (same fresh-DB-refetch
+		// pattern as the project-auto-creation listener above) so it sees the
+		// already-resolved content.line_items — this means it works correctly
+		// for both Flat and Package Selector proposals with recurring enabled.
+		// Non-fatal on failure, matching the other listeners on this hook.
+		add_action( 'clientoctopus_proposal_accepted', static function ( int $proposal_id, int $owner_id ): void {
+			if ( ! class_exists( 'ClientOctopus_Proposal' ) ) {
+				$path = CLIENTOCTOPUS_DIR . 'modules/proposals/class-proposal.php';
+				if ( file_exists( $path ) ) {
+					require_once $path;
+				}
+			}
+			$proposal = ClientOctopus_Proposal::get( $proposal_id, $owner_id );
+			if ( is_wp_error( $proposal ) ) {
+				return;
+			}
+			$content = is_array( $proposal['content'] ?? null ) ? $proposal['content'] : [];
+			if ( empty( $content['recurring']['enabled'] ) || empty( $proposal['client_id'] ) ) {
+				return;
+			}
+			$line_items = is_array( $content['line_items'] ?? null ) ? $content['line_items'] : [];
+			if ( empty( $line_items ) ) {
+				// No resolved line items — creating a permanently-£0 recurring
+				// profile would be worse than not creating one at all.
+				return;
+			}
+
+			if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+				$path = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+				if ( file_exists( $path ) ) {
+					require_once $path;
+				}
+			}
+			if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+				return;
+			}
+
+			// Recurring profiles use a flat {description, amount} line-item shape
+			// (no quantity), unlike proposals' {description, qty, unit_price} —
+			// collapse qty*unit_price into a single amount per line.
+			$profile_line_items = array_map( static function ( array $item ): array {
+				return [
+					'description' => $item['description'] ?? '',
+					'amount'      => ( (float) ( $item['qty'] ?? 0 ) ) * ( (float) ( $item['unit_price'] ?? 0 ) ),
+				];
+			}, $line_items );
+
+			$recurring = $content['recurring'];
+			$profile   = ClientOctopus_Recurring_Profile::create( $owner_id, [
+				'client_id'       => (int) $proposal['client_id'],
+				'title'           => $proposal['title'] ?? '',
+				'line_items'      => $profile_line_items,
+				'currency'        => $proposal['currency'] ?? 'GBP',
+				'discount_type'   => 'percentage',
+				'discount_value'  => (float) ( $content['discount_pct'] ?? 0 ),
+				'vat_pct'         => (float) ( $content['vat_pct'] ?? 0 ),
+				'frequency'       => $recurring['frequency']       ?? 'monthly',
+				'start_date'      => $recurring['start_date']      ?? gmdate( 'Y-m-d' ),
+				'end_date'        => $recurring['end_date']        ?? null,
+				'max_occurrences' => $recurring['max_occurrences'] ?? null,
+				'payment_terms'   => $recurring['payment_terms']   ?? '',
+				'notes'           => $recurring['notes']           ?? '',
+			] );
+
+			if ( is_wp_error( $profile ) ) {
+				return;
+			}
+
+			// Write the profile id back as an audit record only — never read by
+			// anything else, mirrors selected_tier_id for Package Selector.
+			global $wpdb;
+			$content['recurring_profile_id'] = $profile['id'] ?? null;
+			$wpdb->update(
+				$wpdb->prefix . 'clientoctopus_proposals',
+				[ 'content' => wp_json_encode( $content ) ],
+				[ 'id' => $proposal_id ]
+			);
+		}, 15, 2 );
+
 		// Hook: send portal invitation email when a proposal is accepted.
 		// Sends a magic link to the client without creating a WordPress user account.
 		add_action( 'clientoctopus_proposal_accepted', static function ( int $proposal_id, int $owner_id ): void {

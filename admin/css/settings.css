@@ -104,11 +104,11 @@
 	font-size: 12px;
 	margin-left: 4px;
 }
-.co-input {
+input.co-input, select.co-input, textarea.co-input {
 	width: 100%;
 	height: 42px;
-	border: 1.5px solid #D1D5DB;
-	border-radius: 9px;
+	border: 1.5px solid #E2E8F0;
+	border-radius: 8px;
 	padding: 0 14px;
 	font-size: 13px;
 	font-family: 'DM Mono', 'Courier New', monospace;
@@ -119,12 +119,12 @@
 	letter-spacing: 0.03em;
 	box-sizing: border-box;
 }
-.co-input:focus {
+input.co-input:focus, select.co-input:focus, textarea.co-input:focus {
 	border-color: #6366F1;
 	box-shadow: 0 0 0 3px rgba(99,102,241,.12);
 	background: #fff;
 }
-.co-input::placeholder { color: #9CA3AF; font-family: -apple-system, sans-serif; letter-spacing: 0; }
+input.co-input::placeholder, textarea.co-input::placeholder { color: #9CA3AF; font-family: -apple-system, sans-serif; letter-spacing: 0; }
 .co-webhook-row { display: flex; gap: 8px; }
 .co-webhook-row .co-input { flex: 1; color: #6B7280; background: #F9FAFB; cursor: default; }
 .co-copy-btn {
@@ -218,8 +218,8 @@
 	appearance: none;
 	width: 42px;
 	height: 42px;
-	border: 1.5px solid #D1D5DB;
-	border-radius: 9px;
+	border: 1.5px solid #E2E8F0;
+	border-radius: 8px;
 	padding: 3px;
 	background: #FAFAFA;
 	cursor: pointer;

@@ -161,6 +161,7 @@ const CSS = `
 }
 .cps-grand-lbl { font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; font-weight: 700; color: #1A1A2E; letter-spacing: 0.02em; }
 .cps-grand-val { font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 30px; font-weight: 700; color: #6366F1; letter-spacing: -0.5px; line-height: 1; }
+.cps-recurring-note { margin-top: 8px; text-align: right; font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12.5px; color: #9CA3AF; font-style: italic; }
 
 @media (max-width: 600px) {
 	.cps-tiers { grid-template-columns: 1fr; }
@@ -174,7 +175,7 @@ function tierTotal( tier ) {
 	);
 }
 
-export default function PackageSelector( { packages = { tiers: [], addons: [] }, discountPct = 0, vatPct = 0, currency = 'GBP', onChange } ) {
+export default function PackageSelector( { packages = { tiers: [], addons: [] }, discountPct = 0, vatPct = 0, currency = 'GBP', recurring, onChange } ) {
 	injectStyles( 'co-pkgsel-s', CSS );
 
 	const tiers  = packages.tiers  || [];
@@ -286,9 +287,16 @@ export default function PackageSelector( { packages = { tiers: [], addons: [] },
 					) }
 
 					<div className="cps-grand">
-						<span className="cps-grand-lbl">Total Due</span>
+						<span className="cps-grand-lbl">{ recurring?.enabled ? 'Billed Per Cycle' : 'Total Due' }</span>
 						<span className="cps-grand-val" style={ { color: accent } }>{ fmt( grandTotal, currency ) }</span>
 					</div>
+
+					{ recurring?.enabled && (
+						<div className="cps-recurring-note">
+							Billed { recurring.frequency || 'monthly' }
+							{ recurring.start_date && `, starting ${ new Date( recurring.start_date ).toLocaleDateString( 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' } ) }` }
+						</div>
+					) }
 				</div>
 			</div>
 		</div>

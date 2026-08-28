@@ -107,8 +107,8 @@ injectStyles( 'cpsp-s', `
 	height: 52px;
 	padding: 0 48px 0 16px;
 	background: #F8F7F5;
-	border: 1.5px solid #E5E7EB;
-	border-radius: 10px;
+	border: 1.5px solid #EEECEA;
+	border-radius: 8px;
 	font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
 	font-size: 15px;
 	color: #1A1A2E;

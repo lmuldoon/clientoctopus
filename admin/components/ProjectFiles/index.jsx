@@ -3,9 +3,6 @@ import { injectStyles } from '../../../shared/injectStyles';
 
 const CSS = `
 /* ── Section shell ─────────────────────────────────────────────── */
-.co-pf {
-	margin-top: 36px;
-}
 
 .co-pf-header {
 	display: flex;

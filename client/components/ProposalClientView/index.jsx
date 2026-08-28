@@ -776,6 +776,7 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 				discountPct={ content.discount_pct || 0 }
 				vatPct={ content.vat_pct || 0 }
 				currency={ proposal.currency || 'GBP' }
+				recurring={ content.recurring }
 				onChange={ ( { selectedTierId: tId, selectedAddonIds: aIds } ) => {
 					setSelectedTierId( tId );
 					setSelectedAddonIds( aIds );
@@ -789,6 +790,7 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 				vatPct={ content.vat_pct || 0 }
 				currency={ proposal.currency || 'GBP' }
 				totalAmount={ proposal.total_amount }
+				recurring={ content.recurring }
 			/>
 		) : null;
 	}

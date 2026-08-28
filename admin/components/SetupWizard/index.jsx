@@ -283,24 +283,24 @@ body.co-setup-active {
   color: #94a3b8;
   margin-left: 6px;
 }
-.co-sw-input {
+input.co-sw-input {
   width: 100%;
   padding: 11px 14px;
   font-family: 'Archivo', sans-serif;
   font-size: 14px;
   color: #0f172a;
   border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   outline: none;
   transition: border-color .15s, box-shadow .15s;
   background: #fff;
   box-sizing: border-box;
 }
-.co-sw-input:focus {
+input.co-sw-input:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99,102,241,.12);
 }
-.co-sw-input.monospace {
+input.co-sw-input.monospace {
   font-family: 'Courier New', monospace;
   font-size: 13px;
   letter-spacing: .3px;
@@ -311,7 +311,7 @@ body.co-setup-active {
   align-items: center;
   gap: 12px;
 }
-.co-sw-color-swatch {
+input.co-sw-color-swatch {
   width: 42px;
   height: 42px;
   border-radius: 10px;

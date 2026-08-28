@@ -36,7 +36,7 @@ const CSS = `
   color: var(--co-indigo);
   margin-left: 2px;
 }
-.co-cdf-input {
+input.co-cdf-input {
   width: 100%;
   padding: 11px 14px;
   border: var(--co-input-border);
@@ -49,12 +49,12 @@ const CSS = `
   outline: none;
   -webkit-appearance: none;
 }
-.co-cdf-input::placeholder { color: var(--co-slate-300); }
-.co-cdf-input:focus {
+input.co-cdf-input::placeholder { color: var(--co-slate-300); }
+input.co-cdf-input:focus {
   border-color: var(--co-indigo);
   box-shadow: var(--co-input-focus);
 }
-.co-cdf-input.co-cdf-error {
+input.co-cdf-input.co-cdf-error {
   border-color: var(--co-red);
   box-shadow: 0 0 0 3px rgba(239,68,68,.1);
 }

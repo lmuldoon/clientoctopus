@@ -95,14 +95,14 @@ const WH_CSS = `
 .co-wh-label {
   display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 7px;
 }
-.co-wh-input {
+input.co-wh-input {
   width: 100%; height: 42px; border: 1.5px solid var(--co-slate-200);
   border-radius: var(--co-radius-sm); padding: 0 14px;
   font-size: 13px; font-family: var(--co-font); color: var(--co-navy);
   background: #FAFAFA; transition: border-color .15s, box-shadow .15s; outline: none;
 }
-.co-wh-input:focus { border-color: var(--co-indigo); box-shadow: 0 0 0 3px rgba(99,102,241,.12); background: #fff; }
-.co-wh-input::placeholder { color: var(--co-slate-400); }
+input.co-wh-input:focus { border-color: var(--co-indigo); box-shadow: 0 0 0 3px rgba(99,102,241,.12); background: #fff; }
+input.co-wh-input::placeholder { color: var(--co-slate-400); }
 .co-wh-error-text { font-size: 12px; color: var(--co-red); margin-top: 5px; }
 
 /* Event checkboxes */

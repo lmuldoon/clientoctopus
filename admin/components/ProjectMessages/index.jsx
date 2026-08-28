@@ -222,7 +222,7 @@ const CSS = `
   align-items: flex-end;
 }
 
-.co-pm-textarea {
+textarea.co-pm-textarea {
   flex: 1;
   min-height: 40px;
   max-height: 120px;
@@ -239,7 +239,7 @@ const CSS = `
   transition: border-color .12s, box-shadow .12s;
   box-sizing: border-box;
 }
-.co-pm-textarea:focus {
+textarea.co-pm-textarea:focus {
   outline: none;
   border-color: var(--co-indigo);
   box-shadow: var(--co-input-focus);

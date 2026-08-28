@@ -918,7 +918,11 @@ function InvoiceList( { invoices, pages = 1, counts = {}, query, onQueryChange, 
 export default function InvoicesApp() {
 	injectStyles( 'co-inv-styles', CSS );
 
-	const [ section, setSection ]     = useState( 'invoices' ); // 'invoices' | 'recurring'
+	const [ section, setSection ]     = useState(
+		// Allows deep-linking straight to the Recurring Invoices tab, e.g. from
+		// the "Recurring" indicator on the Proposals list.
+		new URLSearchParams( window.location.search ).get( 'tab' ) === 'recurring' ? 'recurring' : 'invoices'
+	); // 'invoices' | 'recurring'
 	const [ view, setView ]           = useState( 'list' );
 	const [ query, setQuery ]         = useState( { status: '', page: 1 } );
 	const [ list, setList ]           = useState( { invoices: [], total: 0, pages: 1, counts: {} } );

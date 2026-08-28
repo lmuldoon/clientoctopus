@@ -149,6 +149,7 @@ class ClientOctopus_Portal_Data {
 				        p.title   AS proposal_title,
 				        p.token   AS proposal_token,
 				        p.total_amount AS proposal_total,
+				        p.payment_enabled AS proposal_payment_enabled,
 				        COUNT(m.id) AS milestone_total,
 				        SUM( CASE WHEN m.status = 'completed' THEN 1 ELSE 0 END ) AS milestone_completed,
 				        ( SELECT COALESCE(SUM(pm.amount), 0)
@@ -175,7 +176,13 @@ class ClientOctopus_Portal_Data {
 			$row['progress_pct']         = $row['milestone_total'] > 0
 				? (int) round( $row['milestone_completed'] / $row['milestone_total'] * 100 )
 				: 0;
-			$row['remaining_balance']    = max( 0.00, (float) ( $row['proposal_total'] ?? 0 ) - (float) ( $row['paid_amount'] ?? 0 ) );
+			// Proposals with payment disabled (e.g. recurring-billing proposals,
+			// which are billed exclusively via their auto-created recurring
+			// invoice profile) can never be paid directly, so they must never
+			// show a phantom "amount due" that the client has no way to pay.
+			$row['remaining_balance']    = empty( $row['proposal_payment_enabled'] )
+				? 0.00
+				: max( 0.00, (float) ( $row['proposal_total'] ?? 0 ) - (float) ( $row['paid_amount'] ?? 0 ) );
 			return $row;
 		}, $rows ?: [] );
 	}
@@ -205,6 +212,7 @@ class ClientOctopus_Portal_Data {
 				        p.title   AS proposal_title,
 				        p.token   AS proposal_token,
 				        p.total_amount AS proposal_total,
+				        p.payment_enabled AS proposal_payment_enabled,
 				        COUNT(m.id) AS milestone_total,
 				        SUM( CASE WHEN m.status = 'completed' THEN 1 ELSE 0 END ) AS milestone_completed,
 				        ( SELECT COALESCE(SUM(pm.amount), 0)
@@ -233,7 +241,11 @@ class ClientOctopus_Portal_Data {
 		$row['progress_pct']        = $row['milestone_total'] > 0
 			? (int) round( $row['milestone_completed'] / $row['milestone_total'] * 100 )
 			: 0;
-		$row['remaining_balance']   = max( 0.00, (float) ( $row['proposal_total'] ?? 0 ) - (float) ( $row['paid_amount'] ?? 0 ) );
+		// See get_projects() — payment-disabled proposals (e.g. recurring
+		// billing) can never be paid directly, so must never show a due amount.
+		$row['remaining_balance']   = empty( $row['proposal_payment_enabled'] )
+			? 0.00
+			: max( 0.00, (float) ( $row['proposal_total'] ?? 0 ) - (float) ( $row['paid_amount'] ?? 0 ) );
 
 		// Include full milestone list.
 		$milestones = $wpdb->get_results(
