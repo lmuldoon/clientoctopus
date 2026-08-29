@@ -659,8 +659,8 @@ export default function ProposalClientView( { isPreview = false } = {} ) {
 			return;
 		}
 		const path = isPreview
-			? `client/proposals/preview/${ token }`
-			: `client/proposals/${ token }`;
+			? `client/proposals/preview/${ token }/`
+			: `client/proposals/${ token }/`;
 		apiFetch( path )
 			.then( data => { setProposal( data.proposal ); setLoadState( 'loaded' ); } )
 			.catch( err => { setLoadState( 'error' ); setErrorMsg( err.message ); } );

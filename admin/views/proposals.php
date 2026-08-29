@@ -6,7 +6,7 @@
  * All UI is rendered by the React app (admin/build/index.js).
  *
  * Variables available from ClientOctopus::render_proposals():
- *   (none — all data is passed via coData via wp_localize_script)
+ *   (none — all data is passed via clientoctopusData via wp_localize_script)
  *
  * @package ClientOctopus
  * @since   0.1.0

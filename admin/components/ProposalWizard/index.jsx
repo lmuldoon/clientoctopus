@@ -477,6 +477,7 @@ export default function ProposalWizard( { initialProposal = null, onComplete, on
 
 		if ( step === 3 ) {
 			if ( ! settings.title?.trim() ) errs.title = 'Proposal title is required.';
+			if ( ! settings.expiry_date ) errs.expiry_date = 'Expiry date is required.';
 		}
 
 		setErrors( errs );

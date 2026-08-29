@@ -60,13 +60,16 @@ const CSS = `
 /* Input shared */
 input.co-ps-input, select.co-ps-select {
   width: 100%;
-  padding: 11px 14px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
   border: var(--co-input-border);
   border-radius: var(--co-radius-sm);
   font-size: 14px;
   font-family: var(--co-font);
   color: var(--co-slate-800);
   background: var(--co-white);
+  line-height: normal;
   transition: border-color .15s, box-shadow .15s;
   outline: none;
   -webkit-appearance: none;
@@ -77,7 +80,7 @@ input.co-ps-input:focus, select.co-ps-select:focus {
   border-color: var(--co-indigo);
   box-shadow: var(--co-input-focus);
 }
-input.co-ps-input.co-ps-lg { font-size: 16px; font-weight: 500; padding: 13px 16px; }
+input.co-ps-input.co-ps-lg { font-size: 16px; font-weight: 500; padding: 0 16px; }
 input.co-ps-input.co-ps-error, select.co-ps-select.co-ps-error {
   border-color: var(--co-red);
   box-shadow: 0 0 0 3px rgba(239,68,68,.1);
@@ -306,13 +309,6 @@ textarea.co-ps-textarea:focus {
 }
 `;
 
-// Get today + 30 days as default expiry
-function defaultExpiry() {
-	const d = new Date();
-	d.setDate( d.getDate() + 30 );
-	return d.toISOString().split( 'T' )[ 0 ];
-}
-
 export default function ProposalSettings( { values = {}, onChange, errors = {} } ) {
 	injectStyles( 'co-ps-styles', CSS );
 
@@ -391,12 +387,14 @@ export default function ProposalSettings( { values = {}, onChange, errors = {} }
 					</div>
 				</div>
 				<div>
-					<label className="co-ps-label" htmlFor="co-ps-expiry">Expiry Date</label>
+					<label className="co-ps-label" htmlFor="co-ps-expiry">
+						Expiry Date <span className="co-ps-req">*</span>
+					</label>
 					<input
 						id="co-ps-expiry"
 						type="date"
 						className={ `co-ps-input${ errors.expiry_date ? ' co-ps-error' : '' }` }
-						value={ values.expiry_date || defaultExpiry() }
+						value={ values.expiry_date || '' }
 						min={ new Date().toISOString().split( 'T' )[ 0 ] }
 						onChange={ ( e ) => onChange( 'expiry_date', e.target.value ) }
 					/>

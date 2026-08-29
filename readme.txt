@@ -24,7 +24,7 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule (manually, or automatically from an accepted proposal) and Client Octopus generates and sends a fresh invoice each cycle
 * Package Selector pricing — offer multiple pricing tiers with optional add-ons on a single proposal; the client picks a tier, toggles add-ons, and sees the total update live before accepting
 * Proposal templates
-* Proposal status tracking (draft, sent, accepted, declined)
+* Proposal status tracking (draft, sent, viewed, accepted, declined, expired, completed)
 * Client e-signature on proposal acceptance
 * Client-facing proposal signing and invoice pages
 * Automated proposal reminder emails (not viewed, not accepted, expiring soon)
@@ -69,7 +69,7 @@ Unlike Proposify, HoneyBook, or Dubsado, your data never leaves your own server.
 
 = Does Client Octopus support payments? =
 
-Yes. On the Pro and Agency plans, you can accept payments on proposals and standalone invoices via either Stripe or PayPal — choose whichever gateway you prefer in Settings. Clients always see a single "Pay Now" button that routes to whichever gateway you've configured.
+Yes. On the Pro and Agency plans, you can accept payments on proposals and standalone invoices via either Stripe or PayPal — choose whichever gateway you prefer in Settings. Clients always see a single "Pay Now" button that routes to whichever gateway you've configured. The exception is a proposal set to Recurring billing — it has no direct payment option; billing happens automatically through the recurring invoice created when the client accepts.
 
 = Can clients access a portal? =
 
@@ -147,7 +147,8 @@ Client Octopus uses PayPal as an alternative to Stripe for processing client pay
 Client Octopus's AI writing tools route requests through a relay service operated by the plugin author (clientoctopus.com). This relay authenticates your licence and forwards requests to an AI model. AI features are only triggered when you explicitly use an AI writing action in the admin.
 
 - Service: clientoctopus.com (operated by codievolt)
-- Data sent: the text prompt you submit (proposal content or instructions) and your licence key, which authenticates the request and is used to enforce your plan's monthly rate limit. No site URL or admin email is transmitted to this relay.
+- Data sent (AI writing requests): the text prompt you submit (proposal content or instructions) and your licence key, which authenticates the request and is used to enforce your plan's monthly rate limit. No site URL or admin email is transmitted for AI requests.
+- Data sent (licence sync): separately, once per day, the plugin sends your licence key and account email to the same relay to keep your plan status in sync. This happens automatically in the background on Pro/Agency plans and is not tied to any explicit AI action.
 - Privacy Policy: https://clientoctopus.clientoctopus.com/privacy-policy/
 
 **Freemius**
@@ -166,8 +167,12 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 * New: Package Selector pricing mode for proposals — toggle between Flat Pricing and Package Selector when building a proposal; define unlimited pricing tiers (each with its own independent line items) plus optional add-ons. The client picks a tier, toggles any add-ons, and sees the total recalculate live before accepting; their selection is resolved and recorded at acceptance.
 * New: Recurring Billing for proposals — toggle a proposal to Recurring billing instead of one-off/deposit pricing, set the frequency, start date, and end condition, and Client Octopus automatically creates a real Recurring Invoice profile the moment the client accepts — fully editable afterward just like a manually-created one. Recurring proposals never take a deposit or direct payment; billing runs exclusively through the generated invoice.
 * Improved: The Pricing block in the proposal Content Editor can now be moved up and down like any other section, and renders on the client-facing proposal in the position it's assigned instead of always appearing at the end.
+* Improved: The Marketing Campaign proposal template is now available on all plans (previously Pro-only).
+* Improved: The proposal expiry date is now a required field when creating or editing a proposal, with no pre-filled placeholder value — previously it could be left blank, which silently excluded that proposal from the "expiring soon" reminder email and the automatic expiry check.
 * Fix: Form fields (text, email, number, date, select, textarea) across the admin could render with the wrong border colour or square corners instead of the plugin's intended styling, because WordPress's own default admin styles were unintentionally overriding them in most places.
 * Fix: A recurring invoice profile created with a future start date would incorrectly bill immediately instead of waiting for that date.
+* Fix: The payment confirmation popup could show a proposal's full total instead of the deposit or remaining-balance amount that was actually about to be charged.
+* Fix: Sending or duplicating a proposal could show a JavaScript error immediately afterward, even though the action itself completed successfully.
 
 = 1.1.3 =
 

@@ -313,7 +313,7 @@ export default function PortalSetPassword() {
 		setServerError( '' );
 
 		try {
-			const res = await fetch( window.coPortalData.apiUrl + '/portal/set-password', {
+			const res = await fetch( window.coPortalData.apiUrl + '/portal/set-password/', {
 				method:  'POST',
 				headers: {
 					'Content-Type': 'application/json',

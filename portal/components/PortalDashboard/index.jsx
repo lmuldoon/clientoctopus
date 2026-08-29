@@ -121,7 +121,7 @@ injectStyles( 'cpd-s', `
 	border-radius: 14px;
 	border: 1px solid #EEECEA;
 	overflow: hidden;
-	margin-bottom: 12px;
+	margin-bottom: 20px;
 	box-shadow: 0 1px 3px rgba(26,26,46,.04);
 }
 

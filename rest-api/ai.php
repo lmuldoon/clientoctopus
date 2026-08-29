@@ -3,12 +3,12 @@
  * AI REST endpoints
  *
  * POST /wp-json/clientoctopus/v1/ai/process
- *   — Requires admin auth (clientoctopus_rest_require_auth)
+ *   — Requires plugin-admin capability (clientoctopus_rest_require_manage)
  *   — Forwards to CF AI Relay server
  *   — Returns { result, remaining }
  *
  * POST /wp-json/clientoctopus/v1/ai/test-connection
- *   — Requires admin auth
+ *   — Requires plugin-admin capability (clientoctopus_rest_require_manage)
  *   — Sends a minimal test request to the relay to verify connectivity
  *
  * @package ClientOctopus\AI

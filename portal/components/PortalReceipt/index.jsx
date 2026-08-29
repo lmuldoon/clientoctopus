@@ -312,7 +312,7 @@ export default function PortalReceipt() {
 			return;
 		}
 
-		fetch( window.coPortalData.apiUrl + '/portal/receipt/' + paymentId, {
+		fetch( window.coPortalData.apiUrl + '/portal/receipt/' + paymentId + '/', {
 			headers: {
 				'X-WP-Nonce':   window.coPortalData.nonce,
 				'Content-Type': 'application/json',

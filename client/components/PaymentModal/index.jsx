@@ -208,6 +208,28 @@ injectStyles( 'co-payment-modal-s', `
 
 const BASE = ( window.clientoctopusClientData || {} ).apiUrl || '/wp-json/clientoctopus/v1/';
 
+/**
+ * Mirrors the server's charge calculation (rest-api/payments.php) so the
+ * pre-redirect confirmation shows the amount that will actually be charged,
+ * not always the proposal's full total_amount.
+ */
+function displayChargeAmount( proposal ) {
+	const total = parseFloat( proposal?.total_amount ) || 0;
+
+	if ( proposal?.has_paid ) {
+		return proposal?.remaining_balance ?? total; // paying the remaining balance
+	}
+
+	const requireDeposit = !! proposal?.content?.require_deposit;
+	const depositPct     = parseInt( proposal?.content?.deposit_pct, 10 ) || 0;
+
+	if ( requireDeposit && depositPct > 0 ) {
+		return Math.round( total * ( Math.min( 100, depositPct ) / 100 ) * 100 ) / 100;
+	}
+
+	return total;
+}
+
 export default function PaymentModal( { proposal, onClose } ) {
 	const [ phase,    setPhase    ] = useState( 'loading' ); // 'loading' | 'error'
 	const [ errorMsg, setErrorMsg ] = useState( '' );
@@ -274,7 +296,7 @@ export default function PaymentModal( { proposal, onClose } ) {
 				{ phase === 'loading' && (
 					<>
 						<p className="cfpm-amount">
-							{ fmt( proposal?.total_amount, proposal?.currency ) }
+							{ fmt( displayChargeAmount( proposal ), proposal?.currency ) }
 						</p>
 						<div className="cfpm-spinner" />
 						<p className="cfpm-hint">Preparing your secure checkout…</p>

@@ -798,8 +798,7 @@ export default function ProposalList( {
 			} );
 			setSendModal( m => ( { ...m, open: false } ) );
 			onProposalSent( proposal.id );
-			setActiveTab( 'sent' );
-			setPage( 1 );
+			handleTabChange( 'sent' );
 			setSentUrl( result?.client_url ?? null );
 			setCopied( false );
 			setSuccessMsg( '✓ Proposal sent — it now appears in the Sent tab.' );
@@ -815,8 +814,7 @@ export default function ProposalList( {
 	async function handleDuplicate( id ) {
 		try {
 			await coFetch( `proposals/${ id }/duplicate/`, { method: 'POST' } );
-			setActiveTab( 'draft' );
-			setPage( 1 );
+			handleTabChange( 'draft' );
 			setSuccessMsg( '✓ Proposal cloned — it now appears in the Draft tab.' );
 			setTimeout( () => setSuccessMsg( '' ), 4000 );
 			onRefresh();

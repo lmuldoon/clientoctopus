@@ -59,7 +59,10 @@ class ClientOctopus_Entitlements {
 	 * @return array<string, array<string, mixed>>
 	 */
 	private static function get_feature_matrix(): array {
-		//@fs_premium_only
+		if ( ! ( function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is_premium() ) ) {
+			return []; // WP.org free build: no plan restrictions — can_user() returns true for all features.
+		}
+
 		return [
 			// ── Proposals ────────────────────────────────────────────────────
 			'create_proposal' => [
@@ -155,8 +158,6 @@ class ClientOctopus_Entitlements {
 				'agency' => true,
 			],
 		];
-		//@end:fs_premium_only
-		return []; // WP.org free zip: no plan restrictions — can_user() returns true for all features.
 	}
 
 	// ── Core Check ────────────────────────────────────────────────────────────

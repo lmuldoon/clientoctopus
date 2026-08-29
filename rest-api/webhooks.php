@@ -8,7 +8,7 @@
  * DELETE /clientoctopus/v1/webhooks/{id}     — delete webhook + its logs
  * POST   /clientoctopus/v1/webhooks/{id}/test — send a test ping immediately
  *
- * All routes require a logged-in WordPress session (clientoctopus_rest_require_auth).
+ * All routes require plugin-admin capability (clientoctopus_rest_require_manage).
  * Write operations are additionally gated to Pro/Agency plan (use_webhooks).
  *
  * @package ClientOctopus\Webhooks

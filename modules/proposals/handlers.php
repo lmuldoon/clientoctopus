@@ -43,6 +43,19 @@ class ClientOctopus_Proposal_Handlers {
 	 * @return array|WP_Error The created proposal row, or WP_Error on failure.
 	 */
 	public static function create_from_wizard( int $owner_id, array $payload ): array|WP_Error {
+		// ── Expiry date ──────────────────────────────────────────────────────
+		// Required — no silent fallback. A missing expiry previously defaulted
+		// to "+30 days from submission time" here, which could visibly differ
+		// from whatever date the wizard briefly displayed while it was open.
+		if ( empty( $payload['expiry_date'] ) ) {
+			return new WP_Error(
+				'expiry_date_required',
+				__( 'An expiry date is required.', 'clientoctopus' ),
+				[ 'status' => 422 ]
+			);
+		}
+		$expiry_date = sanitize_text_field( $payload['expiry_date'] );
+
 		// ── Template access ──────────────────────────────────────────────────
 		$template_id = sanitize_key( $payload['template_id'] ?? 'blank' );
 
@@ -98,11 +111,6 @@ class ClientOctopus_Proposal_Handlers {
 			'recurring'       => $recurring,
 		] );
 
-		// ── Expiry date ──────────────────────────────────────────────────────
-		$expiry_date = ! empty( $payload['expiry_date'] )
-			? sanitize_text_field( $payload['expiry_date'] )
-			: gmdate( 'Y-m-d', strtotime( '+30 days' ) );
-
 		// ── Create proposal ──────────────────────────────────────────────────
 		$proposal_id = ClientOctopus_Proposal::create( $owner_id, [
 			'client_id'      => $client_id,
@@ -138,6 +146,20 @@ class ClientOctopus_Proposal_Handlers {
 	 */
 	public static function update_from_wizard( int $id, int $owner_id, array $payload ): array|WP_Error {
 		global $wpdb;
+
+		// ── Expiry date ──────────────────────────────────────────────────────
+		// Required — no silent wipe. A missing expiry previously saved NULL
+		// here, which silently and permanently excludes the proposal from the
+		// expiring-soon reminder and auto-expire cron (both require a non-null
+		// expiry_date), with no indication to the sender that this happened.
+		if ( empty( $payload['expiry_date'] ) ) {
+			return new WP_Error(
+				'expiry_date_required',
+				__( 'An expiry date is required.', 'clientoctopus' ),
+				[ 'status' => 422 ]
+			);
+		}
+		$expiry_date = sanitize_text_field( $payload['expiry_date'] );
 
 		// ── Client record ────────────────────────────────────────────────────
 		$client_id = self::resolve_client(
@@ -202,7 +224,7 @@ class ClientOctopus_Proposal_Handlers {
 			'content'      => wp_json_encode( $content ),
 			'total_amount' => $total_amount,
 			'currency'     => strtoupper( sanitize_text_field( $payload['currency'] ?? 'GBP' ) ),
-			'expiry_date'  => sanitize_text_field( $payload['expiry_date'] ?? '' ) ?: null,
+			'expiry_date'  => $expiry_date,
 			'template_id'  => $template_id,
 		] );
 

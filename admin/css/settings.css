@@ -1,4 +1,7 @@
 /* ── Settings page styles ──────────────────────────────────────────── */
+/* This is a plain stylesheet outside the webpack build, so it can't import
+   shared/tokens.js like the React admin screens do — its colour/radius
+   literals (#E2E8F0, 8px, etc.) must be kept in sync with that file by hand. */
 .co-settings-wrap {
 	max-width: 1100px;
 	padding: 32px 28px 64px;

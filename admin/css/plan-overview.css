@@ -1,4 +1,8 @@
 
+/* This is a plain stylesheet outside the webpack build, so it can't import
+   shared/tokens.js like the React admin screens do — these variables use
+   different names (no co- prefix) but must be kept in sync by hand with
+   that file's values. */
 /* ─── Variables ───────────────────────────────────────────────────────── */
 #co-admin-wrap {
     --navy:      #0F172A;

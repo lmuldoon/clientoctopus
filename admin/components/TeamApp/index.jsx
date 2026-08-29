@@ -6,35 +6,12 @@
  */
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { injectStyles } from '../../../shared/injectStyles';
+import { CO_TOKENS_CSS } from '../../../shared/tokens';
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const TEAM_CSS = `
-
-:root {
-  --co-navy:       #0F172A;
-  --co-indigo:     #6366F1;
-  --co-indigo-lt:  #818CF8;
-  --co-indigo-bg:  #EEF2FF;
-  --co-emerald:    #10B981;
-  --co-emerald-bg: #ECFDF5;
-  --co-amber:      #F59E0B;
-  --co-red:        #EF4444;
-  --co-red-bg:     #FEF2F2;
-  --co-slate-50:   #F8FAFC;
-  --co-slate-100:  #F1F5F9;
-  --co-slate-200:  #E2E8F0;
-  --co-slate-300:  #CBD5E1;
-  --co-slate-400:  #94A3B8;
-  --co-slate-500:  #64748B;
-  --co-slate-600:  #475569;
-  --co-white:      #FFFFFF;
-  --co-radius:     12px;
-  --co-radius-sm:  8px;
-  --co-shadow:     0 1px 3px rgba(15,23,42,.06), 0 4px 16px rgba(15,23,42,.08);
-  --co-shadow-lg:  0 4px 6px rgba(15,23,42,.05), 0 10px 40px rgba(15,23,42,.12);
-  --co-font:       'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+${ CO_TOKENS_CSS }
 
 .co-tm * { box-sizing: border-box; }
 

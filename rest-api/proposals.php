@@ -197,7 +197,7 @@ function clientoctopus_proposal_create_args(): array {
 		'template_id'     => [ 'type' => 'string',  'required' => true,  'sanitize_callback' => 'sanitize_key' ],
 		'title'           => [ 'type' => 'string',  'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
 		'currency'        => [ 'type' => 'string',  'required' => false, 'default' => 'GBP', 'sanitize_callback' => 'sanitize_text_field' ],
-		'expiry_date'     => [ 'type' => 'string',  'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
+		'expiry_date'     => [ 'type' => 'string',  'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
 		'deposit_pct'     => [ 'type' => 'number',  'required' => false, 'default' => 0 ],
 		'require_deposit' => [ 'type' => 'boolean', 'required' => false, 'default' => false ],
 		'client_name'     => [ 'type' => 'string',  'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],

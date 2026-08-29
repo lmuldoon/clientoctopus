@@ -3,7 +3,7 @@
  * Analytics REST endpoint
  *
  * GET /wp-json/clientoctopus/v1/analytics/overview
- *   — Requires admin auth (clientoctopus_rest_require_auth)
+ *   — Requires plugin-admin capability (clientoctopus_rest_require_manage)
  *   — Pro/Agency only (free users receive 403 upgrade_required)
  *   — Accepts: range (week|month|year|custom), from, to, export (csv)
  *   — Returns: { kpis, chart, performance, feed }

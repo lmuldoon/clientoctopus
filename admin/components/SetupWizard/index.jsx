@@ -7,6 +7,7 @@
  */
 import { useState, useEffect } from '@wordpress/element';
 import { injectStyles } from '../../../shared/injectStyles';
+import { CO_TOKENS_CSS } from '../../../shared/tokens';
 
 const API  = window.clientoctopusData?.apiUrl  || '/wp-json/clientoctopus/v1/';
 const NONCE = window.clientoctopusData?.nonce  || '';
@@ -25,7 +26,7 @@ async function apiFetch( path, opts = {} ) {
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 
 const CSS = `
-
+${ CO_TOKENS_CSS }
 body.co-setup-active #adminmenuback,
 body.co-setup-active #adminmenuwrap,
 body.co-setup-active #wpadminbar,
