@@ -32,6 +32,7 @@ const DEFAULT_RECURRING = {
 	max_occurrences: '',
 	payment_terms: '',
 	notes: '',
+	billing_mode: 'manual',
 };
 
 const CURRENCIES = [
@@ -288,6 +289,25 @@ input.co-ps-slider-num:focus {
   font-family: var(--co-font);
   width: 140px;
 }
+.co-ps-autocharge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--co-slate-700);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.co-ps-autocharge-row input[type="checkbox"] {
+  width: 16px; height: 16px; min-width: 16px; min-height: 16px;
+  margin: 0; accent-color: var(--co-indigo); cursor: pointer;
+}
+.co-ps-autocharge-help {
+  font-size: 12px;
+  color: var(--co-slate-400);
+  margin: 4px 0 0;
+}
 textarea.co-ps-textarea {
   width: 100%;
   min-height: 70px;
@@ -488,6 +508,20 @@ export default function ProposalSettings( { values = {}, onChange, errors = {} }
 							</label>
 						</div>
 					</div>
+
+					<label className="co-ps-autocharge-row">
+						<input
+							type="checkbox"
+							checked={ recurring.billing_mode === 'auto_charge' }
+							onChange={ e => updateRecurring( { billing_mode: e.target.checked ? 'auto_charge' : 'manual' } ) }
+						/>
+						Auto-charge saved card
+					</label>
+					{ recurring.billing_mode === 'auto_charge' && (
+						<p className="co-ps-autocharge-help">
+							The first invoice is paid manually, which saves the client's card — every invoice after that is charged automatically.
+						</p>
+					) }
 
 					<div>
 						<label className="co-ps-label" htmlFor="co-ps-payment-terms">Payment Terms</label>

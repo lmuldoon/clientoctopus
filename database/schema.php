@@ -142,6 +142,25 @@ function clientoctopus_create_tables(): void {
 	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_clients LIKE %s", 'portal_password_hash' ) ) ) {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN portal_password_hash VARCHAR(255) DEFAULT NULL" );
 	}
+	// Saved Stripe payment method for recurring-profile auto-charge (DB version 28).
+	// A per-transaction Stripe customer id already exists on clientoctopus_payments,
+	// but that's a one-off snapshot per checkout session — this is a reusable
+	// customer + payment method attached to the client itself, captured via
+	// setup_future_usage on their first manual payment.
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_clients LIKE %s", 'stripe_customer_id' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN stripe_customer_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN stripe_payment_method_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN stripe_pm_brand VARCHAR(20) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN stripe_pm_last4 VARCHAR(4) DEFAULT NULL" );
+	}
+	// Saved PayPal payment method for recurring-profile auto-charge (DB version 29) —
+	// same role as the Stripe columns above, via PayPal's Vault feature (store_in_vault
+	// on the Orders API, not the JS SDK — see modules/payments/class-paypal.php).
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_clients LIKE %s", 'paypal_vault_id' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN paypal_vault_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN paypal_vault_customer_id VARCHAR(255) DEFAULT NULL" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN paypal_payer_email VARCHAR(255) DEFAULT NULL" );
+	}
 
 	// ────────────────────────────────────────────────────────────────────────
 	// Table 4: clientoctopus_proposals
@@ -649,6 +668,20 @@ function clientoctopus_create_tables(): void {
 		KEY status (status)
 	) $charset_collate;" );
 
+	// Auto-charge retry/dunning (DB version 28) — dbDelta doesn't reliably MODIFY an
+	// existing ENUM's value list, so widen it explicitly (mirrors the same pattern
+	// used for clientoctopus_proposals.status above). Idempotent — safe to run every load.
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$wpdb->query(
+		"ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles
+		 MODIFY COLUMN status ENUM('active','paused','cancelled','past_due') NOT NULL DEFAULT 'active'"
+	);
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_recurring_profiles LIKE %s", 'retry_count' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN retry_count TINYINT UNSIGNED NOT NULL DEFAULT 0" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN last_failure_at DATETIME DEFAULT NULL" );
+	}
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
 	// Recurring invoices (DB version 21) — additive column linking a generated
 	// invoice back to its series, plus a uniqueness guard on invoice numbering.
 	// Not baked into the clientoctopus_invoices CREATE TABLE text above — same
@@ -656,6 +689,19 @@ function clientoctopus_create_tables(): void {
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_invoices LIKE %s", 'recurring_profile_id' ) ) ) {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN recurring_profile_id BIGINT UNSIGNED DEFAULT NULL" );
+	}
+
+	// Auto-charge retry/dunning tracking (DB version 29) — moved here from
+	// clientoctopus_recurring_profiles (DB version 28). Tracking retries per
+	// PROFILE let a later invoice's successful charge silently reset the
+	// counter for an EARLIER invoice that was still failing/unpaid, making it
+	// permanently invisible to the retry cron. Tracking per INVOICE fixes
+	// that — each unpaid invoice's failure streak is independent. The old
+	// columns on clientoctopus_recurring_profiles are left in place (unused)
+	// rather than dropped, to avoid a risky column removal.
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_invoices LIKE %s", 'retry_count' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN retry_count TINYINT UNSIGNED NOT NULL DEFAULT 0" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_invoices ADD COLUMN last_failure_at DATETIME DEFAULT NULL" );
 	}
 
 	$has_owner_invoice_number_key = $wpdb->get_var( $wpdb->prepare(

@@ -32,6 +32,7 @@ if ( ! defined( 'CLIENTOCTOPUS_WEBHOOK_EVENTS' ) ) {
 		'proposal.declined',
 		'proposal.revision_requested',
 		'payment.completed',
+		'payment.failed',
 		'invoice.sent',
 		'invoice.paid',
 		'invoice.overdue',

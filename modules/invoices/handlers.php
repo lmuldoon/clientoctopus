@@ -146,6 +146,37 @@ add_action( 'clientoctopus_invoice_paid', static function ( int $invoice_id, int
 	}
 }, 99, 2 );
 
+// Auto-resume a past_due recurring profile once its outstanding invoice gets
+// paid — fires for both manual and auto-charge payment success (both routes
+// call mark_paid_for_provider(), which fires this hook universally), so the
+// status check below makes it a safe no-op for a routine already-active
+// profile's payment. Deliberately automatic rather than requiring the owner
+// to click Resume: a client successfully paying with a working card is as
+// clear a signal as exists that billing should continue, and requiring a
+// manual step here would just reintroduce a milder version of the same
+// dead-end (paid invoice, still-paused profile, silently missing next cycle).
+add_action( 'clientoctopus_invoice_paid', static function ( int $invoice_id, int $owner_id ): void {
+	global $wpdb;
+
+	$profile_id = (int) $wpdb->get_var(
+		$wpdb->prepare( "SELECT recurring_profile_id FROM {$wpdb->prefix}clientoctopus_invoices WHERE id = %d", $invoice_id )
+	);
+	if ( ! $profile_id ) return;
+
+	$status = $wpdb->get_var(
+		$wpdb->prepare( "SELECT status FROM {$wpdb->prefix}clientoctopus_recurring_profiles WHERE id = %d", $profile_id )
+	);
+	if ( 'past_due' !== $status ) return;
+
+	$path = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+	if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) && file_exists( $path ) ) {
+		require_once $path;
+	}
+	if ( class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+		ClientOctopus_Recurring_Profile::resume( $profile_id, $owner_id );
+	}
+}, 99, 2 );
+
 add_action( 'clientoctopus_invoice_overdue', static function ( int $invoice_id, int $owner_id ): void {
 	if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
 	$payload = clientoctopus_invoice_webhook_payload( $invoice_id, $owner_id );

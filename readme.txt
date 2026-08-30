@@ -21,7 +21,7 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Unlimited proposals
 * Unlimited clients
 * Standalone invoices — create, send, and manually mark as paid
-* Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule (manually, or automatically from an accepted proposal) and Client Octopus generates and sends a fresh invoice each cycle
+* Recurring invoices — set up a weekly, monthly, quarterly, or yearly schedule (manually, or automatically from an accepted proposal) and Client Octopus generates and sends a fresh invoice each cycle, with the client paying each one manually (Pro/Agency can enable auto-charge instead — see Pro Features)
 * Package Selector pricing — offer multiple pricing tiers with optional add-ons on a single proposal; the client picks a tier, toggles add-ons, and sees the total update live before accepting
 * Proposal templates
 * Proposal status tracking (draft, sent, viewed, accepted, declined, expired, completed)
@@ -35,6 +35,7 @@ Create professional proposals and standalone invoices, collect e-signatures, aut
 * Everything in Free plus...
 * Stripe or PayPal payment collection on proposals
 * Stripe or PayPal "Pay Now" button on client-facing invoices (auto-marks paid via webhook)
+* Auto-charge for recurring invoices — opt in a recurring profile to automatically charge the client's saved Stripe or PayPal payment method each cycle instead of waiting for a manual payment; the client's first payment is still manual (which securely saves their payment method for reuse). If a charge fails, the client is notified and it's retried a few times before the profile pauses itself for you to follow up
 * Client portal with magic-link login
 * AI writing tools for proposal content
 * Revenue analytics dashboard
@@ -69,7 +70,7 @@ Unlike Proposify, HoneyBook, or Dubsado, your data never leaves your own server.
 
 = Does Client Octopus support payments? =
 
-Yes. On the Pro and Agency plans, you can accept payments on proposals and standalone invoices via either Stripe or PayPal — choose whichever gateway you prefer in Settings. Clients always see a single "Pay Now" button that routes to whichever gateway you've configured. The exception is a proposal set to Recurring billing — it has no direct payment option; billing happens automatically through the recurring invoice created when the client accepts.
+Yes. On the Pro and Agency plans, you can accept payments on proposals and standalone invoices via either Stripe or PayPal — choose whichever gateway you prefer in Settings. Clients always see a single "Pay Now" button that routes to whichever gateway you've configured. The exception is a proposal set to Recurring billing — it has no direct payment option; billing happens through the recurring invoice created when the client accepts, which can itself be set to auto-charge (see "Can I set up automatic recurring invoices?" below) or paid manually each cycle.
 
 = Can clients access a portal? =
 
@@ -105,7 +106,9 @@ Yes. Standalone invoices are available on all plans. Create an invoice, assign a
 
 = Can I set up automatic recurring invoices? =
 
-Yes, on all plans. Create a recurring invoice profile for a client, choose weekly, monthly, quarterly, or yearly billing, and Client Octopus automatically generates and sends a fresh invoice each cycle — the client still pays each one manually via the same Pay Now flow as any other invoice. You can also mark a proposal itself as Recurring — accepting it automatically creates the recurring profile for you, with no manual setup.
+Yes, on all plans. Create a recurring invoice profile for a client, choose weekly, monthly, quarterly, or yearly billing, and Client Octopus automatically generates and sends a fresh invoice each cycle. By default the client pays each one manually via the same Pay Now flow as any other invoice. You can also mark a proposal itself as Recurring — accepting it automatically creates the recurring profile for you, with no manual setup.
+
+On the Pro and Agency plans, you can additionally turn on auto-charge for a profile: the client's first invoice is still paid manually (which securely saves their Stripe or PayPal payment method), and every invoice after that is charged automatically with no action needed from the client. If a charge is declined, both you and the client are notified and it's retried a few times before the profile pauses itself so you can follow up.
 
 == Screenshots ==
 
@@ -126,10 +129,12 @@ This plugin connects to the following third-party services:
 
 **Stripe**
 
-Client Octopus uses Stripe to process client payments on proposals and invoices. When a client pays, the plugin creates a Stripe Checkout Session on your configured Stripe account and redirects the client to complete payment on Stripe's hosted page. The client's payment details are entered directly on Stripe's servers and are never stored in WordPress. Your Stripe API keys (publishable and secret) are stored in the WordPress options table and transmitted only to Stripe's API.
+Client Octopus uses Stripe to process client payments on proposals and invoices. When a client pays, the plugin creates a Stripe Checkout Session on your configured Stripe account and redirects the client to complete payment on Stripe's hosted page. The client's card details are entered directly on Stripe's servers and are never stored in WordPress. Your Stripe API keys (publishable and secret) are stored in the WordPress options table and transmitted only to Stripe's API.
+
+If a recurring invoice profile has auto-charge enabled, the client's first payment additionally saves a reference to their payment method with Stripe (a customer ID and payment method ID — never the underlying card number) so future invoices on that profile can be charged automatically without the client re-entering their card. This reference is stored in your WordPress database and used only to request further charges via Stripe's API.
 
 - Service: Stripe, Inc.
-- Data sent: payment amount, currency, project or invoice description, and client email when a payment session is created. Stripe webhook events (payment completion) are received and verified using your webhook secret.
+- Data sent: payment amount, currency, project or invoice description, and client email when a payment session is created. If auto-charge is enabled, a Stripe customer ID and payment method ID are stored after the first payment and sent back to Stripe to request each subsequent automatic charge. Stripe webhook events (payment completion) are received and verified using your webhook secret.
 - Terms of Service: https://stripe.com/legal/ssa
 - Privacy Policy: https://stripe.com/privacy
 
@@ -137,8 +142,10 @@ Client Octopus uses Stripe to process client payments on proposals and invoices.
 
 Client Octopus uses PayPal as an alternative to Stripe for processing client payments on proposals and invoices, if you choose it as your active payment provider. When a client pays, the plugin creates a PayPal order on your configured PayPal account and redirects the client to complete and approve payment on PayPal's hosted page. The client's payment details are entered directly on PayPal's servers and are never stored in WordPress. Your PayPal API credentials (Client ID and Client Secret) are stored in the WordPress options table and transmitted only to PayPal's API.
 
+If a recurring invoice profile has auto-charge enabled, the client's first payment additionally saves their payment method with PayPal's Vault (a vault ID, PayPal customer ID, and the payer's email address) so future invoices on that profile can be charged automatically without the client approving each one. This reference is stored in your WordPress database and used only to request further charges via PayPal's API.
+
 - Service: PayPal, Inc.
-- Data sent: payment amount, currency, and a proposal or invoice reference when an order is created. PayPal webhook events (order approval and payment capture) are received and verified using PayPal's own signature-verification API.
+- Data sent: payment amount, currency, and a proposal or invoice reference when an order is created. If auto-charge is enabled, a PayPal vault ID, customer ID, and the payer's email address are stored after the first payment and sent back to PayPal to request each subsequent automatic charge. PayPal webhook events (order approval and payment capture) are received and verified using PayPal's own signature-verification API.
 - Terms of Service: https://www.paypal.com/us/legalhub/useragreement-full
 - Privacy Policy: https://www.paypal.com/us/legalhub/paypal/privacy-full
 
@@ -169,7 +176,10 @@ Client Octopus uses Freemius to manage plan licensing, activation, and upgrades.
 * Improved: The Pricing block in the proposal Content Editor can now be moved up and down like any other section, and renders on the client-facing proposal in the position it's assigned instead of always appearing at the end.
 * Improved: The Marketing Campaign proposal template is now available on all plans (previously Pro-only).
 * Improved: The proposal expiry date is now a required field when creating or editing a proposal, with no pre-filled placeholder value — previously it could be left blank, which silently excluded that proposal from the "expiring soon" reminder email and the automatic expiry check.
+* New: Auto-charge for recurring invoices (Pro & Agency) — opt a recurring profile into automatically charging the client's saved Stripe or PayPal payment method each cycle instead of sending a "Pay Now" link. The client's first invoice is still paid manually, which securely saves their payment method for reuse. A failed charge is retried a few times with the client notified each time, then the profile pauses itself so you can follow up — it can be resumed once the client updates their payment details.
+* New: Payment failure notifications — you and the client are now both emailed when a payment attempt on an invoice or proposal is declined, expired, cancelled, or needs additional verification from the client's bank; previously this happened silently with no notification to either party.
 * Fix: Form fields (text, email, number, date, select, textarea) across the admin could render with the wrong border colour or square corners instead of the plugin's intended styling, because WordPress's own default admin styles were unintentionally overriding them in most places.
+* Fix: Currency and frequency selects in the proposal wizard and recurring invoice editor could render taller than other fields, and some fields in the same forms didn't share a consistent height.
 * Fix: A recurring invoice profile created with a future start date would incorrectly bill immediately instead of waiting for that date.
 * Fix: The payment confirmation popup could show a proposal's full total instead of the deposit or remaining-balance amount that was actually about to be charged.
 * Fix: Sending or duplicating a proposal could show a JavaScript error immediately afterward, even though the action itself completed successfully.

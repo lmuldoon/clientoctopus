@@ -210,6 +210,7 @@ const ALL_EVENTS = [
 	{ value: 'proposal.accepted',  label: 'Proposal Accepted' },
 	{ value: 'proposal.declined',  label: 'Proposal Declined' },
 	{ value: 'payment.completed',  label: 'Payment Completed' },
+	{ value: 'payment.failed',     label: 'Payment Failed' },
 	{ value: 'invoice.sent',       label: 'Invoice Sent' },
 	{ value: 'invoice.paid',       label: 'Invoice Paid' },
 	{ value: 'invoice.overdue',    label: 'Invoice Overdue' },

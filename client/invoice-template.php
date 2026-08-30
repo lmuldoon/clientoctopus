@@ -153,6 +153,23 @@ if ( function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is_premium() )
 }
 //@end:fs_premium_only
 
+// ── Auto-charge consent copy ──────────────────────────────────────────────────
+// This invoice's payment saves the card for future off-session charges if its
+// recurring profile has opted into billing_mode = 'auto_charge' — see
+// rest-api/invoices.php's clientoctopus_rest_invoice_pay() for the matching
+// setup_future_usage flag on the Stripe session this button creates.
+$clientoctopus_auto_charge_setup = false;
+if ( $clientoctopus_payment_enabled && ! empty( $clientoctopus_inv['recurring_profile_id'] ) ) {
+	$_rp_class = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+	if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) && file_exists( $_rp_class ) ) {
+		require_once $_rp_class;
+	}
+	if ( class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+		$_profile = ClientOctopus_Recurring_Profile::get( (int) $clientoctopus_inv['recurring_profile_id'], (int) $clientoctopus_inv['owner_id'] );
+		$clientoctopus_auto_charge_setup = ! is_wp_error( $_profile ) && 'auto_charge' === ( $_profile['billing_mode'] ?? '' );
+	}
+}
+
 // ── Currency symbol ───────────────────────────────────────────────────────────
 $clientoctopus_currency_symbols = [
 	'GBP' => '£', 'USD' => '$', 'EUR' => '€', 'CAD' => '$', 'AUD' => '$',
@@ -387,6 +404,11 @@ if ( 'success' === $clientoctopus_payment_result ) {
 			<button class="inv-pay-btn" id="co-inv-pay-btn" type="button">
 				<?php esc_html_e( 'Pay Now', 'clientoctopus' ); ?> <?php echo esc_html( $sym . number_format( $total, 2 ) ); ?>
 			</button>
+			<?php if ( $clientoctopus_auto_charge_setup ) : ?>
+				<p class="inv-auto-charge-note" style="margin-top:10px;font-size:12px;color:#94A3B8;">
+					<?php esc_html_e( 'By paying this invoice, you authorize future automatic charges for this recurring billing.', 'clientoctopus' ); ?>
+				</p>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

@@ -407,7 +407,28 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 		'type'       => 'invoice',
 		'invoice_id' => $invoice['id'],
 		'token'      => $token,
+		// Captured now rather than re-queried from the invoices table when the
+		// webhook arrives — an admin reassigning this invoice's client between
+		// session creation and webhook delivery must never cause the saved card
+		// to attach to the (new, wrong) client instead of whoever actually paid.
+		'client_id'  => $invoice['client_id'] ?? '',
 	];
+
+	// Recurring profiles opted into billing_mode = 'auto_charge' need the card from
+	// this manual payment saved for reuse — flag it so the Stripe branch below can
+	// request setup_future_usage (Stripe) or a Vault attributes block (PayPal) —
+	// see the create_order()/create_checkout_session() calls below.
+	$auto_charge_setup = false;
+	if ( ! empty( $invoice['recurring_profile_id'] ) ) {
+		$profile_class = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+		if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) && file_exists( $profile_class ) ) {
+			require_once $profile_class;
+		}
+		if ( class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+			$profile = ClientOctopus_Recurring_Profile::get( (int) $invoice['recurring_profile_id'], (int) $invoice['owner_id'] );
+			$auto_charge_setup = ! is_wp_error( $profile ) && 'auto_charge' === ( $profile['billing_mode'] ?? '' );
+		}
+	}
 
 	if ( 'paypal' === $provider ) {
 		// PayPal always appends its own `token` (order id) + `PayerID` query params to
@@ -415,6 +436,24 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 		// so there's no risk of PayPal producing a malformed `?a=b?c=d` URL; client-routing.php
 		// detects PayPal purely from the presence of its own `token`/`PayerID` params.
 		$success_url = site_url( '/invoices/' . $token . '/success' );
+
+		$paypal_source = [
+			'experience_context' => [
+				'return_url' => $success_url,
+				'cancel_url' => $cancel_url,
+			],
+		];
+		if ( $auto_charge_setup ) {
+			// Saves this payment method (vaulted) for reuse by future off-session
+			// auto-charges — see generate_next_invoice()'s auto-charge path and
+			// clientoctopus_handle_paypal_order_complete()'s vault-capture logic.
+			$paypal_source['attributes'] = [
+				'vault' => [
+					'store_in_vault' => 'ON_SUCCESS',
+					'usage_type'     => 'MERCHANT',
+				],
+			];
+		}
 
 		$order = ClientOctopus_PayPal::create_order( [
 			'intent'         => 'CAPTURE',
@@ -428,12 +467,7 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 				],
 			],
 			'payment_source' => [
-				'paypal' => [
-					'experience_context' => [
-						'return_url' => $success_url,
-						'cancel_url' => $cancel_url,
-					],
-				],
+				'paypal' => $paypal_source,
 			],
 		] );
 
@@ -461,7 +495,7 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 
 	$success_url = site_url( '/invoices/' . $token . '/success' ) . '?session_id={CHECKOUT_SESSION_ID}';
 
-	$session = ClientOctopus_Stripe::create_checkout_session( [
+	$session_params = [
 		'mode'                 => 'payment',
 		'payment_method_types' => [ 'card' ],
 		'line_items'           => [
@@ -477,7 +511,18 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 		'success_url'          => $success_url,
 		'cancel_url'           => $cancel_url,
 		'metadata'             => $metadata,
-	] );
+		'payment_intent_data'  => [ 'metadata' => $metadata ],
+	];
+
+	if ( $auto_charge_setup ) {
+		// Saves the card used for this payment against a Stripe Customer so
+		// generate_next_invoice()'s auto-charge path can reuse it off-session
+		// for future cycles — see clientoctopus_handle_checkout_complete().
+		$session_params['customer_creation'] = 'always';
+		$session_params['payment_intent_data']['setup_future_usage'] = 'off_session';
+	}
+
+	$session = ClientOctopus_Stripe::create_checkout_session( $session_params );
 
 	if ( is_wp_error( $session ) ) {
 		return $session;

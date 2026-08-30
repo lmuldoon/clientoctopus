@@ -68,7 +68,7 @@ class ClientOctopus_Stripe {
 	 *
 	 * @return array|WP_Error Decoded JSON body or WP_Error on failure.
 	 */
-	private static function request( string $method, string $endpoint, array $data = [] ): array|WP_Error {
+	private static function request( string $method, string $endpoint, array $data = [], string $idempotency_key = '' ): array|WP_Error {
 		$secret = self::get_secret_key();
 
 		if ( ! $secret ) {
@@ -89,6 +89,13 @@ class ClientOctopus_Stripe {
 				'Stripe-Version' => self::API_VERSION,
 			],
 		];
+
+		// Lets a caller guarantee a given logical charge attempt only ever
+		// results in one real Stripe charge, even if request() itself gets
+		// invoked twice concurrently for it (see charge_off_session()).
+		if ( '' !== $idempotency_key ) {
+			$args['headers']['Idempotency-Key'] = $idempotency_key;
+		}
 
 		if ( 'POST' === $method && ! empty( $data ) ) {
 			// http_build_query produces bracket notation (line_items[0][...]=val)
@@ -120,9 +127,15 @@ class ClientOctopus_Stripe {
 		}
 
 		if ( $code >= 400 ) {
-			$msg  = $body['error']['message'] ?? __( 'Stripe returned an error.', 'clientoctopus' );
-			$type = $body['error']['type']    ?? 'stripe_error';
-			return new WP_Error( $type, $msg, [ 'status' => $code ] );
+			$msg = $body['error']['message'] ?? __( 'Stripe returned an error.', 'clientoctopus' );
+			// Prefer Stripe's specific `code` (e.g. 'authentication_required',
+			// 'card_declined') over the coarser `type` (e.g. 'card_error') —
+			// callers need the specific reason to distinguish "needs SCA
+			// verification" from a genuine decline. Not every error has a
+			// `code` (e.g. some api_error responses only have `type`), so fall
+			// back to that, then a generic default.
+			$error_code = $body['error']['code'] ?? $body['error']['type'] ?? 'stripe_error';
+			return new WP_Error( $error_code, $msg, [ 'status' => $code ] );
 		}
 
 		return $body;
@@ -150,6 +163,73 @@ class ClientOctopus_Stripe {
 	 */
 	public static function retrieve_session( string $session_id ): array|WP_Error {
 		return self::request( 'GET', 'checkout/sessions/' . $session_id );
+	}
+
+	// ── Saved payment methods / off-session charging ──────────────────────────
+
+	/**
+	 * Retrieve a PaymentIntent by ID.
+	 *
+	 * @param string   $id     PaymentIntent ID (pi_xxx).
+	 * @param string[] $expand Optional dot-paths to expand (e.g. ['payment_method']).
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function retrieve_payment_intent( string $id, array $expand = [] ): array|WP_Error {
+		$params = $expand ? [ 'expand' => $expand ] : [];
+		return self::request( 'GET', 'payment_intents/' . $id, $params );
+	}
+
+	/**
+	 * Retrieve a PaymentMethod by ID (used to read card brand/last4 for display).
+	 *
+	 * @param string $id PaymentMethod ID (pm_xxx).
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function retrieve_payment_method( string $id ): array|WP_Error {
+		return self::request( 'GET', 'payment_methods/' . $id );
+	}
+
+	/**
+	 * Charge a previously-saved payment method off-session — used by
+	 * recurring profiles with billing_mode = 'auto_charge'. The caller is
+	 * responsible for having captured $customer_id/$payment_method_id from a
+	 * prior Checkout Session created with setup_future_usage = 'off_session'.
+	 *
+	 * @param string $customer_id       Stripe Customer ID (cus_xxx).
+	 * @param string $payment_method_id Stripe PaymentMethod ID (pm_xxx).
+	 * @param int    $amount_int        Amount in the currency's smallest unit (e.g. pence).
+	 * @param string $currency          Lowercase ISO 4217 currency code.
+	 * @param array  $metadata          Same shape as checkout session metadata.
+	 * @param string $idempotency_key   Pass a key stable per logical attempt (e.g.
+	 *                                  invoice id + retry count) so a concurrent or
+	 *                                  retried call for the same attempt can never
+	 *                                  result in two real charges.
+	 *
+	 * @return array|WP_Error The PaymentIntent object on success. A decline or an
+	 *                        SCA authentication_required response both come back
+	 *                        as a WP_Error here — callers treat any error the same
+	 *                        way (record a failed attempt, don't try to distinguish
+	 *                        decline reasons for retry purposes).
+	 */
+	public static function charge_off_session(
+		string $customer_id,
+		string $payment_method_id,
+		int $amount_int,
+		string $currency,
+		array $metadata = [],
+		string $idempotency_key = ''
+	): array|WP_Error {
+		return self::request( 'POST', 'payment_intents', [
+			'amount'         => $amount_int,
+			'currency'       => $currency,
+			'customer'       => $customer_id,
+			'payment_method' => $payment_method_id,
+			'off_session'    => 'true',
+			'confirm'        => 'true',
+			'metadata'       => $metadata,
+		], $idempotency_key );
 	}
 
 	// ── Webhook signature verification ────────────────────────────────────────

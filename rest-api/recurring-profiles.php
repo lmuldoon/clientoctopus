@@ -126,6 +126,12 @@ function clientoctopus_recurring_profile_field_args(): array {
 		'start_date'      => [ 'type' => 'string',  'required' => false, 'sanitize_callback' => 'sanitize_text_field', 'default' => '' ],
 		'end_date'        => [ 'type' => 'string',  'required' => false, 'sanitize_callback' => 'sanitize_text_field', 'default' => '' ],
 		'max_occurrences' => [ 'type' => 'integer', 'required' => false, 'minimum' => 1 ],
+		// No 'default' here deliberately — 'manual' is a valid explicit choice, not
+		// just the fallback, so a REST-applied default would make "explicitly manual"
+		// indistinguishable from "field omitted" on update(). create()/update() in
+		// class-recurring-profile.php each apply their own default when this comes
+		// through as null (same pattern as frequency/discount_type elsewhere here).
+		'billing_mode'    => [ 'type' => 'string',  'required' => false, 'enum' => [ 'manual', 'auto_charge' ] ],
 	];
 }
 
@@ -146,6 +152,7 @@ function clientoctopus_recurring_profile_params_from_request( WP_REST_Request $r
 		'start_date'      => $request->get_param( 'start_date' ),
 		'end_date'        => $request->get_param( 'end_date' ),
 		'max_occurrences' => $request->get_param( 'max_occurrences' ),
+		'billing_mode'    => $request->get_param( 'billing_mode' ),
 	];
 }
 

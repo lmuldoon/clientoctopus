@@ -204,7 +204,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // ─────────────────────────────────────────────────────────────────────────────
 
 define( 'CLIENTOCTOPUS_VERSION',        '1.2.0' );
-define( 'CLIENTOCTOPUS_DB_VERSION',     '27' );
+define( 'CLIENTOCTOPUS_DB_VERSION',     '30' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '4' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'CLIENTOCTOPUS_URL',        plugin_dir_url( __FILE__ ) );
@@ -279,6 +279,31 @@ spl_autoload_register( static function ( string $class ): void {
  */
 function clientoctopus_can_user( int $user_id, string $feature, array $options = [] ): bool|string {
 	return ClientOctopus_Entitlements::can_user( $user_id, $feature, $options );
+}
+
+/**
+ * Compute the next UTC timestamp at which $hour:00 occurs in the site's own
+ * configured timezone — used to anchor daily crons to a predictable, sensible
+ * time instead of wp_schedule_event( time(), ... )'s default of "whenever
+ * this code first happened to run," which produces a different, effectively
+ * random run time on every install.
+ *
+ * Note: WP-Cron's 'daily' schedule recurs every exactly 86400 seconds from
+ * this anchor, not "at wall-clock $hour" — so the actual run time will drift
+ * by an hour on the two days a year the site's timezone crosses a Daylight
+ * Saving boundary. That's an inherent WP-Cron limitation, not fixable here.
+ *
+ * @param int $hour 0-23, in the site's local time.
+ *
+ * @return int Unix timestamp (UTC).
+ */
+function clientoctopus_next_daily_anchor( int $hour ): int {
+	$now    = current_datetime();
+	$anchor = $now->setTime( $hour, 0, 0 );
+	if ( $anchor <= $now ) {
+		$anchor = $anchor->modify( '+1 day' );
+	}
+	return $anchor->getTimestamp();
 }
 
 /**
@@ -663,6 +688,17 @@ final class ClientOctopus {
 					clientoctopus_create_tables();
 					update_option( 'clientoctopus_db_version', CLIENTOCTOPUS_DB_VERSION );
 				}
+
+				// DB version 30: the daily crons switched from an arbitrary
+				// wp_schedule_event( time(), ... ) anchor to a predictable 9am-local
+				// one (see clientoctopus_next_daily_anchor()). Clear the old
+				// schedules so they get picked back up with the new anchor by the
+				// existing `init`-hooked reschedule checks below, which run earlier
+				// in the request than this admin_init callback — so the fresh 9am
+				// schedule takes effect starting the very next admin page load.
+				wp_clear_scheduled_hook( 'clientoctopus_daily_automations' );
+				wp_clear_scheduled_hook( 'clientoctopus_process_recurring_profiles' );
+				wp_clear_scheduled_hook( 'clientoctopus_retry_failed_recurring_charges' );
 			}
 		} );
 
@@ -864,7 +900,20 @@ final class ClientOctopus {
 			}, $line_items );
 
 			$recurring = $content['recurring'];
-			$profile   = ClientOctopus_Recurring_Profile::create( $owner_id, [
+
+			// auto_charge requested but no longer actually usable (e.g. the plan
+			// or gateway configuration changed between proposal creation and
+			// client acceptance): silently fall back to manual rather than
+			// dropping the whole recurring profile — the client already
+			// accepted a proposal promising recurring billing, so it must
+			// still get created. Uses the same check create() itself applies
+			// via sanitize_billing_mode(), so this can never desync from it.
+			$billing_mode = $recurring['billing_mode'] ?? 'manual';
+			if ( 'auto_charge' === $billing_mode && ! ClientOctopus_Recurring_Profile::can_auto_charge( $owner_id ) ) {
+				$billing_mode = 'manual';
+			}
+
+			$profile = ClientOctopus_Recurring_Profile::create( $owner_id, [
 				'client_id'       => (int) $proposal['client_id'],
 				'title'           => $proposal['title'] ?? '',
 				'line_items'      => $profile_line_items,
@@ -878,6 +927,7 @@ final class ClientOctopus {
 				'max_occurrences' => $recurring['max_occurrences'] ?? null,
 				'payment_terms'   => $recurring['payment_terms']   ?? '',
 				'notes'           => $recurring['notes']           ?? '',
+				'billing_mode'    => $billing_mode,
 			] );
 
 			if ( is_wp_error( $profile ) ) {
@@ -1004,6 +1054,19 @@ final class ClientOctopus {
 			] );
 		}, 99, 2 );
 
+		// Fired from rest-api/payments.php::clientoctopus_handle_payment_failed() —
+		// gateway-agnostic, covers both invoice- and proposal-type declines/expirations.
+		add_action( 'clientoctopus_payment_failed', static function ( int $owner_id, array $context ): void {
+			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
+			clientoctopus_webhook_dispatch( 'payment.failed', $owner_id, [
+				'type'        => $context['type'] ?? '',
+				'invoice_id'  => $context['invoice_id']  ?? null,
+				'proposal_id' => $context['proposal_id'] ?? null,
+				'amount'      => $context['amount']   ?? 0,
+				'currency'    => $context['currency'] ?? '',
+			] );
+		}, 99, 2 );
+
 		add_action( 'clientoctopus_project_created', static function ( int $project_id, int $owner_id ): void {
 			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
 			$project = ClientOctopus_Project::get( $project_id, $owner_id );
@@ -1120,7 +1183,7 @@ final class ClientOctopus {
 
 		add_action( 'init', static function (): void {
 			if ( ! wp_next_scheduled( 'clientoctopus_daily_automations' ) ) {
-				wp_schedule_event( time(), 'daily', 'clientoctopus_daily_automations' );
+				wp_schedule_event( clientoctopus_next_daily_anchor( 9 ), 'daily', 'clientoctopus_daily_automations' );
 			}
 		} );
 
@@ -1140,7 +1203,26 @@ final class ClientOctopus {
 
 		add_action( 'init', static function (): void {
 			if ( ! wp_next_scheduled( 'clientoctopus_process_recurring_profiles' ) ) {
-				wp_schedule_event( time(), 'daily', 'clientoctopus_process_recurring_profiles' );
+				wp_schedule_event( clientoctopus_next_daily_anchor( 9 ), 'daily', 'clientoctopus_process_recurring_profiles' );
+			}
+		} );
+
+		// Auto-charge retry/dunning — separate daily cron from the one above,
+		// which only ever generates new cycles. This one re-attempts a charge
+		// on a profile's existing unpaid invoice after a prior failure.
+		add_action( 'clientoctopus_retry_failed_recurring_charges', static function (): void {
+			$path = CLIENTOCTOPUS_DIR . 'modules/invoices/class-recurring-profile.php';
+			if ( ! class_exists( 'ClientOctopus_Recurring_Profile' ) && file_exists( $path ) ) {
+				require_once $path;
+			}
+			if ( class_exists( 'ClientOctopus_Recurring_Profile' ) ) {
+				ClientOctopus_Recurring_Profile::retry_failed_charges();
+			}
+		} );
+
+		add_action( 'init', static function (): void {
+			if ( ! wp_next_scheduled( 'clientoctopus_retry_failed_recurring_charges' ) ) {
+				wp_schedule_event( clientoctopus_next_daily_anchor( 9 ), 'daily', 'clientoctopus_retry_failed_recurring_charges' );
 			}
 		} );
 		//@end:fs_premium_only
@@ -1475,6 +1557,7 @@ final class ClientOctopus {
 			'teamSeats'            => ClientOctopus_Entitlements::get_team_seats_used( $user_id ),
 			'teamLimit'            => ClientOctopus_Entitlements::get_team_limit( $user_id ),
 			'senderEmailConfigured' => ! empty( get_option( 'clientoctopus_from_email', '' ) ),
+			'paymentProvider'       => 'paypal' === get_option( 'clientoctopus_payment_provider', 'stripe' ) ? 'paypal' : 'stripe',
 			'homeUrl'               => home_url(),
 		];
 

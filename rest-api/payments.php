@@ -305,6 +305,7 @@ function clientoctopus_rest_payment_create_session( WP_REST_Request $request ): 
 			'success_url'          => $success_url,
 			'cancel_url'           => $cancel_url,
 			'metadata'             => $metadata,
+			'payment_intent_data'  => [ 'metadata' => $metadata ],
 		] );
 
 		if ( is_wp_error( $session ) ) {
@@ -470,11 +471,25 @@ function clientoctopus_rest_payment_webhook( WP_REST_Request $request ): WP_REST
 
 		case 'checkout.session.async_payment_failed':
 		case 'checkout.session.expired':
+			$session = $event['data']['object'] ?? [];
+			clientoctopus_handle_payment_failed( [
+				'provider'   => 'stripe',
+				'gateway_id' => (string) ( $session['id'] ?? '' ),
+				'metadata'   => is_array( $session['metadata'] ?? null ) ? $session['metadata'] : [],
+			] );
+			break;
+
 		case 'payment_intent.payment_failed':
-			$session_id = $event['data']['object']['id'] ?? '';
-			if ( $session_id ) {
-				ClientOctopus_Payment::mark_failed( $session_id );
-			}
+			// A bare PaymentIntent has no Checkout Session id — mark_failed()'s
+			// stripe_session_id lookup can't match it. payment_intent_data.metadata
+			// (set at session creation) is copied onto the PaymentIntent itself,
+			// so route on that instead of trying to resolve back to a session id.
+			$intent = $event['data']['object'] ?? [];
+			clientoctopus_handle_payment_failed( [
+				'provider'   => 'stripe',
+				'gateway_id' => '',
+				'metadata'   => is_array( $intent['metadata'] ?? null ) ? $intent['metadata'] : [],
+			] );
 			break;
 	}
 
@@ -543,9 +558,27 @@ function clientoctopus_rest_payment_paypal_webhook( WP_REST_Request $request ): 
 
 		case 'PAYMENT.CAPTURE.DENIED':
 		case 'CHECKOUT.ORDER.VOIDED':
-			$order_id = $event['resource']['id'] ?? ( $event['resource']['supplementary_data']['related_ids']['order_id'] ?? '' );
+			// CHECKOUT.ORDER.VOIDED's resource IS the order (resource.id = order id).
+			// PAYMENT.CAPTURE.DENIED's resource is the capture — resource.id there is the
+			// capture id, not the order id; the real order id is nested under
+			// supplementary_data.related_ids.order_id. Resolve order-id-first so this
+			// never silently passes a capture id to an order-id lookup.
+			$order_id = $event['resource']['supplementary_data']['related_ids']['order_id']
+				?? $event['resource']['id']
+				?? '';
 			if ( $order_id ) {
-				ClientOctopus_Payment::mark_failed( $order_id, 'paypal' );
+				$order    = ClientOctopus_PayPal::get_order( $order_id );
+				$metadata = [];
+				if ( ! is_wp_error( $order ) ) {
+					$custom_id = $order['purchase_units'][0]['custom_id'] ?? '';
+					$decoded   = json_decode( (string) $custom_id, true );
+					$metadata  = is_array( $decoded ) ? $decoded : [];
+				}
+				clientoctopus_handle_payment_failed( [
+					'provider'   => 'paypal',
+					'gateway_id' => $order_id,
+					'metadata'   => $metadata,
+				] );
 			}
 			break;
 	}
@@ -611,6 +644,15 @@ function clientoctopus_handle_paypal_order_complete( array $order ): void {
 		$metadata = [];
 	}
 
+	// Present only when this order's payment_source.paypal.attributes.vault
+	// requested store_in_vault (auto-charge setup) — see rest-api/invoices.php.
+	$vault = $order['payment_source']['paypal']['attributes']['vault'] ?? null;
+	$paypal_vault = is_array( $vault ) && ! empty( $vault['id'] ) ? [
+		'id'          => (string) $vault['id'],
+		'customer_id' => (string) ( $vault['customer']['id'] ?? '' ),
+		'payer_email' => (string) ( $order['payer']['email_address'] ?? '' ),
+	] : null;
+
 	clientoctopus_handle_payment_complete( [
 		'gateway_id'     => (string) ( $order['id'] ?? '' ),
 		'provider'       => 'paypal',
@@ -619,6 +661,7 @@ function clientoctopus_handle_paypal_order_complete( array $order ): void {
 		'metadata'       => $metadata,
 		'amount'         => (float) ( $capture_amount['value'] ?? 0 ),
 		'currency'       => strtoupper( (string) ( $capture_amount['currency_code'] ?? '' ) ),
+		'paypal_vault'   => $paypal_vault,
 	] );
 }
 
@@ -638,6 +681,8 @@ function clientoctopus_handle_paypal_order_complete( array $order ): void {
  *                                      (type, invoice_id|proposal_id, token, deposit_pct).
  *     @type float      $amount         Charge amount, in the currency's major unit.
  *     @type string     $currency       ISO 4217 currency code, uppercase.
+ *     @type array|null $paypal_vault   { id, customer_id, payer_email } when this PayPal
+ *                                      order requested vaulting — see clientoctopus_handle_paypal_order_complete().
  * }
  */
 function clientoctopus_handle_payment_complete( array $normalized ): void {
@@ -649,6 +694,7 @@ function clientoctopus_handle_payment_complete( array $normalized ): void {
 	$amount          = (float) ( $normalized['amount'] ?? 0 );
 	$currency        = strtoupper( (string) ( $normalized['currency'] ?? '' ) );
 	$proposal_id     = (int) ( $metadata['proposal_id'] ?? 0 );
+	$paypal_vault    = is_array( $normalized['paypal_vault'] ?? null ) ? $normalized['paypal_vault'] : null;
 
 	if ( ! $gateway_id ) {
 		return;
@@ -663,6 +709,12 @@ function clientoctopus_handle_payment_complete( array $normalized ): void {
 		}
 		if ( class_exists( 'ClientOctopus_Invoice' ) ) {
 			ClientOctopus_Invoice::mark_paid_for_provider( $invoice_id, $gateway_id, $transaction_id, $provider );
+		}
+		if ( 'stripe' === $provider && $customer_id && $transaction_id ) {
+			clientoctopus_capture_stripe_saved_card( (int) ( $metadata['client_id'] ?? 0 ), (string) $customer_id, $transaction_id );
+		}
+		if ( 'paypal' === $provider && ! empty( $paypal_vault['id'] ) ) {
+			clientoctopus_capture_paypal_saved_card( (int) ( $metadata['client_id'] ?? 0 ), $paypal_vault );
 		}
 		return;
 	}
@@ -837,4 +889,296 @@ function clientoctopus_notify_owner_payment_complete( int $owner_id, array $prop
 		}
 	}
 
+}
+
+/**
+ * Persist the card used for an invoice payment against the client record, for
+ * reuse by a recurring profile's auto-charge cycles. Only ever called when the
+ * checkout session had a Stripe customer attached (i.e. customer_creation was
+ * requested — which rest-api/invoices.php only does for a billing_mode =
+ * 'auto_charge' recurring profile's invoices), so no extra mode check needed here.
+ *
+ * $client_id comes from the session's own metadata (captured at Checkout
+ * Session creation time), not a fresh lookup against the invoices table —
+ * an admin reassigning the invoice to a different client between session
+ * creation and webhook delivery must never cause the saved card to attach
+ * to the wrong (new) client instead of whoever actually paid.
+ *
+ * @param int    $client_id
+ * @param string $customer_id   Stripe Customer ID (cus_xxx).
+ * @param string $payment_intent_id PaymentIntent ID (pi_xxx) from this session.
+ */
+function clientoctopus_capture_stripe_saved_card( int $client_id, string $customer_id, string $payment_intent_id ): void {
+	global $wpdb;
+
+	if ( ! $client_id ) {
+		return;
+	}
+
+	$intent = ClientOctopus_Stripe::retrieve_payment_intent( $payment_intent_id, [ 'payment_method' ] );
+	if ( is_wp_error( $intent ) ) {
+		return;
+	}
+
+	$payment_method = $intent['payment_method'] ?? null;
+	if ( ! is_array( $payment_method ) ) {
+		// Not expanded for some reason — fall back to a plain ID with no brand/last4.
+		$pm_id    = is_string( $payment_method ) ? $payment_method : '';
+		$pm_brand = null;
+		$pm_last4 = null;
+	} else {
+		$pm_id    = (string) ( $payment_method['id'] ?? '' );
+		$pm_brand = $payment_method['card']['brand'] ?? null;
+		$pm_last4 = $payment_method['card']['last4'] ?? null;
+	}
+
+	if ( ! $pm_id ) {
+		return;
+	}
+
+	$wpdb->update(
+		$wpdb->prefix . 'clientoctopus_clients',
+		[
+			'stripe_customer_id'       => $customer_id,
+			'stripe_payment_method_id' => $pm_id,
+			'stripe_pm_brand'          => $pm_brand,
+			'stripe_pm_last4'          => $pm_last4,
+		],
+		[ 'id' => $client_id ]
+	);
+}
+
+/**
+ * Persist a vaulted PayPal payment method against the client record, for
+ * reuse by a recurring profile's auto-charge cycles — the PayPal counterpart
+ * to clientoctopus_capture_stripe_saved_card(). $client_id comes from the
+ * order's own metadata (captured at create_order() time), for the same
+ * client-reassignment-race reason documented there.
+ *
+ * @param int   $client_id
+ * @param array $vault { id, customer_id, payer_email }
+ */
+function clientoctopus_capture_paypal_saved_card( int $client_id, array $vault ): void {
+	global $wpdb;
+
+	if ( ! $client_id || empty( $vault['id'] ) ) {
+		return;
+	}
+
+	$wpdb->update(
+		$wpdb->prefix . 'clientoctopus_clients',
+		[
+			'paypal_vault_id'          => $vault['id'],
+			'paypal_vault_customer_id' => $vault['customer_id'] ?? '',
+			'paypal_payer_email'       => $vault['payer_email'] ?? '',
+		],
+		[ 'id' => $client_id ]
+	);
+}
+
+/**
+ * Gateway-agnostic payment failure core.
+ *
+ * Mirrors clientoctopus_handle_payment_complete()'s type-based branching, but
+ * for declined/expired/voided payment attempts. Before this existed, a failed
+ * invoice-type session did nothing at all (invoices never had a row in
+ * clientoctopus_payments for mark_failed() to update), and a failed
+ * proposal-type session updated the payments table silently with no
+ * notification to anyone.
+ *
+ * @param array $normalized {
+ *     @type string $provider   'stripe' | 'paypal'.
+ *     @type string $gateway_id Stripe session ID or PayPal order ID. May be
+ *                               empty for Stripe payment_intent.payment_failed,
+ *                               which is routed purely on metadata instead.
+ *     @type array  $metadata   Same shape as the success path (type, invoice_id|proposal_id).
+ * }
+ */
+function clientoctopus_handle_payment_failed( array $normalized ): void {
+	$provider   = 'paypal' === ( $normalized['provider'] ?? 'stripe' ) ? 'paypal' : 'stripe';
+	$gateway_id = (string) ( $normalized['gateway_id'] ?? '' );
+	$metadata   = is_array( $normalized['metadata'] ?? null ) ? $normalized['metadata'] : [];
+	$invoice_id  = (int) ( $metadata['invoice_id'] ?? 0 );
+	$proposal_id = (int) ( $metadata['proposal_id'] ?? 0 );
+
+	global $wpdb;
+
+	// ── Invoice payment branch ────────────────────────────────────────────────
+	if ( $invoice_id && 'invoice' === ( $metadata['type'] ?? '' ) ) {
+		$invoice = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, owner_id, client_id, title, currency, total_amount, token
+				 FROM {$wpdb->prefix}clientoctopus_invoices WHERE id = %d AND deleted_at IS NULL",
+				$invoice_id
+			),
+			ARRAY_A
+		);
+		if ( ! $invoice ) {
+			return;
+		}
+		do_action( 'clientoctopus_payment_failed', (int) $invoice['owner_id'], [
+			'type'       => 'invoice',
+			'invoice_id' => $invoice_id,
+			'amount'     => (float) $invoice['total_amount'],
+			'currency'   => $invoice['currency'],
+		] );
+		clientoctopus_notify_owner_payment_failed( (int) $invoice['owner_id'], [
+			'type'          => 'invoice',
+			'title'         => $invoice['title'],
+			'amount'        => (float) $invoice['total_amount'],
+			'currency'      => $invoice['currency'],
+			'client_id'     => $invoice['client_id'],
+			'cta_url'       => admin_url( 'admin.php?page=clientoctopus-invoices' ),
+			// The client's own pay page — distinct from the owner's admin CTA
+			// above. Without this the client email's "retry using the same
+			// payment link" copy had no link behind it at all.
+			'client_cta_url' => site_url( '/invoices/' . $invoice['token'] ),
+			// 'decline' | 'authentication_required' — see class-recurring-profile.php's
+			// attempt_auto_charge(). Only ever set for auto-charge failures; manual
+			// payment failures (no reason in metadata) default to 'decline' copy.
+			'reason'        => $metadata['reason'] ?? 'decline',
+		] );
+		return;
+	}
+
+	// ── Proposal payment branch ────────────────────────────────────────────────
+	if ( ! $proposal_id ) {
+		return;
+	}
+
+	// checkout.session.* failures still key off the payments-table row, which
+	// only ever exists for proposal-type sessions — keep using mark_failed()
+	// for those so its DB bookkeeping (status='failed') is preserved.
+	if ( $gateway_id ) {
+		ClientOctopus_Payment::mark_failed( $gateway_id, $provider );
+	}
+
+	$proposal = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT id, owner_id, client_id, title, total_amount, token FROM {$wpdb->prefix}clientoctopus_proposals WHERE id = %d",
+			$proposal_id
+		),
+		ARRAY_A
+	);
+	if ( ! $proposal ) {
+		return;
+	}
+
+	$currency = strtoupper( (string) ( $metadata['currency'] ?? 'GBP' ) );
+
+	do_action( 'clientoctopus_payment_failed', (int) $proposal['owner_id'], [
+		'type'        => 'proposal',
+		'proposal_id' => $proposal_id,
+		'amount'      => (float) $proposal['total_amount'],
+		'currency'    => $currency,
+	] );
+	clientoctopus_notify_owner_payment_failed( (int) $proposal['owner_id'], [
+		'type'           => 'proposal',
+		'title'          => $proposal['title'],
+		'amount'         => (float) $proposal['total_amount'],
+		'currency'       => $currency,
+		'client_id'      => $proposal['client_id'],
+		'cta_url'        => admin_url( 'admin.php?page=clientoctopus-proposals' ),
+		'client_cta_url' => site_url( '/proposals/' . $proposal['token'] ),
+	] );
+}
+
+/**
+ * Send the owner (and client, if resolvable) an email when a payment attempt
+ * on their invoice or proposal is declined/expired/voided.
+ *
+ * @param int   $owner_id WordPress user ID.
+ * @param array $context  { type, title, amount, currency, client_id, cta_url, reason }
+ */
+function clientoctopus_notify_owner_payment_failed( int $owner_id, array $context ): void {
+	global $wpdb;
+
+	$owner = get_userdata( $owner_id );
+	if ( ! $owner ) {
+		return;
+	}
+
+	$currency        = $context['currency'] ?: 'GBP';
+	$amount_fmt      = $currency . ' ' . number_format( (float) $context['amount'], 2 );
+	$title           = esc_html( $context['title'] ?? ( 'invoice' === $context['type'] ? 'Invoice' : 'Proposal' ) );
+	$noun            = 'invoice' === $context['type'] ? __( 'invoice', 'clientoctopus' ) : __( 'proposal', 'clientoctopus' );
+	$needs_auth      = 'authentication_required' === ( $context['reason'] ?? 'decline' );
+
+	/* translators: %s is the invoice or proposal title */
+	$subject = $needs_auth
+		? sprintf( __( 'Payment needs verification for "%s"', 'clientoctopus' ), sanitize_text_field( $context['title'] ?? '' ) )
+		: sprintf( __( '⚠️ Payment failed for "%s"', 'clientoctopus' ), sanitize_text_field( $context['title'] ?? '' ) );
+	$owner_explanation = $needs_auth
+		? __( "needs verification — the client's bank is asking for a one-time confirmation before it can go through. This doesn't necessarily mean the card is broken.", 'clientoctopus' )
+		: __( 'was declined, expired, or cancelled.', 'clientoctopus' );
+	wp_mail(
+		$owner->user_email,
+		$subject,
+		clientoctopus_email_html( [
+			'name'      => $owner->display_name,
+			/* translators: 1: amount, 2: invoice/proposal noun, 3: title, 4: explanation */
+			'body'      => sprintf(
+				"<p style=\"margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;\">A payment attempt of <strong style=\"color:#1A1A2E;\">%s</strong> on your %s <em>%s</em> %s</p><p style=\"margin:0;font-size:16px;color:#6B7280;line-height:1.65;\">No action is needed on your end — the client can retry from the same payment link.</p>",
+				$amount_fmt,
+				$noun,
+				$title,
+				$owner_explanation
+			),
+			'cta_label' => 'invoice' === $context['type'] ? __( 'View Invoice', 'clientoctopus' ) : __( 'View Proposal', 'clientoctopus' ),
+			'cta_url'   => $context['cta_url'],
+		] ),
+		[ 'Content-Type: text/html; charset=UTF-8' ]
+	);
+
+	if ( empty( $context['client_id'] ) ) {
+		return;
+	}
+
+	$client_row = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT name, email FROM {$wpdb->prefix}clientoctopus_clients WHERE id = %d",
+			(int) $context['client_id']
+		),
+		ARRAY_A
+	);
+	if ( ! $client_row || empty( $client_row['email'] ) ) {
+		return;
+	}
+
+	$client_subject = $needs_auth
+		/* translators: %s is the invoice or proposal title */
+		? sprintf( __( 'Please verify your payment — %s', 'clientoctopus' ), sanitize_text_field( $context['title'] ?? '' ) )
+		/* translators: %s is the invoice or proposal title */
+		: sprintf( __( 'Payment didn\'t go through — %s', 'clientoctopus' ), sanitize_text_field( $context['title'] ?? '' ) );
+	$client_explanation = $needs_auth
+		? __( "Your bank is asking us to verify this payment before it can go through. This isn't a declined card — it just needs a quick one-time confirmation from you.", 'clientoctopus' )
+		: __( "didn't go through. This can happen if a card was declined, expired, or the checkout session timed out.", 'clientoctopus' );
+
+	wp_mail(
+		$client_row['email'],
+		$client_subject,
+		clientoctopus_email_html( [
+			'name'      => $client_row['name'] ?? '',
+			'body'      => $needs_auth
+				/* translators: 1: amount, 2: invoice/proposal noun, 3: title */
+				? sprintf(
+					"<p style=\"margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;\">%s</p><p style=\"margin:0;font-size:16px;color:#6B7280;line-height:1.65;\">Please confirm your payment of <strong style=\"color:#1A1A2E;\">%s</strong> for the %s <em>%s</em> using the link below.</p>",
+					$client_explanation,
+					$amount_fmt,
+					$noun,
+					$title
+				)
+				/* translators: 1: amount, 2: invoice/proposal noun, 3: title, 4: explanation */
+				: sprintf(
+					"<p style=\"margin:0 0 16px;font-size:16px;color:#6B7280;line-height:1.65;\">Your payment of <strong style=\"color:#1A1A2E;\">%s</strong> for the %s <em>%s</em> %s</p><p style=\"margin:0;font-size:16px;color:#6B7280;line-height:1.65;\">Please try again using the link below.</p>",
+					$amount_fmt,
+					$noun,
+					$title,
+					$client_explanation
+				),
+			'cta_label' => $needs_auth ? __( 'Confirm Payment', 'clientoctopus' ) : __( 'Retry Payment', 'clientoctopus' ),
+			'cta_url'   => $context['client_cta_url'] ?? '',
+		] ),
+		[ 'Content-Type: text/html; charset=UTF-8' ]
+	);
 }

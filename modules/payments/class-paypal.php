@@ -137,13 +137,18 @@ class ClientOctopus_PayPal {
 	/**
 	 * Make an authenticated request to the PayPal API.
 	 *
-	 * @param string     $method   HTTP method: 'GET' | 'POST'
-	 * @param string     $endpoint e.g. 'v2/checkout/orders'
-	 * @param array|null $body     JSON body (POST only).
+	 * @param string     $method          HTTP method: 'GET' | 'POST'
+	 * @param string     $endpoint        e.g. 'v2/checkout/orders'
+	 * @param array|null $body            JSON body (POST only).
+	 * @param string     $idempotency_key Sent as PayPal-Request-Id — PayPal's
+	 *                                    equivalent of Stripe's Idempotency-Key,
+	 *                                    guaranteeing a retried/concurrent call
+	 *                                    for the same logical request never
+	 *                                    results in two real charges.
 	 *
 	 * @return array|WP_Error Decoded JSON body or WP_Error on failure.
 	 */
-	private static function request( string $method, string $endpoint, ?array $body = null ): array|WP_Error {
+	private static function request( string $method, string $endpoint, ?array $body = null, string $idempotency_key = '' ): array|WP_Error {
 		$token = self::get_access_token();
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -157,6 +162,10 @@ class ClientOctopus_PayPal {
 				'Content-Type'  => 'application/json',
 			],
 		];
+
+		if ( '' !== $idempotency_key ) {
+			$args['headers']['PayPal-Request-Id'] = $idempotency_key;
+		}
 
 		if ( 'POST' === $method ) {
 			// PHP can't distinguish an empty array from an empty object — wp_json_encode( [] )
@@ -192,14 +201,55 @@ class ClientOctopus_PayPal {
 	/**
 	 * Create a PayPal order.
 	 *
-	 * @param array $params Full Orders API v2 request body — e.g.
-	 *                      { intent: 'CAPTURE', purchase_units: [...], payment_source: {...} }.
+	 * @param array  $params          Full Orders API v2 request body — e.g.
+	 *                                { intent: 'CAPTURE', purchase_units: [...], payment_source: {...} }.
+	 * @param string $idempotency_key Optional — sent as PayPal-Request-Id.
 	 *
 	 * @return array|WP_Error Order object (including its `links` array — find the
 	 *                        `payer-action` rel for the buyer approval URL) or error.
 	 */
-	public static function create_order( array $params ): array|WP_Error {
-		return self::request( 'POST', 'v2/checkout/orders', $params );
+	public static function create_order( array $params, string $idempotency_key = '' ): array|WP_Error {
+		return self::request( 'POST', 'v2/checkout/orders', $params, $idempotency_key );
+	}
+
+	/**
+	 * Charge a previously-vaulted PayPal payment method — used by recurring
+	 * profiles with billing_mode = 'auto_charge'. Unlike the manual flow, an
+	 * order created with a vault_id and intent CAPTURE completes synchronously
+	 * in this same call (status COMPLETED directly) — no buyer approval step,
+	 * no separate capture_order() call needed.
+	 *
+	 * @param string $vault_id        Saved PayPal payment token (from a prior
+	 *                                order's payment_source.paypal.attributes.vault.id).
+	 * @param float  $amount          Amount in the currency's major unit (e.g. pounds, not pence).
+	 * @param string $currency        ISO 4217 currency code, uppercase.
+	 * @param array  $metadata        Same shape as the manual flow's custom_id metadata.
+	 * @param string $idempotency_key Stable per logical attempt — see request()'s docblock.
+	 *
+	 * @return array|WP_Error The completed Order object, or an error if the charge failed.
+	 */
+	public static function charge_with_vault(
+		string $vault_id,
+		float $amount,
+		string $currency,
+		array $metadata = [],
+		string $idempotency_key = ''
+	): array|WP_Error {
+		return self::create_order( [
+			'intent'         => 'CAPTURE',
+			'payment_source' => [
+				'paypal' => [ 'vault_id' => $vault_id ],
+			],
+			'purchase_units' => [
+				[
+					'amount'    => [
+						'currency_code' => strtoupper( $currency ),
+						'value'         => number_format( $amount, 2, '.', '' ),
+					],
+					'custom_id' => wp_json_encode( $metadata ),
+				],
+			],
+		], $idempotency_key );
 	}
 
 	/**

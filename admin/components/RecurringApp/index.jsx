@@ -64,12 +64,14 @@ const STATUS_CONFIG = {
 	active:    { bg: 'var(--co-emerald-bg)', color: 'var(--co-emerald)',  label: 'Active'    },
 	paused:    { bg: '#FEF3C7',              color: '#92400E',            label: 'Paused'    },
 	cancelled: { bg: 'var(--co-slate-100)',  color: 'var(--co-slate-400)', label: 'Cancelled' },
+	past_due:  { bg: '#FEE2E2',              color: 'var(--co-red)',      label: 'Past Due'  },
 };
 
 const TABS = [
 	{ id: 'all',       label: 'All'       },
 	{ id: 'active',    label: 'Active'    },
 	{ id: 'paused',    label: 'Paused'    },
+	{ id: 'past_due',  label: 'Past Due'  },
 	{ id: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -210,6 +212,9 @@ const CSS = `
 
 .co-rec-end-toggle { display:flex; gap:16px; margin-bottom:12px; }
 .co-rec-end-toggle label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; color:var(--co-slate-600); cursor:pointer; }
+
+.co-rec-field label.co-rec-autocharge-row { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500; color:var(--co-slate-600); cursor:pointer; margin:4px 0 8px; }
+.co-rec-autocharge-row input[type="checkbox"] { width:16px; height:16px; min-width:16px; min-height:16px; margin:0; accent-color:var(--co-indigo); cursor:pointer; }
 `;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -426,6 +431,7 @@ const BLANK_FORM = {
 	start_date: today(),
 	end_mode: 'never', // 'never' | 'count' | 'date'
 	end_date: '', max_occurrences: '',
+	billing_mode: 'manual',
 };
 
 function RecurringEditor( { profile, onSaved, onBack } ) {
@@ -451,6 +457,7 @@ function RecurringEditor( { profile, onSaved, onBack } ) {
 			end_mode:        profile.max_occurrences ? 'count' : ( profile.end_date ? 'date' : 'never' ),
 			end_date:        profile.end_date || '',
 			max_occurrences: profile.max_occurrences || '',
+			billing_mode:    profile.billing_mode || 'manual',
 		};
 	} );
 
@@ -537,7 +544,34 @@ function RecurringEditor( { profile, onSaved, onBack } ) {
 					{ form.end_mode === 'date' && (
 						<input type="date" value={ form.end_date } onChange={ e => set( 'end_date', e.target.value ) } />
 					) }
-					<p className="co-rec-help">The client will receive a new invoice by email each cycle, with the usual Pay Now link — nothing is charged automatically.</p>
+					<label className="co-rec-autocharge-row">
+						<input
+							type="checkbox"
+							checked={ form.billing_mode === 'auto_charge' }
+							onChange={ e => set( 'billing_mode', e.target.checked ? 'auto_charge' : 'manual' ) }
+						/>
+						Auto-charge saved card
+					</label>
+					{ form.billing_mode === 'auto_charge' ? (
+						<p className="co-rec-help">The first invoice is paid manually as usual — that payment saves the client's card, and every invoice after that is charged automatically. If a charge fails, the client is notified and it's retried a few times before this profile pauses itself.</p>
+					) : (
+						<p className="co-rec-help">The client will receive a new invoice by email each cycle, with the usual Pay Now link — nothing is charged automatically.</p>
+					) }
+					{ isEdit && profile?._client_card_last4 && (
+						<p className="co-rec-help" style={ { color: 'var(--co-slate-500)' } }>
+							Card on file: { profile._client_card_brand ? profile._client_card_brand.charAt(0).toUpperCase() + profile._client_card_brand.slice(1) : 'Card' } •••• { profile._client_card_last4 }
+						</p>
+					) }
+					{ isEdit && ! profile?._client_card_last4 && profile?._client_paypal_email && (
+						<p className="co-rec-help" style={ { color: 'var(--co-slate-500)' } }>
+							PayPal account on file: { profile._client_paypal_email }
+						</p>
+					) }
+					{ isEdit && form.billing_mode === 'auto_charge' && profile?.status === 'past_due' && (
+						<p className="co-rec-help" style={ { color: 'var(--co-red)' } }>
+							Auto-charge is paused after repeated failures. Ask the client to update their card, or switch back to manual billing.
+						</p>
+					) }
 				</div>
 				<div className="co-rec-row-2">
 					<div className="co-rec-field">
@@ -674,7 +708,7 @@ function RecurringList( { profiles, pages = 1, counts = {}, query, onQueryChange
 										<td className="co-rec-client">{ p._client_name || '—' }</td>
 										<td className="co-rec-amount">{ fmt( total, p.currency ) }</td>
 										<td style={ { textTransform: 'capitalize' } }>{ p.frequency }</td>
-										<td><span className="co-rec-next">{ 'cancelled' === p.status ? '—' : formatDate( p.next_run_date ) }</span></td>
+										<td><span className="co-rec-next">{ [ 'cancelled', 'past_due' ].includes( p.status ) ? '—' : formatDate( p.next_run_date ) }</span></td>
 										<td><StatusBadge profile={ p } /></td>
 										<td>
 											<div className="co-rec-actions">
@@ -684,7 +718,7 @@ function RecurringList( { profiles, pages = 1, counts = {}, query, onQueryChange
 												{ p.status === 'active' && (
 													<button className="co-rec-act co-rec-act-pause" onClick={ () => onAction( 'pause', p ) } disabled={ busy } type="button">{ busy ? '…' : 'Pause' }</button>
 												) }
-												{ p.status === 'paused' && (
+												{ [ 'paused', 'past_due' ].includes( p.status ) && (
 													<button className="co-rec-act co-rec-act-resume" onClick={ () => onAction( 'resume', p ) } disabled={ busy } type="button">{ busy ? '…' : 'Resume' }</button>
 												) }
 												{ 'cancelled' !== p.status && (
