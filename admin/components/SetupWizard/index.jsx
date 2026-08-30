@@ -528,8 +528,8 @@ function WelcomeStep() {
 					<line x1="1" y1="10" x2="23" y2="10"/>
 				</svg>
 			),
-			title: 'Stripe Payments',
-			desc:  'Collect deposits and full payments at the point of proposal acceptance.',
+			title: 'Stripe & PayPal Payments',
+			desc:  "Accept one-off payments or set up automatic recurring billing — your clients' cards are charged securely, no manual chasing.",
 		},
 		{
 			icon: (
@@ -542,7 +542,18 @@ function WelcomeStep() {
 				</svg>
 			),
 			title: 'Invoices',
-			desc:  'Send professional invoices, track payment status, and let clients pay online via Stripe.',
+			desc:  'Send professional invoices, track payment status, and let clients pay online.',
+		},
+		{
+			icon: (
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+					stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+					<path d="M9 11l3 3L22 4"/>
+					<path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+				</svg>
+			),
+			title: 'Projects & Milestones',
+			desc:  'Track deliverables, deadlines, and approvals from kickoff to completion.',
 		},
 		{
 			icon: (
@@ -555,7 +566,7 @@ function WelcomeStep() {
 				</svg>
 			),
 			title: 'Client Portal',
-			desc:  'Give clients a branded portal to view proposals, projects, and files.',
+			desc:  'Give clients a branded portal to view proposals, projects, invoices, and files.',
 		},
 	];
 

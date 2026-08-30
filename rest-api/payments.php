@@ -1104,9 +1104,10 @@ function clientoctopus_notify_owner_payment_failed( int $owner_id, array $contex
 	$noun            = 'invoice' === $context['type'] ? __( 'invoice', 'clientoctopus' ) : __( 'proposal', 'clientoctopus' );
 	$needs_auth      = 'authentication_required' === ( $context['reason'] ?? 'decline' );
 
-	/* translators: %s is the invoice or proposal title */
 	$subject = $needs_auth
+		/* translators: %s is the invoice or proposal title */
 		? sprintf( __( 'Payment needs verification for "%s"', 'clientoctopus' ), sanitize_text_field( $context['title'] ?? '' ) )
+		/* translators: %s is the invoice or proposal title */
 		: sprintf( __( '⚠️ Payment failed for "%s"', 'clientoctopus' ), sanitize_text_field( $context['title'] ?? '' ) );
 	$owner_explanation = $needs_auth
 		? __( "needs verification — the client's bank is asking for a one-time confirmation before it can go through. This doesn't necessarily mean the card is broken.", 'clientoctopus' )

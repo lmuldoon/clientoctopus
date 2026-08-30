@@ -158,11 +158,13 @@ add_action( 'clientoctopus_invoice_paid', static function ( int $invoice_id, int
 add_action( 'clientoctopus_invoice_paid', static function ( int $invoice_id, int $owner_id ): void {
 	global $wpdb;
 
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	$profile_id = (int) $wpdb->get_var(
 		$wpdb->prepare( "SELECT recurring_profile_id FROM {$wpdb->prefix}clientoctopus_invoices WHERE id = %d", $invoice_id )
 	);
 	if ( ! $profile_id ) return;
 
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	$status = $wpdb->get_var(
 		$wpdb->prepare( "SELECT status FROM {$wpdb->prefix}clientoctopus_recurring_profiles WHERE id = %d", $profile_id )
 	);
