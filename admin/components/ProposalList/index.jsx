@@ -167,7 +167,7 @@ const CSS = `
   display:none;
 }
 input.co-list-search {
-  padding: 9px 14px 9px 36px;
+  padding: 9px 14px 9px 14px;
   border: var(--co-input-border);
   border-radius: var(--co-radius-sm);
   font-size: 13.5px;
@@ -212,12 +212,12 @@ input.co-list-search:focus { border-color: var(--co-indigo); box-shadow: var(--c
 .co-list-table tbody tr:hover .co-list-actions { opacity: 1; }
 
 /* Client cell */
-.co-list-client-name { font-size: 13.5px; font-weight: 600; color: var(--co-slate-800); }
+.co-list-client-name { font-size: 14px; font-weight: 600; color: var(--co-slate-800); }
 .co-list-client-company { font-size: 12px; color: var(--co-slate-400); margin-top: 2px; }
 
 /* Proposal title */
 .co-list-proposal-title {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--co-slate-600);
   overflow: hidden;
   white-space: nowrap;
@@ -243,7 +243,7 @@ a.co-list-recurring-badge:hover { background: var(--co-indigo); color: #fff; }
 
 /* Amount */
 .co-list-amount {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--co-slate-800);
   font-variant-numeric: tabular-nums;
@@ -362,7 +362,7 @@ a.co-list-recurring-badge:hover { background: var(--co-indigo); color: #fff; }
 
 /* Date */
 .co-list-date {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--co-slate-400);
 }
 

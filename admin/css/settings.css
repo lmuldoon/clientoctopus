@@ -7,21 +7,60 @@
 	padding: 32px 28px 64px;
 	font-family: 'Archivo', -apple-system, 'Segoe UI', sans-serif;
 }
-.co-settings-grid {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 20px;
-	align-items: start;
-	margin-bottom: 20px;
+/* ── Settings tabs ─────────────────────────────────────────────────── */
+.co-settings-tabs {
+	display: flex;
+	gap: 24px;
+	border-bottom: 1.5px solid #E5E7EB;
+	margin-bottom: 28px;
+	overflow-x: auto;
+	/* Setting only overflow-x forces the browser to implicitly treat
+	   overflow-y as auto too (per the CSS Overflow spec) — turning this
+	   single-row tab bar into something that can show an unwanted vertical
+	   scrollbar from the slightest sub-pixel height overflow (e.g. the
+	   margin-bottom: -1.5px border trick above). Explicit overflow-y: hidden
+	   keeps only the intended horizontal scroll behavior. */
+	overflow-y: hidden;
 }
-.co-settings-grid .co-card--full {
-	grid-column: 1 / -1;
+.co-settings-tab {
+	padding: 12px 0;
+	font-family: 'Archivo', -apple-system, sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	color: #6B7280;
+	background: none;
+	border: none;
+	border-bottom: 2.5px solid transparent;
+	cursor: pointer;
+	margin-bottom: -1.5px;
+	white-space: nowrap;
+	transition: color .15s;
 }
-.co-settings-grid .co-card {
+.co-settings-tab:hover {
+	color: #1A1A2E;
+}
+.co-settings-tab.active {
+	color: #6366F1;
+	border-bottom-color: #6366F1;
+}
+.co-settings-panel {
+	display: none;
+	animation: co-settings-panel-in .18s ease both;
+}
+.co-settings-panel.active {
+	display: block;
+}
+@keyframes co-settings-panel-in {
+	from { opacity: 0; transform: translateY(4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+.co-settings-panel .co-card {
 	margin-bottom: 0;
 }
-@media (max-width: 900px) {
-	.co-settings-grid { grid-template-columns: 1fr; }
+.co-settings-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
 }
 .co-settings-hero {
 	display: flex;
@@ -61,6 +100,13 @@
 	padding: 28px 32px;
 	margin-bottom: 20px;
 	box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.co-card--danger {
+	border-color: #FECACA;
+	background: #FEF2F2;
+}
+.co-card--danger .co-card__title {
+	color: #991B1B;
 }
 .co-card__title {
 	font-size: 15px;
@@ -158,6 +204,7 @@ input.co-input::placeholder, textarea.co-input::placeholder { color: #9CA3AF; fo
 .co-notice--success { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
 .co-notice--error   { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
 .co-btn-save {
+	margin-top: 28px;
 	display: inline-flex;
 	align-items: center;
 	gap: 9px;

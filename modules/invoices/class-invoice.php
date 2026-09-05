@@ -143,9 +143,9 @@ class ClientOctopus_Invoice {
 	 *
 	 * @param int $id
 	 * @param int $owner_id
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function send( int $id, int $owner_id ): true|WP_Error {
+	public static function send( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		$table   = $wpdb->prefix . 'clientoctopus_invoices';
@@ -182,9 +182,9 @@ class ClientOctopus_Invoice {
 	 *
 	 * @param int $id
 	 * @param int $owner_id
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function mark_paid_manual( int $id, int $owner_id ): true|WP_Error {
+	public static function mark_paid_manual( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		$table   = $wpdb->prefix . 'clientoctopus_invoices';
@@ -314,16 +314,34 @@ class ClientOctopus_Invoice {
 
 		$table = $wpdb->prefix . 'clientoctopus_invoices';
 		$ct    = $wpdb->prefix . 'clientoctopus_clients';
-		$row   = $wpdb->get_row(
+
+		// Resolve the token to an ID via hash_equals() rather than a direct
+		// `WHERE token = %s` equality lookup — see the identical pattern and
+		// comment in ClientOctopus_Proposal_Client::get_by_token(). The
+		// candidate query only pulls the narrow (id, token) pair, so this
+		// stays a fast, lightweight scan even as the invoices table grows.
+		$id = null;
+		$candidates = $wpdb->get_results(
+			"SELECT id, token FROM {$table} WHERE deleted_at IS NULL",
+			ARRAY_A
+		);
+		foreach ( $candidates as $candidate ) {
+			if ( hash_equals( (string) $candidate['token'], $token ) ) {
+				$id = (int) $candidate['id'];
+				break;
+			}
+		}
+
+		$row = $id ? $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT i.*, c.name AS _client_name
 				 FROM {$table} i
 				 LEFT JOIN {$ct} c ON c.id = i.client_id
-				 WHERE i.token = %s AND i.deleted_at IS NULL LIMIT 1",
-				$token
+				 WHERE i.id = %d LIMIT 1",
+				$id
 			),
 			ARRAY_A
-		);
+		) : null;
 
 		if ( ! $row ) {
 			return new WP_Error( 'invoice_not_found', __( 'Invoice not found.', 'clientoctopus' ), [ 'status' => 404 ] );
@@ -409,9 +427,9 @@ class ClientOctopus_Invoice {
 	 *
 	 * @param int $id
 	 * @param int $owner_id
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		$table   = $wpdb->prefix . 'clientoctopus_invoices';
@@ -435,9 +453,9 @@ class ClientOctopus_Invoice {
 	 *
 	 * @param int $id
 	 * @param int $owner_id
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function cancel( int $id, int $owner_id ): true|WP_Error {
+	public static function cancel( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		$table   = $wpdb->prefix . 'clientoctopus_invoices';

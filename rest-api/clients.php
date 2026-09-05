@@ -33,7 +33,7 @@ add_action( 'rest_api_init', static function (): void {
 		[
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => 'clientoctopus_rest_create_client',
-			'permission_callback' => 'clientoctopus_rest_require_manage',
+			'permission_callback' => 'clientoctopus_rest_require_edit',
 			'args'                => [
 				'name'    => [ 'type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
 				'email'   => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_email' ],
@@ -43,16 +43,18 @@ add_action( 'rest_api_init', static function (): void {
 		],
 	] );
 
-	//@fs_premium_only
-	register_rest_route( $ns, '/clients/(?P<id>\d+)/invite/', [
-		'methods'             => WP_REST_Server::CREATABLE,
-		'callback'            => 'clientoctopus_rest_invite_client',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
-		'args'                => [
-			'id' => [ 'type' => 'integer', 'required' => true ],
-		],
-	] );
-	//@end:fs_premium_only
+	// This "if" block is auto-removed from the free WP.org build by
+	// Freemius's deployment processor.
+	if ( clientoctopus_fs()->is__premium_only() ) {
+		register_rest_route( $ns, '/clients/(?P<id>\d+)/invite/', [
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'clientoctopus_rest_invite_client__premium_only',
+			'permission_callback' => 'clientoctopus_rest_require_edit',
+			'args'                => [
+				'id' => [ 'type' => 'integer', 'required' => true ],
+			],
+		] );
+	}
 } );
 
 function clientoctopus_rest_list_clients( WP_REST_Request $request ): WP_REST_Response {
@@ -138,7 +140,7 @@ function clientoctopus_rest_create_client( WP_REST_Request $request ): WP_REST_R
 	$data = [
 		'owner_id'   => $owner_id,
 		'name'       => $name,
-		'email'      => $request->get_param( 'email' ) ?: '',
+		'email'      => $request->get_param( 'email' ) ?: null,
 		'company'    => $request->get_param( 'company' ) ?: '',
 		'phone'      => $request->get_param( 'phone' ) ?: '',
 		'created_at' => $now,
@@ -166,8 +168,9 @@ function clientoctopus_rest_create_client( WP_REST_Request $request ): WP_REST_R
 	return new WP_REST_Response( [ 'client' => $client ], 201 );
 }
 
-//@fs_premium_only
-function clientoctopus_rest_invite_client( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+// This function is auto-removed from the free WP.org build by Freemius's
+// deployment processor (name ends in __premium_only).
+function clientoctopus_rest_invite_client__premium_only( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 	global $wpdb;
 
 	$user_id = clientoctopus_get_owner_id( get_current_user_id() );
@@ -247,4 +250,3 @@ function clientoctopus_rest_invite_client( WP_REST_Request $request ): WP_REST_R
 
 	return new WP_REST_Response( [ 'client' => $updated ], 200 );
 }
-//@end:fs_premium_only

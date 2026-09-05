@@ -57,19 +57,38 @@ class ClientOctopus_Proposal_Client {
 			return new WP_Error( 'invalid_token', __( 'Invalid proposal token.', 'clientoctopus' ), [ 'status' => 400 ] );
 		}
 
-		$row = $wpdb->get_row(
+		// Resolve the token to an ID via hash_equals() rather than a direct
+		// `WHERE token = %s` equality lookup, to close a theoretical timing
+		// side-channel on the token value itself. The candidate query only
+		// pulls the narrow (id, token) pair for every non-deleted proposal —
+		// a lightweight scan of two indexed/short columns, not the full row —
+		// so this stays fast even as the table grows; the real row is fetched
+		// afterward by internal ID, once the token is already verified.
+		$id = null;
+		$candidates = $wpdb->get_results(
+			"SELECT id, token FROM {$wpdb->prefix}clientoctopus_proposals WHERE deleted_at IS NULL",
+			ARRAY_A
+		);
+		foreach ( $candidates as $candidate ) {
+			if ( hash_equals( (string) $candidate['token'], $token ) ) {
+				$id = (int) $candidate['id'];
+				break;
+			}
+		}
+
+		$row = $id ? $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT p.*, c.name AS client_name, c.email AS client_email,
 				        u.user_email AS owner_email
 				 FROM {$wpdb->prefix}clientoctopus_proposals p
 				 LEFT JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
 				 LEFT JOIN {$wpdb->users} u ON p.owner_id = u.ID
-				 WHERE p.token = %s AND p.deleted_at IS NULL
+				 WHERE p.id = %d
 				 LIMIT 1",
-				$token
+				$id
 			),
 			ARRAY_A
-		);
+		) : null;
 
 		if ( ! $row ) {
 			return new WP_Error(
@@ -94,9 +113,9 @@ class ClientOctopus_Proposal_Client {
 	 * @param string $ip         Client IP address.
 	 * @param string $user_agent Client user-agent string.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function track_view( string $token, string $ip = '', string $user_agent = '' ): true|WP_Error {
+	public static function track_view( string $token, string $ip = '', string $user_agent = '' ): bool|WP_Error {
 		global $wpdb;
 
 		$proposal = self::get_by_token( $token );

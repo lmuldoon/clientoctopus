@@ -56,7 +56,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/messages/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_send_message',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'      => [ 'type' => 'integer', 'required' => true ],
 			'message' => [ 'type' => 'string',  'required' => true, 'sanitize_callback' => 'sanitize_textarea_field' ],
@@ -67,7 +67,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/messages/{$msg_id}/", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_message',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'mid' => [ 'type' => 'integer', 'required' => true ],
@@ -104,7 +104,7 @@ add_action( 'rest_api_init', static function (): void {
 // ── Admin handlers ────────────────────────────────────────────────────────────
 
 function clientoctopus_rest_list_messages( WP_REST_Request $request ): WP_REST_Response {
-	$owner_id   = get_current_user_id();
+	$owner_id   = clientoctopus_get_owner_id( get_current_user_id() );
 	$project_id = (int) $request->get_param( 'id' );
 	$result     = ClientOctopus_Message::list_for_admin( $project_id, $owner_id );
 
@@ -112,7 +112,7 @@ function clientoctopus_rest_list_messages( WP_REST_Request $request ): WP_REST_R
 }
 
 function clientoctopus_rest_send_message( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$owner_id   = get_current_user_id();
+	$owner_id   = clientoctopus_get_owner_id( get_current_user_id() );
 	$project_id = (int) $request->get_param( 'id' );
 	$text       = (string) $request->get_param( 'message' );
 
@@ -129,7 +129,7 @@ function clientoctopus_rest_send_message( WP_REST_Request $request ): WP_REST_Re
 }
 
 function clientoctopus_rest_delete_message( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$owner_id   = get_current_user_id();
+	$owner_id   = clientoctopus_get_owner_id( get_current_user_id() );
 	$message_id = (int) $request->get_param( 'mid' );
 	$result     = ClientOctopus_Message::delete( $message_id, $owner_id );
 
@@ -141,7 +141,7 @@ function clientoctopus_rest_delete_message( WP_REST_Request $request ): WP_REST_
 }
 
 function clientoctopus_rest_messages_unread_count( WP_REST_Request $request ): WP_REST_Response {
-	$owner_id = get_current_user_id();
+	$owner_id = clientoctopus_get_owner_id( get_current_user_id() );
 	$count    = ClientOctopus_Message::unread_count_admin( $owner_id );
 
 	return new WP_REST_Response( [ 'count' => $count ], 200 );
@@ -150,9 +150,9 @@ function clientoctopus_rest_messages_unread_count( WP_REST_Request $request ): W
 // ── Portal handlers ───────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_messages( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$email      = ClientOctopus_Portal_Auth::get_current_email();
+	$client_id  = ClientOctopus_Portal_Auth::get_current_client_id();
 	$project_id = (int) $request->get_param( 'id' );
-	$result     = ClientOctopus_Message::list_for_client_by_email( $project_id, $email );
+	$result     = ClientOctopus_Message::list_for_client( $project_id, $client_id );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;
@@ -162,17 +162,17 @@ function clientoctopus_portal_rest_list_messages( WP_REST_Request $request ): WP
 }
 
 function clientoctopus_portal_rest_send_message( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$email      = ClientOctopus_Portal_Auth::get_current_email();
+	$client_id  = ClientOctopus_Portal_Auth::get_current_client_id();
 	$project_id = (int) $request->get_param( 'id' );
 	$text       = (string) $request->get_param( 'message' );
 
-	$message_id = ClientOctopus_Message::send_as_client_by_email( $project_id, $email, $text );
+	$message_id = ClientOctopus_Message::send_as_client( $project_id, $client_id, $text );
 
 	if ( is_wp_error( $message_id ) ) {
 		return $message_id;
 	}
 
-	$result = ClientOctopus_Message::list_for_client_by_email( $project_id, $email );
+	$result = ClientOctopus_Message::list_for_client( $project_id, $client_id );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;

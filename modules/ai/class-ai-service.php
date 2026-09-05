@@ -27,9 +27,22 @@ class ClientOctopus_AI_Service {
 	 * @return array|WP_Error   { result: string, remaining: int }
 	 */
 	public static function process( int $user_id, string $action, string $text, string $brief = '' ): array|WP_Error {
-		// ── Plan gate ─────────────────────────────────────────────────────────
+		// ── Plan gate + atomic quota reservation ────────────────────────────────
+		// Reserving the usage slot now (rather than checking the quota here and
+		// only logging it after a successful relay call, as before) closes a
+		// race: several requests fired in parallel could each see the same
+		// pre-increment usage count and all pass the check before any of them
+		// had actually logged usage, letting a user exceed their monthly cap.
+		// See ClientOctopus_Entitlements::reserve_ai_usage() for the locking.
 
-		if ( ! clientoctopus_can_user( $user_id, 'use_ai' ) ) {
+		$ai_usage_log_id = null;
+		if ( class_exists( 'ClientOctopus_Entitlements' ) ) {
+			$reservation = ClientOctopus_Entitlements::reserve_ai_usage( $user_id );
+			if ( is_wp_error( $reservation ) ) {
+				return $reservation;
+			}
+			$ai_usage_log_id = $reservation;
+		} elseif ( ! clientoctopus_can_user( $user_id, 'use_ai' ) ) {
 			return new WP_Error(
 				'plan_required',
 				__( 'AI writing tools require a Pro or Agency plan. Please upgrade to access this feature.', 'clientoctopus' ),
@@ -71,6 +84,9 @@ class ClientOctopus_AI_Service {
 		);
 
 		if ( is_wp_error( $response ) ) {
+			if ( $ai_usage_log_id ) {
+				ClientOctopus_Entitlements::discard_ai_usage( $user_id, $ai_usage_log_id );
+			}
 			return new WP_Error(
 				'relay_unreachable',
 				__( 'Could not reach the AI relay server. Please try again.', 'clientoctopus' ),
@@ -81,10 +97,16 @@ class ClientOctopus_AI_Service {
 		$data = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( ! isset( $data['success'] ) ) {
+			if ( $ai_usage_log_id ) {
+				ClientOctopus_Entitlements::discard_ai_usage( $user_id, $ai_usage_log_id );
+			}
 			return new WP_Error( 'relay_invalid_response', __( 'Invalid response from relay server.', 'clientoctopus' ), [ 'status' => 502 ] );
 		}
 
 		if ( ! $data['success'] ) {
+			if ( $ai_usage_log_id ) {
+				ClientOctopus_Entitlements::discard_ai_usage( $user_id, $ai_usage_log_id );
+			}
 			$relay_code = $data['code'] ?? 'relay_error';
 			$relay_msg  = $data['message'] ?? __( 'AI service error. Please try again.', 'clientoctopus' );
 			$http       = ( 'quota_exceeded' === $relay_code || 'rate_limited' === $relay_code ) ? 429 : 502;
@@ -92,10 +114,10 @@ class ClientOctopus_AI_Service {
 			return new WP_Error( $relay_code, $relay_msg, [ 'status' => $http ] );
 		}
 
-		// ── Log usage locally ─────────────────────────────────────────────────
+		// ── Finalize usage locally ──────────────────────────────────────────────
 
-		if ( class_exists( 'ClientOctopus_Entitlements' ) ) {
-			ClientOctopus_Entitlements::log_usage( $user_id, 'use_ai', [
+		if ( $ai_usage_log_id ) {
+			ClientOctopus_Entitlements::finalize_ai_usage( $ai_usage_log_id, [
 				'action'      => $action,
 				'tokens_used' => $data['tokens_used'] ?? 0,
 			] );

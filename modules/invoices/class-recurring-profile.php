@@ -401,7 +401,7 @@ class ClientOctopus_Recurring_Profile {
 		];
 	}
 
-	public static function pause( int $id, int $owner_id ): true|WP_Error {
+	public static function pause( int $id, int $owner_id ): bool|WP_Error {
 		return self::set_status( $id, $owner_id, [ 'active' ], 'paused' );
 	}
 
@@ -411,7 +411,7 @@ class ClientOctopus_Recurring_Profile {
 	 * has updated their card. Reactivating from past_due also clears the
 	 * failure streak so it isn't immediately re-flagged on the next cycle.
 	 */
-	public static function resume( int $id, int $owner_id ): true|WP_Error {
+	public static function resume( int $id, int $owner_id ): bool|WP_Error {
 		$current = self::get( $id, $owner_id );
 		if ( is_wp_error( $current ) ) {
 			return $current;
@@ -440,7 +440,7 @@ class ClientOctopus_Recurring_Profile {
 		return true;
 	}
 
-	public static function cancel( int $id, int $owner_id ): true|WP_Error {
+	public static function cancel( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		$current = self::get( $id, $owner_id );
@@ -464,7 +464,7 @@ class ClientOctopus_Recurring_Profile {
 	 * @param string[] $from Valid current statuses this transition is allowed from.
 	 * @param string   $to   Status to transition to.
 	 */
-	private static function set_status( int $id, int $owner_id, array $from, string $to ): true|WP_Error {
+	private static function set_status( int $id, int $owner_id, array $from, string $to ): bool|WP_Error {
 		global $wpdb;
 
 		$current = self::get( $id, $owner_id );
@@ -688,6 +688,16 @@ class ClientOctopus_Recurring_Profile {
 
 		if ( 'paypal' === $provider ) {
 			if ( empty( $client['paypal_vault_id'] ) ) {
+				// Not an infrastructure error and not a card decline — route
+				// through the same retry/pause/notify pipeline as a real
+				// decline anyway (record_charge_failure()), rather than a bare
+				// return. A bare return here leaves retry_count stuck at 0
+				// forever, which retry_failed_charges() can never pick up
+				// (it requires retry_count BETWEEN 1 AND MAX-1) — the profile
+				// would silently regenerate unpaid invoices every cycle with
+				// no owner-facing signal, indefinitely (e.g. after a client's
+				// payment method is cleared via a GDPR erasure request).
+				self::record_charge_failure( $invoice_id, $profile_id, $provider, 'no_payment_method' );
 				return;
 			}
 			if ( ! class_exists( 'ClientOctopus_PayPal' ) ) {
@@ -708,6 +718,9 @@ class ClientOctopus_Recurring_Profile {
 			);
 		} else {
 			if ( empty( $client['stripe_customer_id'] ) || empty( $client['stripe_payment_method_id'] ) ) {
+				// See the matching PayPal branch above for why this routes
+				// through record_charge_failure() rather than a bare return.
+				self::record_charge_failure( $invoice_id, $profile_id, $provider, 'no_payment_method' );
 				return;
 			}
 			if ( ! class_exists( 'ClientOctopus_Stripe' ) ) {
@@ -882,10 +895,12 @@ class ClientOctopus_Recurring_Profile {
 
 		$title = $title ?: __( 'Recurring billing', 'clientoctopus' );
 
-		$explanation = 'authentication_required' === $reason
-			? __( "has been paused because the client's bank keeps asking for one-time verification on this payment — their card itself may be fine.", 'clientoctopus' )
+		$explanation = match ( $reason ) {
+			'authentication_required' => __( "has been paused because the client's bank keeps asking for one-time verification on this payment — their card itself may be fine.", 'clientoctopus' ),
+			'no_payment_method'       => __( 'has been paused because no payment method is on file for the client — their saved card details may have been removed.', 'clientoctopus' ),
 			/* translators: %d is the number of failed attempts */
-			: sprintf( __( 'has been paused after %d failed attempts to charge the client\'s saved card.', 'clientoctopus' ), self::MAX_CHARGE_RETRIES );
+			default                   => sprintf( __( 'has been paused after %d failed attempts to charge the client\'s saved card.', 'clientoctopus' ), self::MAX_CHARGE_RETRIES ),
+		};
 
 		wp_mail(
 			$owner->user_email,
@@ -926,9 +941,11 @@ class ClientOctopus_Recurring_Profile {
 	private static function notify_client_past_due( array $client, string $title, string $reason = 'decline' ): void {
 		$title = $title ?: __( 'Recurring billing', 'clientoctopus' );
 
-		$explanation = 'authentication_required' === $reason
-			? __( "Your bank keeps asking us to verify this payment before it can go through — this doesn't mean your card is broken, it just needs a one-time confirmation from you.", 'clientoctopus' )
-			: __( "We've been unable to charge your card after several attempts, so automatic billing has been paused.", 'clientoctopus' );
+		$explanation = match ( $reason ) {
+			'authentication_required' => __( "Your bank keeps asking us to verify this payment before it can go through — this doesn't mean your card is broken, it just needs a one-time confirmation from you.", 'clientoctopus' ),
+			'no_payment_method'       => __( "We don't have a payment method on file for you, so automatic billing has been paused.", 'clientoctopus' ),
+			default                   => __( "We've been unable to charge your card after several attempts, so automatic billing has been paused.", 'clientoctopus' ),
+		};
 
 		wp_mail(
 			$client['email'],

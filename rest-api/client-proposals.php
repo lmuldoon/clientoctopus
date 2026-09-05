@@ -199,10 +199,25 @@ function clientoctopus_rest_client_get_proposal( WP_REST_Request $request ): WP_
  *
  * Logs a view event and transitions sent → viewed on first open.
  * Returns 200 always (best-effort tracking — clients should not see errors here).
+ *
+ * Rate-limited per-token (not per-IP): a real client viewing their own
+ * proposal only ever calls this a handful of times per visit (page load,
+ * maybe a refresh), so a generous per-token cap comfortably covers every
+ * legitimate case while still bounding how many rows one leaked/guessed
+ * token could add to clientoctopus_events if hit in a scripted loop. Keying
+ * by token rather than IP also avoids any risk of one shared office/mobile
+ * NAT address being throttled while viewing several different proposals.
  */
 function clientoctopus_rest_client_track_view( WP_REST_Request $request ): WP_REST_Response {
-	$token      = (string) $request->get_param( 'token' );
-	$ip         = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR']     ?? '' ) );
+	$token = (string) $request->get_param( 'token' );
+
+	if ( ! clientoctopus_rest_rate_limit_by_key( 'proposal_view', $token, 60, 5 * MINUTE_IN_SECONDS ) ) {
+		// Best-effort tracking — a rate-limited view still isn't worth
+		// surfacing as an error to the client, just skip logging this one.
+		return new WP_REST_Response( [ 'tracked' => false ], 200 );
+	}
+
+	$ip         = clientoctopus_get_client_ip();
 	$user_agent = sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ?? '' ) );
 
 	ClientOctopus_Proposal_Client::track_view( $token, $ip, $user_agent );

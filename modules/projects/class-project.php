@@ -247,9 +247,9 @@ class ClientOctopus_Project {
 	 * @param int   $owner_id
 	 * @param array $data Fields: name, description, status.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function update( int $id, int $owner_id, array $data ): true|WP_Error {
+	public static function update( int $id, int $owner_id, array $data ): bool|WP_Error {
 		global $wpdb;
 
 		$allowed = [ 'name', 'description', 'status' ];
@@ -296,9 +296,9 @@ class ClientOctopus_Project {
 	 * @param int $id
 	 * @param int $owner_id
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.

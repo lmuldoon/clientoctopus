@@ -163,7 +163,7 @@ ${ CO_TOKENS_CSS }
 .co-inv-table td { padding:14px 16px; border-bottom:1px solid var(--co-slate-200); font-size:14px; color:var(--co-slate-600); }
 .co-inv-table tr:last-child td { border-bottom:none; }
 .co-inv-table tr:hover td { background:var(--co-slate-50); }
-.co-inv-ref { font-weight:700; color:var(--co-navy); font-family:monospace; font-size:13px; }
+.co-inv-ref { font-weight:600; color:var(--co-navy); font-family:monospace; font-size:14px; }
 .co-inv-client { font-weight:500; color:var(--co-navy); }
 .co-inv-amount { font-weight:700; color:var(--co-navy); }
 .co-inv-due { color:var(--co-slate-400); font-size:13px; }

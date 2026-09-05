@@ -124,8 +124,15 @@ function clientoctopus_portal_template_redirect(): void {
 		exit;
 	}
 
-	// /portal/logout — clear session and redirect to login.
+	// /portal/logout — clear session and redirect to login. wp_logout() alone
+	// only signs out a real WP user session and does nothing for a portal
+	// client, who is never one (see class-portal-auth.php's header comment) —
+	// this left the co_portal_session cookie and its DB row fully valid.
+	// The real "Sign out" button already calls the REST /portal/logout/
+	// endpoint (ClientOctopus_Portal_Auth::destroy_session()) directly and was
+	// never affected; this is the plain URL a bookmark or shared link could hit.
 	if ( 'logout' === $page ) {
+		ClientOctopus_Portal_Auth::destroy_session();
 		wp_logout();
 		wp_safe_redirect( home_url( '/clientoctopus/login' ) );
 		exit;

@@ -57,7 +57,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/files/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_upload_file',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -76,7 +76,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/projects/{$proj_id}/files/{$file_id}/", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_file',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'fid' => [ 'type' => 'integer', 'required' => true ],
@@ -158,9 +158,9 @@ function clientoctopus_rest_delete_file( WP_REST_Request $request ): WP_REST_Res
 // ── Portal handlers ───────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_files( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$email      = ClientOctopus_Portal_Auth::get_current_email();
+	$client_id  = ClientOctopus_Portal_Auth::get_current_client_id();
 	$project_id = (int) $request->get_param( 'id' );
-	$result     = ClientOctopus_File::get_for_client_by_email( $project_id, $email );
+	$result     = ClientOctopus_File::get_for_client( $project_id, $client_id );
 
 	if ( is_wp_error( $result ) ) {
 		return $result;
@@ -170,9 +170,9 @@ function clientoctopus_portal_rest_list_files( WP_REST_Request $request ): WP_RE
 }
 
 function clientoctopus_portal_rest_download_file( WP_REST_Request $request ): void {
-	$email      = ClientOctopus_Portal_Auth::get_current_email();
+	$client_id  = ClientOctopus_Portal_Auth::get_current_client_id();
 	$project_id = (int) $request->get_param( 'id' );
 	$file_id    = (int) $request->get_param( 'fid' );
 
-	ClientOctopus_File::stream_for_client_by_email( $file_id, $email, $project_id );
+	ClientOctopus_File::stream_for_client( $file_id, $client_id, $project_id );
 }

@@ -90,8 +90,10 @@ ${ CO_TOKENS_CSS }
 
 /* ─── Search ── */
 .co-cl-search-wrap {
-  position: relative;
-  width: 280px;
+    position: relative;
+    width: 280px;
+    align-items: end;
+    display: contents;
 }
 .co-cl-search-icon {
   position: absolute;
@@ -103,22 +105,20 @@ ${ CO_TOKENS_CSS }
   display:none;
 }
 input.co-cl-search {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 12px 9px 36px;
-  border: 1.5px solid var(--co-slate-200);
-  border-radius: 8px;
-  font-family: 'Archivo', sans-serif;
+  width:100%;
+  padding: 9px 14px 9px 14px;
+  border: var(--co-input-border);
+  border-radius: var(--co-radius-sm);
   font-size: 13.5px;
-  color: var(--co-navy);
-  background: #fff;
-  transition: border-color .15s, box-shadow .15s;
+  font-family: var(--co-font);
+  color: var(--co-slate-800);
+  background: var(--co-white);
   outline: none;
+  width: 220px;
+  transition: border-color .15s, box-shadow .15s;
 }
-input.co-cl-search:focus {
-  border-color: var(--co-indigo);
-  box-shadow: 0 0 0 3px rgba(99,102,241,.12);
-}
+input.co-cl-search::placeholder { color: var(--co-slate-300); }
+input.co-cl-search:focus { border-color: var(--co-indigo); box-shadow: var(--co-input-focus); }
 
 /* ─── Card / Table ── */
 .co-cl-card {
@@ -193,7 +193,7 @@ input.co-cl-search:focus {
 }
 
 /* ─── Meta text ── */
-.co-cl-meta { font-size: 13.5px; color: #475569; }
+.co-cl-meta { font-size: 14px; color: #475569; }
 .co-cl-meta-dim { font-size: 12px; color: var(--co-slate-400); margin-top:3px; }
 
 /* ─── Status badge ── */

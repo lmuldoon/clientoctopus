@@ -255,6 +255,72 @@ class ClientOctopus_Analytics {
 		return $result;
 	}
 
+	// ── Lead funnel ──────────────────────────────────────────────────────────────
+
+	/**
+	 * Lead capture stage breakdown for the given period, plus the prior
+	 * equivalent period's captured count (for the KPI trend arrow) —
+	 * mirrors kpis()'s current+prior pattern.
+	 *
+	 * @param  int    $owner_id
+	 * @param  string $from     MySQL DATETIME string — range start (inclusive)
+	 * @param  string $to       MySQL DATETIME string — range end (inclusive)
+	 * @return array
+	 */
+	public static function lead_funnel( int $owner_id, string $from, string $to ): array {
+		$cache_key = self::key( 'lead_funnel', $owner_id, $from, $to );
+		$cached    = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		global $wpdb;
+		$l_table = $wpdb->prefix . 'clientoctopus_leads';
+
+		$current = self::lead_funnel_query( $wpdb, $l_table, $owner_id, $from, $to );
+
+		// Prior period — same duration, immediately before $from.
+		$from_dt    = new DateTime( $from );
+		$to_dt      = new DateTime( $to );
+		$interval   = $from_dt->diff( $to_dt );
+		$prior_to   = ( clone $from_dt )->modify( '-1 second' );
+		$prior_from = ( clone $prior_to )->sub( $interval );
+		$prior      = self::lead_funnel_query( $wpdb, $l_table, $owner_id, $prior_from->format( 'Y-m-d H:i:s' ), $prior_to->format( 'Y-m-d H:i:s' ) );
+
+		$captured = array_sum( $current );
+
+		$result = [
+			'captured'        => $captured,
+			'new'             => $current['new'] ?? 0,
+			'contacted'       => $current['contacted'] ?? 0,
+			'converted'       => $current['converted'] ?? 0,
+			'archived'        => $current['archived'] ?? 0,
+			'conversion_rate' => $captured > 0 ? round( ( ( $current['converted'] ?? 0 ) / $captured ) * 100, 1 ) : 0.0,
+			'captured_prev'   => array_sum( $prior ),
+		];
+
+		set_transient( $cache_key, $result, self::CACHE_TTL );
+		return $result;
+	}
+
+	/**
+	 * @return array<string, int> Counts keyed by status; missing statuses omitted.
+	 */
+	private static function lead_funnel_query( wpdb $wpdb, string $l_table, int $owner_id, string $from, string $to ): array {
+		$rows = $wpdb->get_results( $wpdb->prepare(
+			"SELECT status, COUNT(*) AS c FROM {$l_table}
+			 WHERE owner_id = %d AND created_at BETWEEN %s AND %s
+			 GROUP BY status",
+			$owner_id, $from, $to
+		), ARRAY_A );
+
+		$counts = [];
+		foreach ( $rows ?: [] as $row ) {
+			$counts[ $row['status'] ] = (int) $row['c'];
+		}
+		return $counts;
+	}
+
 	// ── Activity feed ──────────────────────────────────────────────────────────
 
 	/**
@@ -321,15 +387,21 @@ class ClientOctopus_Analytics {
 
 	/**
 	 * Wipe all analytics transients for an owner.
-	 * Called on proposal saves and payment completions.
+	 * Called on proposal saves, payment completions, invoice payments, and
+	 * lead capture/status/conversion events.
 	 */
 	public static function bust_cache( int $owner_id ): void {
 		global $wpdb;
+		// NOTE: these LIKE patterns must match key()'s real prefix
+		// (clientoctopus_analytics_) — a prior version of this used
+		// 'cf_analytics' here, which never matched anything key() actually
+		// wrote, so kpis()/revenue_chart()/proposal_performance()/lead_funnel()
+		// silently never got invalidated by this method.
 		$wpdb->query( $wpdb->prepare(
 			"DELETE FROM {$wpdb->options}
 			 WHERE option_name LIKE %s OR option_name LIKE %s",
-			'%_transient_cf_analytics_%' . $owner_id . '%',
-			'%_transient_timeout_cf_analytics_%' . $owner_id . '%'
+			'%_transient_clientoctopus_analytics_%' . $owner_id . '%',
+			'%_transient_timeout_clientoctopus_analytics_%' . $owner_id . '%'
 		) );
 		delete_transient( 'clientoctopus_analytics_feed_' . $owner_id );
 	}
@@ -434,3 +506,17 @@ add_action( 'clientoctopus_payment_completed', static function ( int $payment_id
 add_action( 'clientoctopus_invoice_paid', static function ( int $invoice_id, int $owner_id ): void {
 	ClientOctopus_Analytics::bust_cache( $owner_id );
 }, 10, 2 );
+
+// Lead capture, status changes (new/contacted/archived), and conversion to a
+// client record all affect lead_funnel() — bust on all three.
+add_action( 'clientoctopus_lead_captured', static function ( int $lead_id, int $owner_id ): void {
+	ClientOctopus_Analytics::bust_cache( $owner_id );
+}, 10, 2 );
+
+add_action( 'clientoctopus_lead_status_changed', static function ( int $lead_id, int $owner_id, string $status ): void {
+	ClientOctopus_Analytics::bust_cache( $owner_id );
+}, 10, 3 );
+
+add_action( 'clientoctopus_client_created_from_lead', static function ( int $client_id, int $lead_id, int $owner_id ): void {
+	ClientOctopus_Analytics::bust_cache( $owner_id );
+}, 10, 3 );

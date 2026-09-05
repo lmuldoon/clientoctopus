@@ -49,7 +49,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/recurring-profiles/create/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_recurring_profile',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => clientoctopus_recurring_profile_field_args(),
 	] );
 
@@ -67,7 +67,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/recurring-profiles/{$id}/update/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_recurring_profile',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => array_merge(
 			[ 'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ] ],
 			clientoctopus_recurring_profile_field_args()
@@ -78,7 +78,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/recurring-profiles/{$id}/pause/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_pause_recurring_profile',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],
@@ -88,7 +88,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/recurring-profiles/{$id}/resume/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_resume_recurring_profile',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],
@@ -98,7 +98,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/recurring-profiles/{$id}/cancel/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_cancel_recurring_profile',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],

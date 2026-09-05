@@ -90,9 +90,24 @@ class ClientOctopus_File {
 		add_filter( 'upload_dir', $upload_dir_filter );
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
-		$uploaded = wp_handle_upload( $wp_file, [ 'test_form' => false ] );
+		// Client deliverables are meant to be served only through the
+		// authenticated download endpoint below — never as a direct, guessable
+		// web URL. unique_filename_callback appends a random token so the
+		// stored filename can't be predicted from the visible original name
+		// alone, and ensure_upload_protection() adds a deny-all .htaccess so
+		// Apache/LiteSpeed hosts (the large majority) refuse direct requests
+		// entirely regardless of filename.
+		$uploaded = wp_handle_upload( $wp_file, [
+			'test_form'                => false,
+			'unique_filename_callback' => static function ( string $dir, string $name, string $ext ): string {
+				$base = sanitize_file_name( pathinfo( $name, PATHINFO_FILENAME ) );
+				return $base . '-' . wp_generate_password( 12, false, false ) . $ext;
+			},
+		] );
 
 		remove_filter( 'upload_dir', $upload_dir_filter );
+
+		self::ensure_upload_protection();
 
 		if ( isset( $uploaded['error'] ) ) {
 			return new WP_Error(
@@ -138,6 +153,37 @@ class ClientOctopus_File {
 		);
 
 		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * Write a deny-all .htaccess (and a blank index.php, for directory-listing
+	 * defense-in-depth) into the shared clientoctopus uploads base folder, if
+	 * one doesn't already exist. Apache/LiteSpeed rules cascade into every
+	 * {project_id} subfolder, so this is written once at the parent level
+	 * rather than per project. Nginx doesn't honor .htaccess — this is a
+	 * best-effort mitigation for the large majority of WP hosting, not a
+	 * substitute for the random-filename layer above.
+	 */
+	private static function ensure_upload_protection(): void {
+		$upload_dir = wp_upload_dir();
+		$base       = trailingslashit( $upload_dir['basedir'] ) . 'clientoctopus';
+
+		if ( ! file_exists( $base ) ) {
+			wp_mkdir_p( $base );
+		}
+
+		$htaccess = $base . '/.htaccess';
+		if ( ! file_exists( $htaccess ) ) {
+			$contents = "<IfModule mod_authz_core.c>\n\tRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\n\tDeny from all\n</IfModule>\n";
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- writing a static deny-all rule file, not user-controlled content.
+			file_put_contents( $htaccess, $contents );
+		}
+
+		$index = $base . '/index.php';
+		if ( ! file_exists( $index ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- static silence file, matches WP core's own convention for upload directories.
+			file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+		}
 	}
 
 	// ── Read ──────────────────────────────────────────────────────────────────
@@ -210,9 +256,9 @@ class ClientOctopus_File {
 	 * @param int $id
 	 * @param int $owner_id
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// Raw query — we need file_url which prepare_row() strips from the public getter.
@@ -293,12 +339,26 @@ class ClientOctopus_File {
 	 * @param int $owner_id  WP user ID of the owner requesting the download.
 	 */
 	public static function stream( int $id, int $owner_id ): void {
-		$result = self::get( $id, $owner_id );
-		if ( is_wp_error( $result ) ) {
+		global $wpdb;
+
+		// Raw query — we need file_url, which prepare_row() strips from the
+		// public getter (see the identical pattern/comment in delete() above).
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT f.* FROM " . self::table() . " f
+				 INNER JOIN {$wpdb->prefix}clientoctopus_projects p ON f.project_id = p.id
+				 WHERE f.id = %d AND p.owner_id = %d",
+				$id,
+				$owner_id
+			),
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
 			status_header( 404 );
 			exit( 'File not found.' );
 		}
-		$row = $result;
 
 		$upload_dir = wp_upload_dir();
 		$base       = $upload_dir['basedir'];
@@ -374,16 +434,16 @@ class ClientOctopus_File {
 	}
 
 	/**
-	 * Return files for a project — client portal view, identified by email.
+	 * Return files for a project — client portal view, identified by client ID.
 	 *
-	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int $project_id
+	 * @param int $client_id
 	 * @return array|WP_Error
 	 */
-	public static function get_for_client_by_email( int $project_id, string $client_email ): array|WP_Error {
+	public static function get_for_client( int $project_id, int $client_id ): array|WP_Error {
 		global $wpdb;
 
-		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+		if ( ! self::client_owns_project( $project_id, $client_id ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -400,13 +460,13 @@ class ClientOctopus_File {
 	}
 
 	/**
-	 * Stream a file download for a portal client identified by email.
+	 * Stream a file download for a portal client identified by client ID.
 	 *
-	 * @param int    $id            File ID.
-	 * @param string $client_email
-	 * @param int    $project_id
+	 * @param int $id          File ID.
+	 * @param int $client_id
+	 * @param int $project_id
 	 */
-	public static function stream_for_client_by_email( int $id, string $client_email, int $project_id ): void {
+	public static function stream_for_client( int $id, int $client_id, int $project_id ): void {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
@@ -419,7 +479,7 @@ class ClientOctopus_File {
 			ARRAY_A
 		);
 
-		if ( ! $row || ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+		if ( ! $row || ! self::client_owns_project( $project_id, $client_id ) ) {
 			status_header( 403 );
 			exit( 'Access denied.' );
 		}
@@ -452,22 +512,21 @@ class ClientOctopus_File {
 	}
 
 	/**
-	 * Check whether the given email belongs to the client of a project.
+	 * Check whether the given client owns (is the client on) a project.
 	 *
-	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int $project_id
+	 * @param int $client_id
 	 * @return bool
 	 */
-	private static function client_owns_project_by_email( int $project_id, string $client_email ): bool {
+	private static function client_owns_project( int $project_id, int $client_id ): bool {
 		global $wpdb;
 
 		return (bool) (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
-				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 WHERE p.id = %d AND c.email = %s",
+				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects
+				 WHERE id = %d AND client_id = %d",
 				$project_id,
-				$client_email
+				$client_id
 			)
 		);
 	}

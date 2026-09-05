@@ -47,6 +47,24 @@ if ( ! class_exists( 'ClientOctopus_Invoice' ) ) {
 	}
 }
 
+// The token must resolve to a REAL invoice before doing anything else on this
+// page — checked here, before the PayPal write-through block below, because
+// that block can retry against PayPal's API with a sleep() between attempts.
+// Validating first means a request with a bogus/nonexistent token (this route
+// takes no authentication at all) is rejected immediately rather than only
+// after several seconds of a PHP worker's time and a wasted PayPal API call.
+$clientoctopus_invoice = class_exists( 'ClientOctopus_Invoice' )
+	? ClientOctopus_Invoice::get_by_token( $clientoctopus_invoice_token )
+	: null;
+
+if ( ! $clientoctopus_invoice || is_wp_error( $clientoctopus_invoice ) ) {
+	wp_die(
+		esc_html__( 'Invoice not found.', 'clientoctopus' ),
+		esc_html__( 'Not Found', 'clientoctopus' ),
+		[ 'response' => 404 ]
+	);
+}
+
 // ── Write-through: mark invoice paid if returning from a successful checkout ─────
 if ( 'success' === $clientoctopus_payment_result && $clientoctopus_session_id && class_exists( 'ClientOctopus_Invoice' ) ) {
 	if ( 'paypal' === $clientoctopus_gateway_provider ) {
@@ -94,18 +112,18 @@ if ( 'success' === $clientoctopus_payment_result && $clientoctopus_session_id &&
 			}
 		}
 	}
-}
 
-$clientoctopus_invoice = class_exists( 'ClientOctopus_Invoice' )
-	? ClientOctopus_Invoice::get_by_token( $clientoctopus_invoice_token )
-	: null;
-
-if ( ! $clientoctopus_invoice || is_wp_error( $clientoctopus_invoice ) ) {
-	wp_die(
-		esc_html__( 'Invoice not found.', 'clientoctopus' ),
-		esc_html__( 'Not Found', 'clientoctopus' ),
-		[ 'response' => 404 ]
-	);
+	// Re-fetch: the write-through above may have just changed this invoice's
+	// status (e.g. to 'paid'), and the rest of this page must reflect that,
+	// not the pre-payment snapshot captured before the block ran.
+	$clientoctopus_invoice = ClientOctopus_Invoice::get_by_token( $clientoctopus_invoice_token );
+	if ( ! $clientoctopus_invoice || is_wp_error( $clientoctopus_invoice ) ) {
+		wp_die(
+			esc_html__( 'Invoice not found.', 'clientoctopus' ),
+			esc_html__( 'Not Found', 'clientoctopus' ),
+			[ 'response' => 404 ]
+		);
+	}
 }
 
 $clientoctopus_inv = $clientoctopus_invoice;
@@ -141,8 +159,9 @@ if ( $clientoctopus_inv['client_id'] ) {
 
 // ── Payment enabled (Pro only) ────────────────────────────────────────────────
 $clientoctopus_payment_enabled = false;
-//@fs_premium_only
-if ( function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is_premium() ) {
+// This "if" block is auto-removed from the free WP.org build by Freemius's
+// deployment processor.
+if ( function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is__premium_only() ) {
 	$_stripe_class = CLIENTOCTOPUS_DIR . 'modules/payments/class-stripe.php';
 	if ( ! class_exists( 'ClientOctopus_Stripe' ) && file_exists( $_stripe_class ) ) {
 		require_once $_stripe_class;
@@ -151,7 +170,6 @@ if ( function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is_premium() )
 		&& ClientOctopus_Stripe::is_configured()
 		&& in_array( $clientoctopus_inv['status'], [ 'sent', 'overdue' ], true );
 }
-//@end:fs_premium_only
 
 // ── Auto-charge consent copy ──────────────────────────────────────────────────
 // This invoice's payment saves the card for future off-session charges if its

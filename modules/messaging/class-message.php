@@ -137,9 +137,9 @@ class ClientOctopus_Message {
 	 * @param int $id
 	 * @param int $owner_id
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
@@ -190,16 +190,16 @@ class ClientOctopus_Message {
 	// ── Email-based portal methods (no WP user required) ─────────────────────
 
 	/**
-	 * List messages for a project — client portal view, identified by email.
+	 * List messages for a project — client portal view, identified by client ID.
 	 *
-	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int $project_id
+	 * @param int $client_id
 	 * @return array|WP_Error
 	 */
-	public static function list_for_client_by_email( int $project_id, string $client_email ): array|WP_Error {
+	public static function list_for_client( int $project_id, int $client_id ): array|WP_Error {
 		global $wpdb;
 
-		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+		if ( ! self::client_owns_project( $project_id, $client_id ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -212,7 +212,7 @@ class ClientOctopus_Message {
 			)
 		);
 
-		self::mark_read_by_email( $project_id, $client_email );
+		self::mark_read( $project_id, $client_id );
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
 		$rows = $wpdb->get_results(
@@ -230,19 +230,19 @@ class ClientOctopus_Message {
 	}
 
 	/**
-	 * Send a message as a portal client identified by email.
+	 * Send a message as a portal client identified by client ID.
 	 *
 	 * Uses clientoctopus_clients.id as the sender_id (not a WP user ID).
 	 *
 	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int    $client_id
 	 * @param string $message
 	 * @return int|WP_Error New message ID.
 	 */
-	public static function send_as_client_by_email( int $project_id, string $client_email, string $message ): int|WP_Error {
+	public static function send_as_client( int $project_id, int $client_id, string $message ): int|WP_Error {
 		global $wpdb;
 
-		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+		if ( ! self::client_owns_project( $project_id, $client_id ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -250,14 +250,6 @@ class ClientOctopus_Message {
 		if ( '' === $message ) {
 			return new WP_Error( 'empty_message', __( 'Message cannot be empty.', 'clientoctopus' ), [ 'status' => 400 ] );
 		}
-
-		// Use clientoctopus_clients.id as sender_id (no WP user needed).
-		$client_id = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT id FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
-				$client_email
-			)
-		);
 
 		$wpdb->insert(
 			self::table(),
@@ -290,12 +282,12 @@ class ClientOctopus_Message {
 	}
 
 	/**
-	 * Mark all unread admin messages as read for a client identified by email.
+	 * Mark all unread admin messages as read for the given client.
 	 *
-	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int $project_id
+	 * @param int $client_id
 	 */
-	private static function mark_read_by_email( int $project_id, string $client_email ): void {
+	private static function mark_read( int $project_id, int $client_id ): void {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
@@ -303,34 +295,32 @@ class ClientOctopus_Message {
 			$wpdb->prepare(
 				"UPDATE " . self::table() . " m
 				 INNER JOIN {$wpdb->prefix}clientoctopus_projects p ON m.project_id = p.id
-				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
 				 SET m.read_at = %s
-				 WHERE m.project_id = %d AND c.email = %s
+				 WHERE m.project_id = %d AND p.client_id = %d
 				   AND m.sender_type = 'admin' AND m.read_at IS NULL",
 				current_time( 'mysql' ),
 				$project_id,
-				$client_email
+				$client_id
 			)
 		);
 	}
 
 	/**
-	 * Check whether the given email belongs to the client of a project.
+	 * Check whether the given client owns (is the client on) a project.
 	 *
-	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int $project_id
+	 * @param int $client_id
 	 * @return bool
 	 */
-	private static function client_owns_project_by_email( int $project_id, string $client_email ): bool {
+	private static function client_owns_project( int $project_id, int $client_id ): bool {
 		global $wpdb;
 
 		return (bool) (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
-				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 WHERE p.id = %d AND c.email = %s",
+				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects
+				 WHERE id = %d AND client_id = %d",
 				$project_id,
-				$client_email
+				$client_id
 			)
 		);
 	}

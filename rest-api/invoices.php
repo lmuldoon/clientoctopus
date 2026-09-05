@@ -61,7 +61,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/invoices/create/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_invoice',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => clientoctopus_invoice_field_args(),
 	] );
 
@@ -79,7 +79,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/invoices/{$id}/update/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_invoice',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => array_merge(
 			[ 'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ] ],
 			clientoctopus_invoice_field_args()
@@ -90,7 +90,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/invoices/{$id}/send/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_send_invoice',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],
@@ -100,7 +100,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/invoices/{$id}/mark-paid/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_mark_invoice_paid',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],
@@ -110,7 +110,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/invoices/{$id}/cancel/", [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_cancel_invoice',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],
@@ -120,7 +120,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, "/invoices/{$id}/", [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_invoice',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
 		],
@@ -135,11 +135,12 @@ add_action( 'rest_api_init', static function (): void {
 	] );
 
 	// ── POST /invoices/{id}/pay/ — Stripe Checkout Session (Pro only) ─────────
-	//@fs_premium_only
-	if ( clientoctopus_fs()->is_premium() ) {
+	// This "if" block is auto-removed from the free WP.org build by
+	// Freemius's deployment processor.
+	if ( clientoctopus_fs()->is__premium_only() ) {
 		register_rest_route( $ns, "/invoices/{$id}/pay/", [
 			'methods'             => WP_REST_Server::CREATABLE,
-			'callback'            => 'clientoctopus_rest_invoice_pay',
+			'callback'            => 'clientoctopus_rest_invoice_pay__premium_only',
 			'permission_callback' => '__return_true', // Token-passed in body; validated in handler.
 			'args'                => [
 				'id'    => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ],
@@ -147,7 +148,6 @@ add_action( 'rest_api_init', static function (): void {
 			],
 		] );
 	}
-	//@end:fs_premium_only
 } );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,15 +319,15 @@ function clientoctopus_rest_get_invoice_public( WP_REST_Request $request ): WP_R
 
 	// Check if the owner has Stripe configured and payments enabled.
 	$payment_enabled = false;
-	//@fs_premium_only
-	if ( clientoctopus_fs()->is_premium() ) {
+	// This "if" block is auto-removed from the free WP.org build by
+	// Freemius's deployment processor.
+	if ( clientoctopus_fs()->is__premium_only() ) {
 		$stripe_class = CLIENTOCTOPUS_DIR . 'modules/payments/class-stripe.php';
 		if ( ! class_exists( 'ClientOctopus_Stripe' ) && file_exists( $stripe_class ) ) {
 			require_once $stripe_class;
 		}
 		$payment_enabled = class_exists( 'ClientOctopus_Stripe' ) && ClientOctopus_Stripe::is_configured();
 	}
-	//@end:fs_premium_only
 
 	// Fetch client details for display.
 	$client_name = '';
@@ -348,8 +348,9 @@ function clientoctopus_rest_get_invoice_public( WP_REST_Request $request ): WP_R
 	], 200 );
 }
 
-//@fs_premium_only
-function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+// This function is auto-removed from the free WP.org build by Freemius's
+// deployment processor (name ends in __premium_only).
+function clientoctopus_rest_invoice_pay__premium_only( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 	$id    = (int) $request->get_param( 'id' );
 	$token = sanitize_text_field( (string) $request->get_param( 'token' ) );
 
@@ -533,7 +534,6 @@ function clientoctopus_rest_invoice_pay( WP_REST_Request $request ): WP_REST_Res
 		'session_id'   => $session['id'],
 	], 200 );
 }
-//@end:fs_premium_only
 
 // ── Shared request-params extractor ──────────────────────────────────────────
 

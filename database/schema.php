@@ -161,6 +161,37 @@ function clientoctopus_create_tables(): void {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN paypal_vault_customer_id VARCHAR(255) DEFAULT NULL" );
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD COLUMN paypal_payer_email VARCHAR(255) DEFAULT NULL" );
 	}
+	// Guard against two of one owner's clients sharing an email — portal access
+	// is now scoped by client_id everywhere (see class-portal-data.php), but a
+	// duplicate email within the same owner would still be confusing in the UI
+	// (e.g. the wrong client's magic link going to the wrong person). Only
+	// added when the existing data is already clean: an ALTER TABLE adding a
+	// UNIQUE KEY over a table that already has violating rows fails outright,
+	// and this must never attempt to silently delete or merge real client
+	// records to force it through — if dirty, skip and record that fact so it
+	// can be surfaced later rather than retried on every page load.
+	if ( ! $wpdb->get_var( "SHOW INDEX FROM {$wpdb->prefix}clientoctopus_clients WHERE Key_name = 'owner_email'" ) ) {
+		// A UNIQUE KEY exempts NULLs from collision but NOT empty strings, and
+		// clients without an email are stored as '' (see rest-api/clients.php),
+		// which is a normal, common case — two email-less clients under one
+		// owner must not be treated as a "duplicate". Normalize '' to NULL
+		// first so the constraint only ever applies to real, non-blank emails.
+		$wpdb->query( "UPDATE {$wpdb->prefix}clientoctopus_clients SET email = NULL WHERE email = ''" );
+
+		$dupes = $wpdb->get_var(
+			"SELECT COUNT(*) FROM (
+				SELECT owner_id, email FROM {$wpdb->prefix}clientoctopus_clients
+				WHERE email IS NOT NULL
+				GROUP BY owner_id, email HAVING COUNT(*) > 1
+			) dupes"
+		);
+		if ( (int) $dupes === 0 ) {
+			$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_clients ADD UNIQUE KEY owner_email (owner_id, email)" );
+			delete_option( 'clientoctopus_client_email_duplicates_found' );
+		} else {
+			update_option( 'clientoctopus_client_email_duplicates_found', (int) $dupes );
+		}
+	}
 
 	// ────────────────────────────────────────────────────────────────────────
 	// Table 4: clientoctopus_proposals
@@ -745,6 +776,169 @@ function clientoctopus_create_tables(): void {
 		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_recurring_profiles ADD COLUMN notes TEXT DEFAULT NULL" );
 	}
 	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 21: clientoctopus_leads (DB version 30)
+	// Anonymous public-form submissions via the [clientoctopus_lead_form]
+	// shortcode. converted_client_id links to clientoctopus_clients once an
+	// owner converts a lead — the lead row is kept for history, never deleted.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_leads (
+		id                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id             BIGINT UNSIGNED NOT NULL,
+		name                 VARCHAR(255) NOT NULL DEFAULT '',
+		email                VARCHAR(255) DEFAULT NULL,
+		phone                VARCHAR(50) DEFAULT NULL,
+		company              VARCHAR(255) DEFAULT NULL,
+		message              TEXT DEFAULT NULL,
+		budget_range         VARCHAR(100) DEFAULT NULL,
+		preferred_contact    VARCHAR(50) DEFAULT NULL,
+		source_url           VARCHAR(500) DEFAULT NULL,
+		existing_client_id   BIGINT UNSIGNED DEFAULT NULL,
+		status               ENUM('new','contacted','converted','archived') NOT NULL DEFAULT 'new',
+		converted_client_id  BIGINT UNSIGNED DEFAULT NULL,
+		created_at           DATETIME DEFAULT NULL,
+		updated_at           DATETIME DEFAULT NULL,
+		PRIMARY KEY  (id),
+		KEY owner_id (owner_id),
+		KEY status (status),
+		KEY created_at (created_at),
+		KEY email (email)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 22: clientoctopus_lead_reminder_log (DB version 31)
+	// Dedupe log for the lead_not_contacted automation trigger. Kept separate
+	// from clientoctopus_reminder_log (whose unique key/column is proposal_id
+	// specifically) rather than overloading that column's meaning.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_lead_reminder_log (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		lead_id       BIGINT UNSIGNED NOT NULL,
+		trigger_event VARCHAR(40) NOT NULL,
+		sent_at       DATETIME NOT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY lead_trigger (lead_id, trigger_event),
+		KEY lead_id (lead_id)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 23: clientoctopus_bookings (DB version 32)
+	// Native call-booking records (Pro/Agency). scheduled_at is always stored
+	// in UTC; lead_id is nullable since a booking can come cold from the
+	// standalone [clientoctopus_booking_form] shortcode, not only via the
+	// email-link-from-lead-capture flow. The owner_slot unique key is the
+	// real double-booking guard — two concurrent submissions for the same
+	// slot fail at the DB layer rather than needing application locking.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_bookings (
+		id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id          BIGINT UNSIGNED NOT NULL,
+		lead_id           BIGINT UNSIGNED DEFAULT NULL,
+		name              VARCHAR(255) NOT NULL DEFAULT '',
+		email             VARCHAR(255) NOT NULL DEFAULT '',
+		phone             VARCHAR(50) DEFAULT NULL,
+		message           TEXT DEFAULT NULL,
+		scheduled_at      DATETIME NOT NULL,
+		duration_minutes  SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+		status            ENUM('confirmed','cancelled') NOT NULL DEFAULT 'confirmed',
+		cancel_token      VARCHAR(64) NOT NULL DEFAULT '',
+		reminder_sent_at  DATETIME DEFAULT NULL,
+		created_at        DATETIME DEFAULT NULL,
+		updated_at        DATETIME DEFAULT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY owner_slot (owner_id, scheduled_at),
+		UNIQUE KEY cancel_token (cancel_token),
+		KEY owner_id (owner_id),
+		KEY scheduled_at (scheduled_at),
+		KEY status (status)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 24: clientoctopus_booking_blocks (DB version 33)
+	// Ad-hoc unavailable time ranges (appointments, days off, holidays) that
+	// subtract from the weekly schedule — a single (starts_at, ends_at) range
+	// model covers both a 1-hour appointment and a 2-week holiday, no separate
+	// "short"/"long" concept needed. Both columns are UTC, same convention as
+	// clientoctopus_bookings.scheduled_at. Rows are swept once past — see
+	// clientoctopus_booking_cleanup_expired_blocks() in modules/booking/handlers.php.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_booking_blocks (
+		id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id     BIGINT UNSIGNED NOT NULL,
+		label        VARCHAR(255) DEFAULT NULL,
+		starts_at    DATETIME NOT NULL,
+		ends_at      DATETIME NOT NULL,
+		created_at   DATETIME DEFAULT NULL,
+		PRIMARY KEY  (id),
+		KEY owner_id (owner_id),
+		KEY starts_at (starts_at),
+		KEY ends_at (ends_at)
+	) $charset_collate;" );
+
+	// Calendar Sync (DB version 34) — additive 'source' column on the existing
+	// blocks table rather than a separate "busy cache" table: a block synced
+	// from an external calendar needs to block slots via the exact same
+	// clientoctopus_booking_compute_slots() query that already reads this
+	// table, and needs to show up in the same admin "Time Off" list so an
+	// owner can actually see why a slot is blocked. Each sync tick replaces
+	// only that owner+source's rows (DELETE + bulk INSERT), leaving
+	// source='manual' rows (and other providers' rows) untouched.
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$wpdb->prefix}clientoctopus_booking_blocks LIKE %s", 'source' ) ) ) {
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_booking_blocks ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'manual' AFTER owner_id" );
+		$wpdb->query( "ALTER TABLE {$wpdb->prefix}clientoctopus_booking_blocks ADD KEY owner_source (owner_id, source)" );
+	}
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 25: clientoctopus_calendar_connections (DB version 34)
+	// One row per connected external calendar provider. Google/Microsoft rows
+	// never store a token here — tokens are owned entirely by the co-ai-relay
+	// server (keyed by the site's own license key), same trust boundary as
+	// the existing AI-assistant relay call in modules/ai/class-ai-service.php.
+	// Apple/iCloud has no relay involvement (CalDAV, not OAuth), so its
+	// app-specific password is the one credential actually stored here,
+	// encrypted at rest (see clientoctopus_calendar_encrypt() in
+	// modules/calendar-sync/handlers.php). provider_meta is a small JSON blob
+	// for provider-specific cached details that aren't worth their own column
+	// (currently just Apple's discovered calendar collection URL, avoiding a
+	// re-discovery PROPFIND round-trip on every sync tick).
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_calendar_connections (
+		id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id          BIGINT UNSIGNED NOT NULL,
+		provider          ENUM('google','microsoft','apple') NOT NULL,
+		status            ENUM('connected','disconnected') NOT NULL DEFAULT 'connected',
+		account_label     VARCHAR(255) DEFAULT NULL,
+		apple_username    VARCHAR(255) DEFAULT NULL,
+		apple_password_enc TEXT DEFAULT NULL,
+		provider_meta     TEXT DEFAULT NULL,
+		last_synced_at    DATETIME DEFAULT NULL,
+		created_at        DATETIME DEFAULT NULL,
+		updated_at        DATETIME DEFAULT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY owner_provider (owner_id, provider),
+		KEY owner_id (owner_id)
+	) $charset_collate;" );
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Table 26: clientoctopus_booking_calendar_events (DB version 34)
+	// Maps a confirmed booking to the real event(s) pushed to each connected
+	// calendar, so a later cancellation knows exactly what to remove. One row
+	// per (booking, provider) — a booking can be pushed to more than one
+	// connected calendar.
+	// ────────────────────────────────────────────────────────────────────────
+	dbDelta( "CREATE TABLE {$wpdb->prefix}clientoctopus_booking_calendar_events (
+		id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		booking_id         BIGINT UNSIGNED NOT NULL,
+		provider           ENUM('google','microsoft','apple') NOT NULL,
+		external_event_id  VARCHAR(500) NOT NULL,
+		created_at         DATETIME DEFAULT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY booking_provider (booking_id, provider),
+		KEY booking_id (booking_id)
+	) $charset_collate;" );
 
 	update_option( 'clientoctopus_db_version', defined( 'CLIENTOCTOPUS_DB_VERSION' ) ? CLIENTOCTOPUS_DB_VERSION : '1' );
 }

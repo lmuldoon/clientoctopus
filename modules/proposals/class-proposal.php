@@ -280,9 +280,9 @@ $now      = current_time( 'mysql' );
 	 * @param int   $owner_id Ownership check.
 	 * @param array $data     Fields to update.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function update( int $id, int $owner_id, array $data ): true|WP_Error {
+	public static function update( int $id, int $owner_id, array $data ): bool|WP_Error {
 		global $wpdb;
 
 		$allowed = [
@@ -347,9 +347,9 @@ $now      = current_time( 'mysql' );
 	 * @param int    $owner_id
 	 * @param string $client_email Email to send to (for notification in Sprint 3).
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function send( int $id, int $owner_id, string $client_email = '' ): true|WP_Error {
+	public static function send( int $id, int $owner_id, string $client_email = '' ): bool|WP_Error {
 		global $wpdb;
 
 		$proposal = self::get( $id, $owner_id );
@@ -394,9 +394,9 @@ $now      = current_time( 'mysql' );
 	 * @param int $id
 	 * @param int $owner_id
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
@@ -560,9 +560,9 @@ $now      = current_time( 'mysql' );
 	 * @param int $id       Proposal ID.
 	 * @param int $owner_id Ownership check.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function revoke_preview_token( int $id, int $owner_id ): true|WP_Error {
+	public static function revoke_preview_token( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.

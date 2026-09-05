@@ -62,6 +62,13 @@ $plan_label = $plan_labels[ $user_plan ] ?? 'Free';
 $is_agency  = 'agency' === $user_plan;
 $is_pro_or_above = in_array( $user_plan, [ 'pro', 'agency' ], true );
 
+// $is_agency reflects the stored plan name only — on the free WP.org build
+// the Projects/Team code is physically absent regardless of what plan a
+// user's account is recorded as (e.g. a stale sync), so anything that links
+// to those admin pages must also confirm the premium code is actually
+// present, or it dead-links.
+$show_projects_team_links = $is_agency && function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is__premium_only();
+
 // Usage progress.
 $ai_prog       = clientoctopus_progress( $usage_data['ai_requests'] ?? 0,  $usage_data['ai_limit'] ?? null );
 $prop_prog     = clientoctopus_progress( $usage_data['proposals'] ?? 0,    $usage_data['proposals_limit'] ?? null );
@@ -425,7 +432,7 @@ $upgrade_url = function_exists( 'clientoctopus_fs' ) ? clientoctopus_fs()->get_u
                     All Invoices
                 </a>
 
-            <?php if ( $is_agency ) : ?>
+            <?php if ( $show_projects_team_links ) : ?>
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=clientoctopus-projects' ) ); ?>" class="co-action-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>

@@ -44,6 +44,7 @@ if ( ! defined( 'CLIENTOCTOPUS_WEBHOOK_EVENTS' ) ) {
 		'milestone.completed',
 		'approval.responded',
 		'message.sent',
+		'lead.captured',
 	] );
 }
 
@@ -178,6 +179,13 @@ function clientoctopus_rest_create_webhook( WP_REST_Request $request ): WP_REST_
 	if ( empty( $url ) ) {
 		return new WP_Error( 'invalid_url', __( 'A valid URL is required.', 'clientoctopus' ), [ 'status' => 422 ] );
 	}
+	// wp_http_validate_url() is the same check wp_safe_remote_post() applies
+	// at dispatch time — checking it here too means a URL pointing at internal
+	// infrastructure is rejected immediately with a clear message, instead of
+	// only ever showing up as a silently-failed delivery in the webhook logs.
+	if ( ! wp_http_validate_url( $url ) ) {
+		return new WP_Error( 'invalid_url', __( 'This URL cannot be used for a webhook — it must be a public http(s) address.', 'clientoctopus' ), [ 'status' => 422 ] );
+	}
 
 	if ( empty( $events ) ) {
 		return new WP_Error( 'no_events', __( 'Select at least one event to subscribe to.', 'clientoctopus' ), [ 'status' => 422 ] );
@@ -253,6 +261,9 @@ function clientoctopus_rest_update_webhook( WP_REST_Request $request ): WP_REST_
 		$url = (string) $request->get_param( 'url' );
 		if ( empty( $url ) ) {
 			return new WP_Error( 'invalid_url', __( 'A valid URL is required.', 'clientoctopus' ), [ 'status' => 422 ] );
+		}
+		if ( ! wp_http_validate_url( $url ) ) {
+			return new WP_Error( 'invalid_url', __( 'This URL cannot be used for a webhook — it must be a public http(s) address.', 'clientoctopus' ), [ 'status' => 422 ] );
 		}
 		$update['url'] = $url;
 	}
@@ -351,7 +362,9 @@ function clientoctopus_rest_test_webhook( WP_REST_Request $request ): WP_REST_Re
 	] );
 
 	$sig      = 'sha256=' . hash_hmac( 'sha256', $payload, $wh['secret'] );
-	$response = wp_remote_post( $wh['url'], [
+	// wp_safe_remote_post() — see the identical comment in dispatcher.php —
+	// rejects requests to internal/private IP ranges, including on redirect.
+	$response = wp_safe_remote_post( $wh['url'], [
 		'body'    => $payload,
 		'headers' => [
 			'Content-Type'           => 'application/json',

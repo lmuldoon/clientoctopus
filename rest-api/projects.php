@@ -84,7 +84,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/update/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_project',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'name'        => [ 'type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ],
@@ -97,7 +97,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_project',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -113,7 +113,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'title'       => [ 'type' => 'string',  'required' => true,  'sanitize_callback' => 'sanitize_text_field' ],
@@ -126,7 +126,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/update/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'mid'         => [ 'type' => 'integer', 'required' => true ],
@@ -141,7 +141,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'mid' => [ 'type' => 'integer', 'required' => true ],
@@ -152,7 +152,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/reorder/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_reorder_milestones',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'          => [ 'type' => 'integer', 'required' => true ],
 			'ordered_ids' => [ 'type' => 'array',   'required' => true ],
@@ -163,7 +163,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/projects/(?P<id>\d+)/milestones/(?P<mid>\d+)/submit/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_submit_milestone',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'  => [ 'type' => 'integer', 'required' => true ],
 			'mid' => [ 'type' => 'integer', 'required' => true ],
@@ -235,7 +235,35 @@ function clientoctopus_rest_get_project( WP_REST_Request $request ): WP_REST_Res
 		);
 	}
 
+	// Loaded up front (not just on the completion response) so the frontend
+	// can warn *before* submitting a completion, rather than after — see
+	// clientoctopus_get_active_recurring_profiles_for_client().
+	$result['active_recurring_profiles'] = clientoctopus_get_active_recurring_profiles_for_client(
+		(int) ( $result['client_id'] ?? 0 ),
+		$user_id
+	);
+
 	return new WP_REST_Response( [ 'project' => $result ], 200 );
+}
+
+/**
+ * A client's currently-active recurring billing profiles, if any — used so
+ * completing a project can warn the owner before an unrelated retainer is
+ * left silently invoicing a client whose project now shows as done.
+ *
+ * @return array<int, array{id: int, title: string}>
+ */
+function clientoctopus_get_active_recurring_profiles_for_client( int $client_id, int $owner_id ): array {
+	if ( ! $client_id ) return [];
+	global $wpdb;
+	return $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT id, title FROM {$wpdb->prefix}clientoctopus_recurring_profiles WHERE client_id = %d AND owner_id = %d AND status = 'active'",
+			$client_id,
+			$owner_id
+		),
+		ARRAY_A
+	) ?: [];
 }
 
 /**
@@ -310,6 +338,8 @@ function clientoctopus_rest_update_project( WP_REST_Request $request ): WP_REST_
 
 	$project = ClientOctopus_Project::get( $id, $user_id );
 
+	$active_recurring_profiles = [];
+
 	// On project completion: stamp the proposal as completed and email the client.
 	if ( isset( $data['status'] ) && 'completed' === $data['status'] && ! is_wp_error( $project ) ) {
 		if ( ! empty( $project['proposal_id'] ) ) {
@@ -323,6 +353,15 @@ function clientoctopus_rest_update_project( WP_REST_Request $request ): WP_REST_
 		}
 		clientoctopus_send_project_completion_email( $project );
 		clientoctopus_maybe_send_testimonial_email( $project, $user_id );
+
+		// The frontend now checks for an active recurring profile and confirms
+		// with the owner BEFORE ever submitting a completion (using the same
+		// data returned by clientoctopus_rest_get_project() on page load), so
+		// this is no longer a warn-after-the-fact — but still returned here
+		// too in case anything changed between page load and this request.
+		if ( ! empty( $project['client_id'] ) ) {
+			$active_recurring_profiles = clientoctopus_get_active_recurring_profiles_for_client( (int) $project['client_id'], $user_id );
+		}
 	} elseif ( ! is_wp_error( $project ) && 'completed' === ( $project['status'] ?? '' ) && ! empty( $project['proposal_id'] ) ) {
 		// Project is already complete — sync the proposal status in case it was missed.
 		$wpdb->query(
@@ -336,7 +375,7 @@ function clientoctopus_rest_update_project( WP_REST_Request $request ): WP_REST_
 		);
 	}
 
-	return new WP_REST_Response( [ 'project' => $project ], 200 );
+	return new WP_REST_Response( [ 'project' => $project, 'active_recurring_profiles' => $active_recurring_profiles ], 200 );
 }
 
 function clientoctopus_rest_delete_project( WP_REST_Request $request ): WP_REST_Response|WP_Error {
@@ -364,7 +403,15 @@ function clientoctopus_rest_get_project_payments( WP_REST_Request $request ): WP
 	$proposal_id    = (int) ( $project['proposal_id'] ?? 0 );
 	$proposal_total = null;
 
-	if ( $proposal_id ) {
+	// A recurring/retainer client's real balance lives in their recurring
+	// profile's own invoice history, not a one-time proposal payoff — without
+	// this, a completed retainer project never shows as "fully paid" here,
+	// which both misrepresents the balance in this sidebar AND (via isLocked
+	// in ProjectDetail) leaves a completed project's status silently editable
+	// forever, since it's gated on remaining <= 0.
+	$is_recurring_client = clientoctopus_client_has_recurring_profile( (int) ( $project['client_id'] ?? 0 ) );
+
+	if ( $proposal_id && ! $is_recurring_client ) {
 		$proposal_total = (float) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT total_amount FROM {$wpdb->prefix}clientoctopus_proposals WHERE id = %d",
@@ -547,33 +594,33 @@ function clientoctopus_rest_submit_milestone( WP_REST_Request $request ): WP_RES
 // ─────────────────────────────────────────────────────────────────────────────
 
 function clientoctopus_portal_rest_list_projects( WP_REST_Request $request ): WP_REST_Response {
-	$email    = ClientOctopus_Portal_Auth::get_current_email();
-	$projects = ClientOctopus_Portal_Data::get_projects( $email );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$projects  = ClientOctopus_Portal_Data::get_projects( $client_id );
 	return new WP_REST_Response( [ 'projects' => $projects ], 200 );
 }
 
 function clientoctopus_portal_rest_get_project( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$email   = ClientOctopus_Portal_Auth::get_current_email();
-	$id      = (int) $request->get_param( 'id' );
-	$project = ClientOctopus_Portal_Data::get_project( $email, $id );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$id        = (int) $request->get_param( 'id' );
+	$project   = ClientOctopus_Portal_Data::get_project( $client_id, $id );
 	if ( is_wp_error( $project ) ) return $project;
 	return new WP_REST_Response( [ 'project' => $project ], 200 );
 }
 
 function clientoctopus_portal_rest_approve_milestone( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-	$email      = ClientOctopus_Portal_Auth::get_current_email();
+	$client_id  = ClientOctopus_Portal_Auth::get_current_client_id();
 	$project_id = (int) $request->get_param( 'id' );
 	$mid        = (int) $request->get_param( 'mid' );
 
 	// Ownership check — ensure this project belongs to the current portal client.
-	$project = ClientOctopus_Portal_Data::get_project( $email, $project_id );
+	$project = ClientOctopus_Portal_Data::get_project( $client_id, $project_id );
 	if ( is_wp_error( $project ) ) return $project;
 
 	$result = ClientOctopus_Milestone::approve( $mid, $project_id );
 	if ( is_wp_error( $result ) ) return $result;
 
 	// Reload so the response has the updated milestone status.
-	$project = ClientOctopus_Portal_Data::get_project( $email, $project_id );
+	$project = ClientOctopus_Portal_Data::get_project( $client_id, $project_id );
 
 	// Notify the project owner.
 	$milestone_title = '';
@@ -738,6 +785,23 @@ function clientoctopus_send_milestone_complete_email( array $project, string $mi
 }
 
 /**
+ * Whether this client has a recurring billing relationship at all (any
+ * status — even a paused/cancelled one means their billing model is
+ * retainer-based, not a one-off proposal payoff). Used to skip proposal-total
+ * math that doesn't apply to retainer clients: their real invoices come from
+ * the recurring profile on its own schedule, not from "has this proposal
+ * been paid off yet."
+ */
+function clientoctopus_client_has_recurring_profile( int $client_id ): bool {
+	if ( ! $client_id ) return false;
+	global $wpdb;
+	return (bool) $wpdb->get_var( $wpdb->prepare(
+		"SELECT 1 FROM {$wpdb->prefix}clientoctopus_recurring_profiles WHERE client_id = %d LIMIT 1",
+		$client_id
+	) );
+}
+
+/**
  * Email the client that their project has been completed.
  *
  * @param array $project Full project row (from ClientOctopus_Project::get).
@@ -748,11 +812,12 @@ function clientoctopus_send_project_completion_email( array $project ): void {
 
 	global $wpdb;
 
-	$proposal_id  = (int) ( $project['proposal_id'] ?? 0 );
-	$total_amount = 0.00;
-	$paid_amount  = 0.00;
+	$proposal_id       = (int) ( $project['proposal_id'] ?? 0 );
+	$is_recurring_client = clientoctopus_client_has_recurring_profile( (int) ( $project['client_id'] ?? 0 ) );
+	$total_amount      = 0.00;
+	$paid_amount       = 0.00;
 
-	if ( $proposal_id ) {
+	if ( $proposal_id && ! $is_recurring_client ) {
 		$total_amount = (float) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT total_amount FROM {$wpdb->prefix}clientoctopus_proposals WHERE id = %d",
@@ -796,7 +861,13 @@ function clientoctopus_send_project_completion_email( array $project ): void {
 		'name'      => $client['name'],
 		'body'      => $body_html,
 		'cta_label' => 'View Project',
-		'cta_url'   => home_url( '/clientoctopus/' ),
+		// Portal root previously linked here regardless of whether there was
+		// actually anything to pay — /invoices is where a client's real,
+		// payable records live (including recurring-profile-generated
+		// invoices for retainer clients, which this email's own "Payment
+		// Due" figure — the linked proposal's total minus payments — never
+		// accounts for).
+		'cta_url'   => home_url( '/clientoctopus/invoices' ),
 	] );
 
 	wp_mail( $client['email'], $subject, $message, [ 'Content-Type: text/html; charset=UTF-8' ] );
@@ -811,6 +882,12 @@ function clientoctopus_maybe_send_testimonial_email( array $project, int $owner_
 
 	global $wpdb;
 
+	// A retainer client's real invoices come from their recurring profile on
+	// its own schedule, not from this proposal ever being "paid off" — the
+	// fully-paid gate below doesn't mean anything for them and would
+	// otherwise permanently block the testimonial ask for every retainer.
+	$is_recurring_client = clientoctopus_client_has_recurring_profile( (int) ( $project['client_id'] ?? 0 ) );
+
 	$proposal = $wpdb->get_row(
 		$wpdb->prepare(
 			"SELECT total_amount, client_id, title FROM {$wpdb->prefix}clientoctopus_proposals WHERE id = %d AND owner_id = %d",
@@ -820,16 +897,19 @@ function clientoctopus_maybe_send_testimonial_email( array $project, int $owner_
 		ARRAY_A
 	);
 
-	if ( ! $proposal || empty( $proposal['total_amount'] ) || empty( $proposal['client_id'] ) ) return;
+	if ( ! $proposal || empty( $proposal['client_id'] ) ) return;
+	if ( ! $is_recurring_client && empty( $proposal['total_amount'] ) ) return;
 
-	$total_paid = (float) $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT COALESCE(SUM(amount), 0) FROM {$wpdb->prefix}clientoctopus_payments WHERE proposal_id = %d AND status = 'completed'",
-			$proposal_id
-		)
-	);
+	if ( ! $is_recurring_client ) {
+		$total_paid = (float) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COALESCE(SUM(amount), 0) FROM {$wpdb->prefix}clientoctopus_payments WHERE proposal_id = %d AND status = 'completed'",
+				$proposal_id
+			)
+		);
 
-	if ( $total_paid < ( (float) $proposal['total_amount'] - 0.01 ) ) return;
+		if ( $total_paid < ( (float) $proposal['total_amount'] - 0.01 ) ) return;
+	}
 
 	$client_row = $wpdb->get_row(
 		$wpdb->prepare(

@@ -188,13 +188,13 @@ class ClientOctopus_Payment {
 	 * @param string      $payment_intent_id Stripe PaymentIntent ID.
 	 * @param string|null $customer_id       Stripe Customer ID (if present).
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
 	public static function mark_complete(
 		string $session_id,
 		string $payment_intent_id,
 		?string $customer_id = null
-	): true|WP_Error {
+	): bool|WP_Error {
 		return self::mark_complete_for_provider( $session_id, $payment_intent_id, $customer_id, 'stripe' );
 	}
 
@@ -206,14 +206,14 @@ class ClientOctopus_Payment {
 	 * @param string|null $customer_id  Stripe Customer ID (if present). Unused for PayPal.
 	 * @param string      $provider     'stripe' | 'paypal'. Defaults to 'stripe'.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
 	public static function mark_complete_for_provider(
 		string $gateway_id,
 		string $charge_id,
 		?string $customer_id = null,
 		string $provider = 'stripe'
-	): true|WP_Error {
+	): bool|WP_Error {
 		global $wpdb;
 
 		$now    = current_time( 'mysql' );
@@ -259,9 +259,9 @@ class ClientOctopus_Payment {
 	 * @param string $session_id
 	 * @param string $provider   'stripe' | 'paypal'. Defaults to 'stripe'.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function mark_failed( string $session_id, string $provider = 'stripe' ): true|WP_Error {
+	public static function mark_failed( string $session_id, string $provider = 'stripe' ): bool|WP_Error {
 		global $wpdb;
 
 		$column = 'paypal' === $provider ? 'paypal_order_id' : 'stripe_session_id';

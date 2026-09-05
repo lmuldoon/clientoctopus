@@ -59,16 +59,53 @@ class ClientOctopus_Entitlements {
 	 * @return array<string, array<string, mixed>>
 	 */
 	private static function get_feature_matrix(): array {
-		if ( ! ( function_exists( 'clientoctopus_fs' ) && clientoctopus_fs()->is_premium() ) ) {
-			return []; // WP.org free build: no plan restrictions — can_user() returns true for all features.
-		}
-
-		return [
+		// Features present (and fully functional, per WP.org Guideline 5) in
+		// every build, including the free WP.org zip.
+		$matrix = [
 			// ── Proposals ────────────────────────────────────────────────────
 			'create_proposal' => [
 				'free'   => [ 'limit' => null, 'limit_type' => null ],
 				'pro'    => [ 'limit' => null, 'limit_type' => null ],
 				'agency' => [ 'limit' => null, 'limit_type' => null ],
+			],
+
+			// ── E-signature on proposal acceptance ───────────────────────────
+			'use_esignature' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
+			],
+
+			// ── Automated Reminders ────────────────────────────────────────────
+			'use_automations' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
+			],
+
+			// ── Standalone Invoices ───────────────────────────────────────────────
+			// Free: create/send/view/manual mark-paid. Pro: Stripe Pay Now button.
+			'use_invoices' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
+			],
+
+			// ── Lead Capture ──────────────────────────────────────────────────
+			// Free on every plan — an acquisition-funnel feature; the webhook
+			// connectivity around it (see modules/webhooks/) is what's paid.
+			'use_leads' => [
+				'free'   => true,
+				'pro'    => true,
+				'agency' => true,
+			],
+
+			// ── Team Seats ────────────────────────────────────────────────────
+			// Present on every plan — free just gets a 1-seat limit, not a lock.
+			'team_access' => [
+				'free'   => [ 'limit' => 1, 'limit_type' => 'users' ],
+				'pro'    => [ 'limit' => 1, 'limit_type' => 'users' ],
+				'agency' => [ 'limit' => 5, 'limit_type' => 'users' ],
 			],
 
 			// ── AI Assistance ─────────────────────────────────────────────────
@@ -85,15 +122,26 @@ class ClientOctopus_Entitlements {
 				'agency' => true,
 			],
 
-			// ── E-signature on proposal acceptance ───────────────────────────
-			'use_esignature' => [
-				'free'   => true,
+			// ── Outbound Webhooks ─────────────────────────────────────────────
+			'use_webhooks' => [
+				'free'   => false,
 				'pro'    => true,
 				'agency' => true,
 			],
 
-			// ── Outbound Webhooks ─────────────────────────────────────────────
-			'use_webhooks' => [
+			// ── Call Booking ──────────────────────────────────────────────────
+			// Flat gate, same shape as use_webhooks — Pro and Agency get the
+			// identical feature, no tiering between them (unlike use_portal).
+			'use_booking' => [
+				'free'   => false,
+				'pro'    => true,
+				'agency' => true,
+			],
+
+			// ── Calendar Sync ─────────────────────────────────────────────────
+			// Flat Pro+Agency gate, same shape as use_booking itself — anyone
+			// who can use Booking can also sync a real calendar into it.
+			'use_calendar_sync' => [
 				'free'   => false,
 				'pro'    => true,
 				'agency' => true,
@@ -135,29 +183,21 @@ class ClientOctopus_Entitlements {
 				'pro'    => true,
 				'agency' => true,
 			],
-
-			// ── Team Seats ────────────────────────────────────────────────────
-			'team_access' => [
-				'free'   => [ 'limit' => 1, 'limit_type' => 'users' ],
-				'pro'    => [ 'limit' => 1, 'limit_type' => 'users' ],
-				'agency' => [ 'limit' => 5, 'limit_type' => 'users' ],
-			],
-
-			// ── Automated Reminders ────────────────────────────────────────────
-			'use_automations' => [
-				'free'   => true,
-				'pro'    => true,
-				'agency' => true,
-			],
-
-			// ── Standalone Invoices ───────────────────────────────────────────────
-			// Free: create/send/view/manual mark-paid. Pro: Stripe Pay Now button.
-			'use_invoices' => [
-				'free'   => true,
-				'pro'    => true,
-				'agency' => true,
-			],
 		];
+
+		// NOTE: this matrix is intentionally unconditional — it encodes plan-tier
+		// access rules and must exist identically in every build (raw source,
+		// Freemius-generated free zip, or premium zip). is__premium_only() is a
+		// build-identity flag (does this build contain premium code), not a
+		// per-site plan check — gating the matrix on it previously caused every
+		// premium feature to silently default to "allowed" in the free build
+		// (can_user()'s unknown-feature fallback below). Only the underlying
+		// module/REST/UI *code* should ever be conditionally stripped, via the
+		// plugin header's @fs_premium_only directive and per-route
+		// is__premium_only() guards (e.g. rest-api/invoices.php) — never this
+		// matrix.
+
+		return $matrix;
 	}
 
 	// ── Core Check ────────────────────────────────────────────────────────────
@@ -178,9 +218,9 @@ class ClientOctopus_Entitlements {
 		$plan   = self::get_user_plan( $user_id );
 		$matrix = self::get_feature_matrix();
 
-		// Unknown feature → allow. The WP.org free zip ships with an empty matrix
-		// (the premium-only block is stripped by Freemius), so all features must
-		// default to accessible in that build.
+		// Unknown feature → allow. The matrix is unconditional and always
+		// enumerates every real feature (see get_feature_matrix()); this is
+		// just a safe default for a slug nothing has modeled.
 		if ( ! isset( $matrix[ $feature ] ) ) {
 			return true;
 		}
@@ -438,9 +478,8 @@ class ClientOctopus_Entitlements {
 	 * @return int
 	 */
 	public static function get_team_limit( int $user_id ): int {
-		if ( empty( self::get_feature_matrix() ) ) {
-			return PHP_INT_MAX;
-		}
+		// 'team_access' is present on every plan (a seat-count limit, not a
+		// lock) — always defined, so no free-build bypass is needed here.
 		return match ( self::get_user_plan( $user_id ) ) {
 			'agency' => 5,
 			default  => 1,
@@ -452,10 +491,10 @@ class ClientOctopus_Entitlements {
 	 *
 	 * @param int $user_id
 	 *
-	 * @return int PHP_INT_MAX when the feature matrix is absent (WP.org free build).
+	 * @return int PHP_INT_MAX when 'use_files' is absent from the matrix (WP.org free build, premium stripped).
 	 */
 	public static function get_storage_limit( int $user_id ): int {
-		if ( empty( self::get_feature_matrix() ) ) {
+		if ( ! isset( self::get_feature_matrix()['use_files'] ) ) {
 			return PHP_INT_MAX;
 		}
 		return match ( self::get_user_plan( $user_id ) ) {
@@ -586,6 +625,103 @@ class ClientOctopus_Entitlements {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Atomically check the use_ai monthly quota and reserve one usage slot,
+	 * as a single critical section guarded by a MySQL advisory lock keyed per
+	 * user. Without this, concurrent requests each call can_user() (a plain
+	 * read) before any of them calls log_usage() (a later write) — several
+	 * requests fired in parallel can all see the same pre-increment count and
+	 * all pass, letting a user exceed their paid monthly allotment.
+	 *
+	 * Only the fast local check-and-insert is inside the lock — the slow AI
+	 * relay call itself happens afterward, outside it (see
+	 * ClientOctopus_AI_Service::process()), so one request never blocks
+	 * another for the duration of a network round trip. A positive lock
+	 * timeout is used (rather than failing immediately) so a user's own
+	 * rapid-fire requests queue briefly instead of being dropped.
+	 *
+	 * @param int $user_id
+	 * @return int|WP_Error New clientoctopus_ai_usage_logs row ID to pass to
+	 *                       finalize_ai_usage()/discard_ai_usage() once the
+	 *                       relay call this reservation is for completes, or
+	 *                       a WP_Error if over quota / the lock timed out.
+	 */
+	public static function reserve_ai_usage( int $user_id ): int|WP_Error {
+		global $wpdb;
+
+		$lock_name = $wpdb->prefix . 'clientoctopus_ai_quota_' . $user_id;
+		if ( ! (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 10)', $lock_name ) ) ) {
+			return new WP_Error( 'busy', __( 'Please try again in a moment.', 'clientoctopus' ), [ 'status' => 429 ] );
+		}
+
+		try {
+			if ( ! self::can_user( $user_id, 'use_ai' ) ) {
+				return new WP_Error(
+					'plan_required',
+					__( 'AI writing tools require a Pro or Agency plan, or you have reached this month\'s limit. Please upgrade or try again next month.', 'clientoctopus' ),
+					[ 'status' => 403 ]
+				);
+			}
+
+			// Reuses log_usage()'s existing insert (usage_logs row) + counter
+			// bump (clientoctopus_user_meta.ai_usage_count) so both stay in
+			// sync exactly as they did before this was split into reserve/
+			// finalize/discard — meta fields are filled in later by
+			// finalize_ai_usage() once the relay call actually completes.
+			self::log_usage( $user_id, 'use_ai', [] );
+			$log_id = (int) $wpdb->insert_id;
+
+			if ( ! $log_id ) {
+				return new WP_Error( 'db_error', __( 'Could not process this request. Please try again.', 'clientoctopus' ), [ 'status' => 500 ] );
+			}
+
+			return $log_id;
+		} finally {
+			$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+		}
+	}
+
+	/**
+	 * Fill in the real token/cost details on a row reserved by
+	 * reserve_ai_usage(), once the relay call it was reserved for has
+	 * actually completed successfully.
+	 *
+	 * @param int   $log_id clientoctopus_ai_usage_logs.id from reserve_ai_usage().
+	 * @param array $meta   proposal_id, action, tokens_input, tokens_output, cost_usd.
+	 */
+	public static function finalize_ai_usage( int $log_id, array $meta ): void {
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix . 'clientoctopus_ai_usage_logs',
+			[
+				'proposal_id'   => $meta['proposal_id']   ?? null,
+				'action'        => $meta['action']        ?? null,
+				'tokens_input'  => $meta['tokens_input']  ?? null,
+				'tokens_output' => $meta['tokens_output'] ?? null,
+				'cost_usd'      => $meta['cost_usd']      ?? null,
+			],
+			[ 'id' => $log_id ]
+		);
+	}
+
+	/**
+	 * Undo a reservation made by reserve_ai_usage() when the relay call it
+	 * was reserved for ultimately failed — matches the pre-existing behavior
+	 * (log_usage() was previously only ever called after a successful relay
+	 * response), so a failed request still never counts against quota.
+	 *
+	 * @param int $user_id
+	 * @param int $log_id clientoctopus_ai_usage_logs.id from reserve_ai_usage().
+	 */
+	public static function discard_ai_usage( int $user_id, int $log_id ): void {
+		global $wpdb;
+		$wpdb->delete( $wpdb->prefix . 'clientoctopus_ai_usage_logs', [ 'id' => $log_id ] );
+		$wpdb->query( $wpdb->prepare(
+			"UPDATE {$wpdb->prefix}clientoctopus_user_meta SET ai_usage_count = GREATEST(0, ai_usage_count - 1) WHERE user_id = %d",
+			$user_id
+		) );
 	}
 
 	// ── Rate Limiting ─────────────────────────────────────────────────────────

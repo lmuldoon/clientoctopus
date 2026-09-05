@@ -151,15 +151,15 @@ class ClientOctopus_Approval {
 	/**
 	 * List approvals for a project — client portal access.
 	 *
-	 * @param int    $project_id
-	 * @param string $client_email
+	 * @param int $project_id
+	 * @param int $client_id
 	 *
 	 * @return array|WP_Error
 	 */
-	public static function get_for_client_by_email( int $project_id, string $client_email ): array|WP_Error {
+	public static function get_for_client( int $project_id, int $client_id ): array|WP_Error {
 		global $wpdb;
 
-		if ( ! self::client_owns_project_by_email( $project_id, $client_email ) ) {
+		if ( ! self::client_owns_project( $project_id, $client_id ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -180,14 +180,14 @@ class ClientOctopus_Approval {
 	/**
 	 * Client responds to an approval request.
 	 *
-	 * @param int    $id            Approval ID.
-	 * @param string $client_email  Email of the responding client.
-	 * @param string $status        'approved' or 'rejected'.
-	 * @param string $comment       Optional comment from client.
+	 * @param int    $id         Approval ID.
+	 * @param int    $client_id  clientoctopus_clients.id of the responding client.
+	 * @param string $status     'approved' or 'rejected'.
+	 * @param string $comment    Optional comment from client.
 	 *
 	 * @return array|WP_Error Updated approval row.
 	 */
-	public static function respond_by_email( int $id, string $client_email, string $status, string $comment = '' ): array|WP_Error {
+	public static function respond( int $id, int $client_id, string $status, string $comment = '' ): array|WP_Error {
 		global $wpdb;
 
 		if ( ! in_array( $status, self::RESPONSE_STATUSES, true ) ) {
@@ -208,7 +208,7 @@ class ClientOctopus_Approval {
 			return new WP_Error( 'approval_not_found', __( 'Approval not found.', 'clientoctopus' ), [ 'status' => 404 ] );
 		}
 
-		if ( ! self::client_owns_project_by_email( (int) $row['project_id'], $client_email ) ) {
+		if ( ! self::client_owns_project( (int) $row['project_id'], $client_id ) ) {
 			return new WP_Error( 'forbidden', __( 'Access denied.', 'clientoctopus' ), [ 'status' => 403 ] );
 		}
 
@@ -219,14 +219,6 @@ class ClientOctopus_Approval {
 				[ 'status' => 422 ]
 			);
 		}
-
-		// Use clientoctopus_clients.id as approved_by (no WP user needed).
-		$client_id = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT id FROM {$wpdb->prefix}clientoctopus_clients WHERE email = %s LIMIT 1",
-				$client_email
-			)
-		);
 
 		$now     = current_time( 'mysql' );
 		$comment = sanitize_textarea_field( $comment );
@@ -270,9 +262,9 @@ class ClientOctopus_Approval {
 	 * @param int $id
 	 * @param int $owner_id
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
@@ -330,18 +322,17 @@ class ClientOctopus_Approval {
 	}
 
 	/**
-	 * Check whether the given email is the client assigned to a project.
+	 * Check whether the given client is the client assigned to a project.
 	 */
-	private static function client_owns_project_by_email( int $project_id, string $client_email ): bool {
+	private static function client_owns_project( int $project_id, int $client_id ): bool {
 		global $wpdb;
 
 		return (bool) (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects p
-				 INNER JOIN {$wpdb->prefix}clientoctopus_clients c ON p.client_id = c.id
-				 WHERE p.id = %d AND c.email = %s",
+				"SELECT COUNT(*) FROM {$wpdb->prefix}clientoctopus_projects
+				 WHERE id = %d AND client_id = %d",
 				$project_id,
-				$client_email
+				$client_id
 			)
 		);
 	}

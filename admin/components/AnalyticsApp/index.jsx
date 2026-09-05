@@ -278,6 +278,58 @@ const GLOBAL_CSS = `
 /* ── Empty / error states ── */
 .co-an-empty { text-align: center; padding: 40px 0; color: var(--co-muted); font-size: 14px; }
 
+/* ── Feed toggle ── */
+.co-feed-toggle {
+  display: block;
+  margin: 14px auto 0;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--co-accent);
+}
+.co-feed-toggle:hover { text-decoration: underline; }
+
+/* ── Lead funnel ── */
+.co-funnel-stages {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.co-funnel-stat { flex: 1; min-width: 110px; }
+.co-funnel-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--co-muted);
+  margin-bottom: 6px;
+}
+.co-funnel-stat-value {
+  font-family: 'Archivo', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--co-text);
+  line-height: 1;
+}
+.co-funnel-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--co-bg);
+  margin-bottom: 20px;
+}
+.co-funnel-seg { height: 100%; }
+.co-funnel-seg.new       { background: var(--co-slate-400); }
+.co-funnel-seg.contacted { background: var(--co-accent); }
+.co-funnel-seg.converted { background: var(--co-green); }
+.co-funnel-seg.archived  { background: var(--co-amber); }
+
 /* ── Loading skeleton ── */
 .co-skel {
   background: linear-gradient(90deg, var(--co-bg) 25%, #e8eaf0 50%, var(--co-bg) 75%);
@@ -441,6 +493,7 @@ export default function AnalyticsApp() {
 	const [ loading, setLoading ] = useState( true );
 	const [ error,   setError   ] = useState( null );
 	const [ upgradeRequired, setUpgradeRequired ] = useState( false );
+	const [ feedExpanded, setFeedExpanded ] = useState( false );
 
 	const apiUrl = window.clientoctopusData?.apiUrl ?? '/wp-json/clientoctopus/v1/';
 
@@ -491,7 +544,8 @@ export default function AnalyticsApp() {
 		);
 	}
 
-	const kpis = data?.kpis ?? {};
+	const kpis  = data?.kpis ?? {};
+	const leads = data?.leads ?? {};
 
 	return (
 		<div className="co-an">
@@ -535,7 +589,7 @@ export default function AnalyticsApp() {
 			<div className="co-an-kpis">
 				{ loading ? (
 					<>
-						<KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
+						<KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
 					</>
 				) : (
 					<>
@@ -543,6 +597,7 @@ export default function AnalyticsApp() {
 						<KpiCard label="Conversion Rate" value={ kpis.conversion_rate }    prevValue={ kpis.conversion_rate_prev } format={ fmt.pct } />
 						<KpiCard label="Proposals Sent"  value={ kpis.proposals_sent }     prevValue={ kpis.proposals_sent_prev }  format={ v => v ?? 0 } />
 						<KpiCard label="Avg Days to Close" value={ kpis.avg_days_to_close } prevValue={ kpis.avg_days_prev }       format={ fmt.days } />
+						<KpiCard label="Leads Captured"  value={ leads.captured }          prevValue={ leads.captured_prev }      format={ v => v ?? 0 } />
 					</>
 				) }
 			</div>
@@ -618,26 +673,90 @@ export default function AnalyticsApp() {
 					{ loading ? (
 						<div className="co-skel" style={ { height: 280 } } />
 					) : (
-						<ul className="co-feed">
-							{ ( data?.feed ?? [] ).length === 0 ? (
-								<li className="co-an-empty">No recent activity.</li>
-							) : ( data?.feed ?? [] ).map( ( item, i ) => {
-								const dot = feedDot( item.type );
-								return (
-									<li key={ i } className="co-feed-item">
-										<div className="co-feed-dot" style={ { background: dot.bg } }>
-											{ dot.icon }
-										</div>
-										<div>
-											<div className="co-feed-label">{ item.label }</div>
-											<div className="co-feed-time">{ timeAgo( item.timestamp ) }</div>
-										</div>
-									</li>
-								);
-							} ) }
-						</ul>
+						<>
+							<ul className="co-feed">
+								{ ( data?.feed ?? [] ).length === 0 ? (
+									<li className="co-an-empty">No recent activity.</li>
+								) : ( feedExpanded ? ( data?.feed ?? [] ) : ( data?.feed ?? [] ).slice( 0, 6 ) ).map( ( item, i ) => {
+									const dot = feedDot( item.type );
+									return (
+										<li key={ i } className="co-feed-item">
+											<div className="co-feed-dot" style={ { background: dot.bg } }>
+												{ dot.icon }
+											</div>
+											<div>
+												<div className="co-feed-label">{ item.label }</div>
+												<div className="co-feed-time">{ timeAgo( item.timestamp ) }</div>
+											</div>
+										</li>
+									);
+								} ) }
+							</ul>
+							{ ( data?.feed ?? [] ).length > 6 && (
+								<button
+									type="button"
+									className="co-feed-toggle"
+									onClick={ () => setFeedExpanded( ( v ) => ! v ) }
+								>
+									{ feedExpanded ? 'Show less' : `Show all (${ data.feed.length })` }
+								</button>
+							) }
+						</>
 					) }
 				</div>
+			</div>
+
+			{ /* Lead Funnel */ }
+			<div className="co-an-card" style={ { marginTop: 20 } }>
+				<h2>Lead Funnel</h2>
+				{ loading ? (
+					<div className="co-skel" style={ { height: 120 } } />
+				) : leads.captured === 0 ? (
+					<div className="co-an-empty">No leads captured in this period.</div>
+				) : (
+					<>
+						<div className="co-funnel-stages">
+							<div className="co-funnel-stat">
+								<div className="co-funnel-stat-label">Captured</div>
+								<div className="co-funnel-stat-value">{ leads.captured ?? 0 }</div>
+							</div>
+							<div className="co-funnel-stat">
+								<div className="co-funnel-stat-label">New</div>
+								<div className="co-funnel-stat-value">{ leads.new ?? 0 }</div>
+							</div>
+							<div className="co-funnel-stat">
+								<div className="co-funnel-stat-label">Contacted</div>
+								<div className="co-funnel-stat-value">{ leads.contacted ?? 0 }</div>
+							</div>
+							<div className="co-funnel-stat">
+								<div className="co-funnel-stat-label">Converted</div>
+								<div className="co-funnel-stat-value">{ leads.converted ?? 0 }</div>
+							</div>
+							<div className="co-funnel-stat">
+								<div className="co-funnel-stat-label">Archived</div>
+								<div className="co-funnel-stat-value">{ leads.archived ?? 0 }</div>
+							</div>
+						</div>
+
+						<div className="co-funnel-bar">
+							{ [ 'new', 'contacted', 'converted', 'archived' ].map( ( stage ) => {
+								const pct = leads.captured > 0 ? ( ( leads[ stage ] ?? 0 ) / leads.captured ) * 100 : 0;
+								return pct > 0 ? (
+									<div key={ stage } className={ `co-funnel-seg ${ stage }` } style={ { width: `${ pct }%` } } />
+								) : null;
+							} ) }
+						</div>
+
+						<div style={ { display: 'flex', gap: 24 } }>
+							<div>
+								<div style={ { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--co-muted)', marginBottom: 4 } }>Lead &rarr; Client Conversion Rate</div>
+								<div style={ { fontSize: 22, fontWeight: 800, fontFamily: 'Archivo, sans-serif', color: 'var(--co-accent)' } }>
+									{ fmt.pct( leads.conversion_rate ) }
+								</div>
+							</div>
+						</div>
+					</>
+				) }
 			</div>
 		</div>
 	);

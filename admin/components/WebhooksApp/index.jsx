@@ -217,6 +217,7 @@ const ALL_EVENTS = [
 	{ value: 'invoice.cancelled',  label: 'Invoice Cancelled' },
 	{ value: 'project.created',    label: 'Project Created' },
 	{ value: 'project.completed',  label: 'Project Completed' },
+	{ value: 'lead.captured',      label: 'Lead Captured' },
 ];
 
 // ── Sub-components ──────────────────────────────────────────────────────────────

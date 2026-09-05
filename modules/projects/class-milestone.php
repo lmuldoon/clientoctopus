@@ -120,9 +120,9 @@ class ClientOctopus_Milestone {
 	 * @param int   $owner_id
 	 * @param array $data title, description, status, due_date.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function update( int $id, int $owner_id, array $data ): true|WP_Error {
+	public static function update( int $id, int $owner_id, array $data ): bool|WP_Error {
 		global $wpdb;
 
 		$allowed = [ 'title', 'description', 'status', 'due_date' ];
@@ -200,9 +200,9 @@ class ClientOctopus_Milestone {
 	 * @param int $id
 	 * @param int $owner_id
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function delete( int $id, int $owner_id ): true|WP_Error {
+	public static function delete( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		$result = $wpdb->delete(
@@ -227,9 +227,9 @@ class ClientOctopus_Milestone {
 	 * @param int   $owner_id
 	 * @param int[] $ordered_ids Milestone IDs in desired display order.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function reorder( int $project_id, int $owner_id, array $ordered_ids ): true|WP_Error {
+	public static function reorder( int $project_id, int $owner_id, array $ordered_ids ): bool|WP_Error {
 		global $wpdb;
 
 		foreach ( $ordered_ids as $sort_order => $milestone_id ) {
@@ -254,9 +254,9 @@ class ClientOctopus_Milestone {
 	 * @param int $id       Milestone ID.
 	 * @param int $owner_id Must match to prevent cross-owner tampering.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function submit( int $id, int $owner_id ): true|WP_Error {
+	public static function submit( int $id, int $owner_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.
@@ -292,9 +292,9 @@ class ClientOctopus_Milestone {
 	 * @param int $id         Milestone ID.
 	 * @param int $project_id Must match to prevent cross-project tampering.
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function approve( int $id, int $project_id ): true|WP_Error {
+	public static function approve( int $id, int $project_id ): bool|WP_Error {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- self::table() is a trusted constant ($wpdb->prefix + hardcoded class const), not user input.

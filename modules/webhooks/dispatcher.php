@@ -64,7 +64,13 @@ function clientoctopus_webhook_dispatch( string $event, int $owner_id, array $da
 	foreach ( $webhooks as $wh ) {
 		$sig = 'sha256=' . hash_hmac( 'sha256', $payload, $wh['secret'] );
 
-		$response = wp_remote_post( $wh['url'], [
+		// wp_safe_remote_post() (rather than wp_remote_post()) rejects requests
+		// to internal/private IP ranges (localhost, cloud metadata endpoints,
+		// RFC1918 addresses) both for this URL and for any redirect it issues —
+		// the destination is an owner-supplied URL, so an owner with only
+		// team-admin (not full WP admin) access could otherwise point it at
+		// internal infrastructure and have the site make requests on their behalf.
+		$response = wp_safe_remote_post( $wh['url'], [
 			'body'    => $payload,
 			'headers' => [
 				'Content-Type'           => 'application/json',

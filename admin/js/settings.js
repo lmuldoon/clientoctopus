@@ -1,4 +1,43 @@
 (function () {
+	// ── Settings tabs ─────────────────────────────────────────────────────
+	var tabButtons = document.querySelectorAll( '.co-settings-tab' );
+	var tabPanels  = document.querySelectorAll( '.co-settings-panel' );
+	var STORAGE_KEY = 'co_settings_active_tab';
+
+	function activateTab( tabId ) {
+		var found = false;
+		for ( var i = 0; i < tabButtons.length; i++ ) {
+			var isMatch = tabButtons[ i ].getAttribute( 'data-tab' ) === tabId;
+			tabButtons[ i ].classList.toggle( 'active', isMatch );
+			if ( isMatch ) { found = true; }
+		}
+		for ( var j = 0; j < tabPanels.length; j++ ) {
+			tabPanels[ j ].classList.toggle( 'active', tabPanels[ j ].getAttribute( 'data-panel' ) === tabId );
+		}
+		return found;
+	}
+
+	if ( tabButtons.length && tabPanels.length ) {
+		for ( var k = 0; k < tabButtons.length; k++ ) {
+			tabButtons[ k ].addEventListener( 'click', function () {
+				var tabId = this.getAttribute( 'data-tab' );
+				activateTab( tabId );
+				try {
+					window.localStorage.setItem( STORAGE_KEY, tabId );
+				} catch ( e ) { /* localStorage unavailable — inactive tab just won't persist across reloads */ }
+			} );
+		}
+
+		var restored = null;
+		try {
+			restored = window.localStorage.getItem( STORAGE_KEY );
+		} catch ( e ) { /* localStorage unavailable */ }
+
+		if ( ! restored || ! activateTab( restored ) ) {
+			activateTab( tabButtons[ 0 ].getAttribute( 'data-tab' ) );
+		}
+	}
+
 	var picker   = document.getElementById( 'co-brand-color-picker' );
 	var hexInput = document.getElementById( 'co-brand-color-hex' );
 	if ( picker && hexInput ) {
@@ -121,6 +160,16 @@
 			for ( var j = 0; j < paypalFieldEls.length; j++ ) {
 				paypalFieldEls[ j ].style.display = showPaypal ? '' : 'none';
 			}
+		} );
+	}
+
+	// ── Lead Capture CAPTCHA provider toggle ─────────────────────────────────
+	var captchaSelect     = document.getElementById( 'co-lead-captcha-provider' );
+	var turnstileFieldsEl = document.getElementById( 'co-lead-turnstile-fields' );
+
+	if ( captchaSelect && turnstileFieldsEl ) {
+		captchaSelect.addEventListener( 'change', function () {
+			turnstileFieldsEl.style.display = 'turnstile' === captchaSelect.value ? '' : 'none';
 		} );
 	}
 

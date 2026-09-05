@@ -1,0 +1,128 @@
+/**
+ * Optional Client Octopus branded skin for the booking widget.
+ *
+ * Loaded only when "Use branded styling" is checked in Settings > Booking
+ * (see modules/booking/shortcode.php). Layered on top of booking.css's
+ * structural rules using the same selectors, so it only needs to override
+ * color/type/shadow/spacing — never re-implements layout. Site owners who
+ * leave this unchecked get booking.css's plain, theme-agnostic styling and
+ * can style the widget entirely with their own site CSS instead.
+ *
+ * Colors match the same tokens used throughout the plugin's own admin UI
+ * (--co-indigo, --co-navy, etc. in shared/tokens.js) for brand consistency.
+ * No web font is loaded — system font stacks only, so this never adds an
+ * external network request.
+ */
+.co-booking {
+	padding: 28px;
+	background: #fff;
+	border-radius: 16px;
+	box-shadow: 0 1px 3px rgba(26, 26, 46, .04), 0 12px 32px rgba(26, 26, 46, .08);
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.co-booking__back {
+	color: #6366F1;
+	font-weight: 600;
+}
+.co-booking__back:hover {
+	text-decoration: underline;
+}
+
+/* Calendar */
+.co-booking__cal-label {
+	font-weight: 800;
+	letter-spacing: -.01em;
+	color: #1A1A2E;
+}
+.co-booking__cal-nav-btn {
+	border-radius: 10px;
+	border-color: #E2E8F0;
+	color: #1A1A2E;
+	transition: border-color .15s, color .15s, background .15s;
+}
+.co-booking__cal-nav-btn:hover:not(:disabled) {
+	background: #EEF2FF;
+	border-color: #6366F1;
+	color: #6366F1;
+}
+.co-booking__cal-weekday {
+	color: #94A3B8;
+	font-weight: 700;
+}
+.co-booking__cal-day {
+	border-radius: 10px;
+	border-color: #E2E8F0;
+	font-weight: 600;
+	color: #1A1A2E;
+	transition: border-color .15s, background .15s, color .15s, transform .1s;
+}
+.co-booking__cal-day:hover:not(:disabled) {
+	background: #EEF2FF;
+	border-color: #6366F1;
+	color: #6366F1;
+	transform: translateY(-1px);
+}
+.co-booking__cal-day--today {
+	background: #EEF2FF;
+	border-color: #6366F1;
+	color: #6366F1;
+}
+.co-booking__cal-day--disabled {
+	color: #CBD5E1;
+}
+
+/* Time slots */
+.co-booking__slot-btn {
+	border-radius: 10px;
+	border-color: #E2E8F0;
+	font-weight: 600;
+	color: #1A1A2E;
+	transition: border-color .15s, background .15s, color .15s, transform .1s;
+}
+.co-booking__slot-btn:hover {
+	background: #EEF2FF;
+	border-color: #6366F1;
+	color: #6366F1;
+	transform: translateY(-1px);
+}
+
+.co-booking__selected-slot {
+	color: #1A1A2E;
+	font-weight: 700;
+}
+
+/* Details form */
+.co-booking__row label {
+	color: #374151;
+	font-weight: 600;
+}
+.co-booking__row input,
+.co-booking__row textarea {
+	border-radius: 10px;
+	border-color: #E2E8F0;
+	transition: border-color .15s, box-shadow .15s;
+}
+.co-booking__row input:focus,
+.co-booking__row textarea:focus {
+	border-color: #6366F1;
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, .15);
+}
+
+.co-booking__submit {
+	border-radius: 10px;
+	background: #6366F1;
+	font-weight: 700;
+	letter-spacing: -.01em;
+	box-shadow: 0 1px 2px rgba(99, 102, 241, .2), 0 8px 20px rgba(99, 102, 241, .25);
+	transition: background .15s, transform .1s;
+}
+.co-booking__submit:hover:not(:disabled) {
+	background: #4F46E5;
+	transform: translateY(-1px);
+}
+
+.co-booking__message--error {
+	color: #DC2626;
+	font-weight: 600;
+}

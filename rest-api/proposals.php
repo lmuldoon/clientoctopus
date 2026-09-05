@@ -77,7 +77,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/create/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_create_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => clientoctopus_proposal_create_args(),
 	] );
 
@@ -113,7 +113,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => array_merge(
 			[ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 			clientoctopus_proposal_update_args()
@@ -124,7 +124,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/send/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_send_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [
 			'id'            => [ 'type' => 'integer', 'required' => true ],
 			'client_email'  => [
@@ -145,7 +145,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/update-wizard/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_update_wizard_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => array_merge(
 			[ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 			clientoctopus_proposal_create_args()
@@ -156,7 +156,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/duplicate/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_duplicate_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -164,7 +164,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_delete_proposal',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -172,7 +172,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token/', [
 		'methods'             => WP_REST_Server::CREATABLE,
 		'callback'            => 'clientoctopus_rest_generate_preview_token',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 
@@ -180,7 +180,7 @@ add_action( 'rest_api_init', static function (): void {
 	register_rest_route( $ns, '/proposals/(?P<id>\d+)/preview-token/', [
 		'methods'             => WP_REST_Server::DELETABLE,
 		'callback'            => 'clientoctopus_rest_revoke_preview_token',
-		'permission_callback' => 'clientoctopus_rest_require_manage',
+		'permission_callback' => 'clientoctopus_rest_require_edit',
 		'args'                => [ 'id' => [ 'type' => 'integer', 'required' => true ] ],
 	] );
 } );

@@ -1,0 +1,89 @@
+/**
+ * Lead capture form — public embed styles.
+ *
+ * Scoped under .co-lead-form so it never leaks into the host theme, and
+ * deliberately minimal/theme-agnostic since this renders on arbitrary
+ * third-party pages, not a controlled plugin surface.
+ */
+.co-lead-form {
+	max-width: 480px;
+	font-family: inherit;
+}
+.co-lead-form__row {
+	margin-bottom: 16px;
+}
+.co-lead-form__label {
+	display: block;
+	font-size: 14px;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+.co-lead-form__input,
+.co-lead-form__textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 10px 12px;
+	font-size: 15px;
+	font-family: inherit;
+	border: 1px solid #D1D5DB;
+	border-radius: 8px;
+	background: #fff;
+	color: #111827;
+}
+.co-lead-form__textarea {
+	resize: vertical;
+}
+.co-lead-form__input:focus,
+.co-lead-form__textarea:focus {
+	outline: none;
+	border-color: #6366F1;
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, .15);
+}
+.co-lead-form__row--checkbox {
+	display: flex;
+}
+.co-lead-form__checkbox-label {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	font-size: 13px;
+	color: #4B5563;
+	line-height: 1.5;
+}
+.co-lead-form__checkbox-label input {
+	margin-top: 3px;
+}
+.co-lead-form__honeypot {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+.co-lead-form__submit {
+	padding: 11px 24px;
+	font-size: 15px;
+	font-weight: 700;
+	color: #fff;
+	background: #6366F1;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+}
+.co-lead-form__submit:hover:not(:disabled) {
+	background: #4F46E5;
+}
+.co-lead-form__submit:disabled {
+	opacity: .6;
+	cursor: not-allowed;
+}
+.co-lead-form__message {
+	margin-top: 12px;
+	font-size: 14px;
+}
+.co-lead-form__message--success {
+	color: #059669;
+}
+.co-lead-form__message--error {
+	color: #DC2626;
+}

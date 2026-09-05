@@ -6,7 +6,7 @@
  *   — Requires plugin-admin capability (clientoctopus_rest_require_manage)
  *   — Pro/Agency only (free users receive 403 upgrade_required)
  *   — Accepts: range (week|month|year|custom), from, to, export (csv)
- *   — Returns: { kpis, chart, performance, feed }
+ *   — Returns: { kpis, chart, performance, feed, leads }
  *
  * @package ClientOctopus\Analytics
  * @since   0.1.0
@@ -99,6 +99,7 @@ function clientoctopus_rest_analytics_overview( WP_REST_Request $request ): WP_R
 			'chart'       => ClientOctopus_Analytics::revenue_chart( $user_id, $from, $to, $granularity ),
 			'performance' => ClientOctopus_Analytics::proposal_performance( $user_id, $from, $to ),
 			'feed'        => ClientOctopus_Analytics::activity_feed( $user_id, 20 ),
+			'leads'       => ClientOctopus_Analytics::lead_funnel( $user_id, $from, $to ),
 		],
 		200
 	);

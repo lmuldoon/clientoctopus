@@ -2,10 +2,16 @@
 /**
  * Automated Email Reminders
  *
- * Manages the three built-in proposal follow-up triggers:
- *   - not_viewed    — proposal sent but not opened after N days
- *   - not_accepted  — proposal viewed but not accepted after N days
- *   - expiring_soon — proposal expiring within N days
+ * Manages the built-in follow-up triggers:
+ *   - not_viewed         — proposal sent but not opened after N days
+ *   - not_accepted       — proposal viewed but not accepted after N days
+ *   - expiring_soon      — proposal expiring within N days
+ *   - lead_not_contacted — captured lead still marked "new" after N days
+ *
+ * lead_not_contacted notifies the owner (not the lead — an anonymous public
+ * form submitter should never receive an internal nudge email), so it is
+ * handled by its own matching/send methods rather than forced through the
+ * proposal-shaped get_matching_proposals()/send_reminder() pair.
  *
  * Available on all plans (free, pro, agency). No plan checks here.
  *
@@ -38,6 +44,11 @@ class ClientOctopus_Automations {
 			'delay_days'    => 2,
 			'email_subject' => 'Your proposal is expiring soon',
 			'email_body'    => "Hi {client_name},\n\nThis is a friendly reminder that your proposal — {proposal_title} — is expiring in {delay_days} days.\n\nPlease review and accept before it expires to secure your spot.\n\n",
+		],
+		'lead_not_contacted' => [
+			'delay_days'    => 3,
+			'email_subject' => "Don't forget to follow up",
+			'email_body'    => "Hi,\n\nYou have a lead who hasn't been contacted yet — {lead_name} ({lead_email}) submitted an inquiry {delay_days} days ago and is still marked New.\n\nFollow up soon before they go cold.\n\n",
 		],
 	];
 
@@ -93,7 +104,7 @@ class ClientOctopus_Automations {
 		$table = $wpdb->prefix . 'clientoctopus_automations';
 		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$table} WHERE owner_id = %d ORDER BY FIELD(trigger_event, 'not_viewed', 'not_accepted', 'expiring_soon')",
+				"SELECT * FROM {$table} WHERE owner_id = %d ORDER BY FIELD(trigger_event, 'not_viewed', 'not_accepted', 'expiring_soon', 'lead_not_contacted')",
 				$owner_id
 			),
 			ARRAY_A
@@ -152,9 +163,10 @@ class ClientOctopus_Automations {
 	public static function run_daily(): void {
 		global $wpdb;
 
-		$auto_table = $wpdb->prefix . 'clientoctopus_automations';
-		$log_table  = $wpdb->prefix . 'clientoctopus_reminder_log';
-		$prop_table = $wpdb->prefix . 'clientoctopus_proposals';
+		$auto_table      = $wpdb->prefix . 'clientoctopus_automations';
+		$log_table       = $wpdb->prefix . 'clientoctopus_reminder_log';
+		$prop_table      = $wpdb->prefix . 'clientoctopus_proposals';
+		$lead_log_table  = $wpdb->prefix . 'clientoctopus_lead_reminder_log';
 
 		// Load all enabled automations grouped by owner.
 		$rows = $wpdb->get_results(
@@ -173,20 +185,24 @@ class ClientOctopus_Automations {
 		}
 
 		foreach ( $by_owner as $owner_id => $automations ) {
-			self::process_owner( $owner_id, $automations, $prop_table, $log_table );
+			self::process_owner( $owner_id, $automations, $prop_table, $log_table, $lead_log_table );
 		}
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────────
 
-	private static function process_owner( int $owner_id, array $automations, string $prop_table, string $log_table ): void {
-		global $wpdb;
-
+	private static function process_owner( int $owner_id, array $automations, string $prop_table, string $log_table, string $lead_log_table ): void {
 		$from_name  = get_option( 'clientoctopus_from_name', get_option( 'blogname', '' ) );
 		$from_email = get_option( 'clientoctopus_from_email', get_option( 'admin_email', '' ) );
 
 		foreach ( $automations as $auto ) {
-			$trigger     = $auto['trigger_event'];
+			$trigger = $auto['trigger_event'];
+
+			if ( 'lead_not_contacted' === $trigger ) {
+				self::process_lead_reminders( $owner_id, $auto, $lead_log_table, $from_name, $from_email );
+				continue;
+			}
+
 			$delay       = (int) $auto['delay_days'];
 			$subject_tpl = $auto['email_subject'];
 			$body_tpl    = $auto['email_body'];
@@ -195,6 +211,89 @@ class ClientOctopus_Automations {
 
 			foreach ( $proposals as $proposal ) {
 				self::send_reminder( $proposal, $trigger, $delay, $subject_tpl, $body_tpl, $from_name, $from_email, $log_table );
+			}
+		}
+	}
+
+	/**
+	 * Find leads still marked "new" after $delay days that haven't already
+	 * had a lead_not_contacted reminder logged.
+	 */
+	private static function get_matching_leads( int $owner_id, int $delay, string $lead_log_table ): array {
+		global $wpdb;
+
+		$lead_table = $wpdb->prefix . 'clientoctopus_leads';
+
+		$sql = $wpdb->prepare(
+			"SELECT l.* FROM {$lead_table} l
+			 LEFT JOIN {$lead_log_table} rl ON rl.lead_id = l.id AND rl.trigger_event = %s
+			 WHERE l.owner_id = %d
+			   AND l.status = 'new'
+			   AND l.created_at <= DATE_SUB( NOW(), INTERVAL %d DAY )
+			   AND rl.id IS NULL",
+			'lead_not_contacted',
+			$owner_id,
+			$delay
+		);
+
+		return $wpdb->get_results( $sql, ARRAY_A ) ?: [];
+	}
+
+	/**
+	 * Notify the owner (never the lead) about leads that have gone stale.
+	 */
+	private static function process_lead_reminders( int $owner_id, array $auto, string $lead_log_table, string $from_name, string $from_email ): void {
+		global $wpdb;
+
+		$delay = (int) $auto['delay_days'];
+		$leads = self::get_matching_leads( $owner_id, $delay, $lead_log_table );
+		if ( empty( $leads ) ) {
+			return;
+		}
+
+		$owner = get_userdata( $owner_id );
+		if ( ! $owner ) {
+			return;
+		}
+
+		$leads_url = admin_url( 'admin.php?page=clientoctopus-leads' );
+
+		foreach ( $leads as $lead ) {
+			$merge_data = [
+				'{lead_name}'  => $lead['name'] ?: __( '(no name provided)', 'clientoctopus' ),
+				'{lead_email}' => $lead['email'] ?: __( '(no email provided)', 'clientoctopus' ),
+				'{delay_days}' => (string) $delay,
+			];
+
+			$subject = self::resolve_merge_tags( $auto['email_subject'], $merge_data );
+			$body    = self::resolve_merge_tags( $auto['email_body'], $merge_data );
+
+			$sent = wp_mail(
+				$owner->user_email,
+				wp_strip_all_tags( $subject ),
+				clientoctopus_email_html( [
+					'subject'   => $subject,
+					'name'      => $owner->display_name,
+					'body'      => nl2br( esc_html( $body ) ),
+					'cta_label' => __( 'View Lead', 'clientoctopus' ),
+					'cta_url'   => $leads_url,
+				] ),
+				[
+					'Content-Type: text/html; charset=UTF-8',
+					'From: ' . $from_name . ' <' . $from_email . '>',
+				]
+			);
+
+			if ( $sent ) {
+				$wpdb->insert(
+					$lead_log_table,
+					[
+						'lead_id'       => (int) $lead['id'],
+						'trigger_event' => 'lead_not_contacted',
+						'sent_at'       => current_time( 'mysql' ),
+					],
+					[ '%d', '%s', '%s' ]
+				);
 			}
 		}
 	}

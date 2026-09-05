@@ -223,8 +223,8 @@ function clientoctopus_portal_verify( WP_REST_Request $request ): WP_REST_Respon
  * GET /portal/me
  */
 function clientoctopus_portal_me(): WP_REST_Response {
-	$email  = ClientOctopus_Portal_Auth::get_current_email();
-	$client = ClientOctopus_Portal_Data::get_client( $email );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$client    = ClientOctopus_Portal_Data::get_client( $client_id );
 
 	return new WP_REST_Response( $client, 200 );
 }
@@ -233,8 +233,8 @@ function clientoctopus_portal_me(): WP_REST_Response {
  * GET /portal/proposals
  */
 function clientoctopus_portal_proposals(): WP_REST_Response {
-	$email     = ClientOctopus_Portal_Auth::get_current_email();
-	$proposals = ClientOctopus_Portal_Data::get_proposals( $email );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$proposals = ClientOctopus_Portal_Data::get_proposals( $client_id );
 
 	return new WP_REST_Response( $proposals, 200 );
 }
@@ -243,22 +243,22 @@ function clientoctopus_portal_proposals(): WP_REST_Response {
  * GET /portal/payments
  */
 function clientoctopus_portal_payments(): WP_REST_Response {
-	$email    = ClientOctopus_Portal_Auth::get_current_email();
-	$payments = ClientOctopus_Portal_Data::get_payments( $email );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$payments  = ClientOctopus_Portal_Data::get_payments( $client_id );
 
 	return new WP_REST_Response( $payments, 200 );
 }
 
 function clientoctopus_portal_invoices(): WP_REST_Response {
-	$email    = ClientOctopus_Portal_Auth::get_current_email();
-	$invoices = ClientOctopus_Portal_Data::get_invoices( $email );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$invoices  = ClientOctopus_Portal_Data::get_invoices( $client_id );
 
 	return new WP_REST_Response( $invoices, 200 );
 }
 
 function clientoctopus_portal_invoice_payments(): WP_REST_Response {
-	$email    = ClientOctopus_Portal_Auth::get_current_email();
-	$payments = ClientOctopus_Portal_Data::get_invoice_payments( $email );
+	$client_id = ClientOctopus_Portal_Auth::get_current_client_id();
+	$payments  = ClientOctopus_Portal_Data::get_invoice_payments( $client_id );
 
 	return new WP_REST_Response( $payments, 200 );
 }
@@ -385,8 +385,8 @@ function clientoctopus_portal_password_login( WP_REST_Request $request ): WP_RES
 function clientoctopus_portal_get_receipt( WP_REST_Request $request ): WP_REST_Response {
 	global $wpdb;
 
-	$payment_id   = (int) $request->get_param( 'id' );
-	$client_email = ClientOctopus_Portal_Auth::get_current_email();
+	$payment_id = (int) $request->get_param( 'id' );
+	$client_id  = ClientOctopus_Portal_Auth::get_current_client_id();
 
 	$pm = $wpdb->prefix . 'clientoctopus_payments';
 	$pt = $wpdb->prefix . 'clientoctopus_proposals';
@@ -402,10 +402,10 @@ function clientoctopus_portal_get_receipt( WP_REST_Request $request ): WP_REST_R
 			 JOIN   {$pt} AS pr ON pr.id = pay.proposal_id
 			 JOIN   {$ct} AS c  ON c.id  = pr.client_id
 			 WHERE  pay.id = %d
-			   AND  c.email = %s
+			   AND  pr.client_id = %d
 			   AND  pay.status = 'completed'",
 			$payment_id,
-			$client_email
+			$client_id
 		),
 		ARRAY_A
 	);

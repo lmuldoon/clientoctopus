@@ -20,7 +20,7 @@ $clientoctopus_portal_page = get_query_var( 'clientoctopus_portal_page', 'login'
 // Client data for authenticated pages.
 $clientoctopus_client_data = null;
 if ( ClientOctopus_Portal_Auth::is_authenticated() ) {
-	$clientoctopus_client_data = ClientOctopus_Portal_Data::get_client( ClientOctopus_Portal_Auth::get_current_email() );
+	$clientoctopus_client_data = ClientOctopus_Portal_Data::get_client( ClientOctopus_Portal_Auth::get_current_client_id() );
 }
 
 // Business identity.

@@ -114,9 +114,9 @@ add_action( 'rest_api_init', static function (): void {
 /**
  * Require an authenticated WordPress user.
  *
- * @return true|WP_Error
+ * @return bool|WP_Error
  */
-function clientoctopus_rest_require_auth(): true|WP_Error {
+function clientoctopus_rest_require_auth(): bool|WP_Error {
 	if ( ! is_user_logged_in() ) {
 		return new WP_Error(
 			'rest_not_logged_in',
@@ -135,9 +135,9 @@ function clientoctopus_rest_require_auth(): true|WP_Error {
  * clients, team, files, and similar write/read routes that must not be
  * accessible to arbitrary WordPress subscribers.
  *
- * @return true|WP_Error
+ * @return bool|WP_Error
  */
-function clientoctopus_rest_require_manage(): true|WP_Error {
+function clientoctopus_rest_require_manage(): bool|WP_Error {
 	if ( ! is_user_logged_in() ) {
 		return new WP_Error(
 			'rest_not_logged_in',
@@ -158,17 +158,78 @@ function clientoctopus_rest_require_manage(): true|WP_Error {
 }
 
 /**
+ * Require login, manage_clientoctopus, AND at least the 'editor' team role.
+ *
+ * Used as permission_callback for write routes (create/update/delete/send/
+ * respond) on projects, milestones, files, messages, approvals, proposals,
+ * invoices, and clients — anything a 'viewer' team member should be able to
+ * see but not change. The account owner and 'admin'-role team members always
+ * pass this check; only 'viewer'-role members are newly blocked here.
+ *
+ * Read/list routes intentionally keep using clientoctopus_rest_require_manage()
+ * directly — viewers can see everything, they just can't modify it.
+ *
+ * @return bool|WP_Error
+ */
+function clientoctopus_rest_require_edit(): bool|WP_Error {
+	$base = clientoctopus_rest_require_manage();
+	if ( is_wp_error( $base ) ) {
+		return $base;
+	}
+
+	$role = clientoctopus_get_member_role( get_current_user_id() );
+	if ( 'viewer' === $role ) {
+		return new WP_Error(
+			'rest_forbidden',
+			__( 'Your team role only allows viewing, not editing.', 'clientoctopus' ),
+			[ 'status' => 403 ]
+		);
+	}
+
+	return true;
+}
+
+/**
+ * Require login, manage_clientoctopus, AND the 'admin' team role (or the
+ * account owner, who is never a team-member row at all).
+ *
+ * Used as permission_callback for routes that manage the team itself
+ * (invite/remove/change role) and for webhook configuration — both are
+ * sensitive enough that an 'editor' or 'viewer' member should not be able to
+ * reach them even though they can otherwise edit day-to-day records.
+ *
+ * @return bool|WP_Error
+ */
+function clientoctopus_rest_require_team_admin(): bool|WP_Error {
+	$base = clientoctopus_rest_require_manage();
+	if ( is_wp_error( $base ) ) {
+		return $base;
+	}
+
+	$role = clientoctopus_get_member_role( get_current_user_id() );
+	if ( 'owner' !== $role && 'admin' !== $role ) {
+		return new WP_Error(
+			'rest_forbidden',
+			__( 'Only the account owner or an admin-role team member can do this.', 'clientoctopus' ),
+			[ 'status' => 403 ]
+		);
+	}
+
+	return true;
+}
+
+/**
  * Require login and webhook management capability.
  *
  * Used as permission_callback for webhook write routes (POST, PATCH, DELETE, test).
- * Delegates to clientoctopus_rest_require_manage — the manage_clientoctopus
- * capability is already granted to the plugin owner and all team admin members,
- * so no additional owner-resolution is needed.
+ * Delegates to clientoctopus_rest_require_team_admin() — webhook configuration
+ * (in particular, the destination URL) is sensitive enough to restrict to the
+ * account owner and admin-role team members, same as team management itself.
  *
- * @return true|WP_Error
+ * @return bool|WP_Error
  */
-function clientoctopus_rest_require_webhook_manage(): true|WP_Error {
-	return clientoctopus_rest_require_manage();
+function clientoctopus_rest_require_webhook_manage(): bool|WP_Error {
+	return clientoctopus_rest_require_team_admin();
 }
 
 /**

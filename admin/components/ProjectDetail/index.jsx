@@ -826,6 +826,33 @@ export default function ProjectDetail( { projectId, onBack } ) {
 
 	async function handleStatusChange( e ) {
 		const status = e.target.value;
+
+		// Completing a project has no effect on any recurring billing tied to
+		// the same client — a retainer would otherwise keep silently
+		// invoicing against a project that now shows as done. Confirmed
+		// BEFORE submitting anything (project.active_recurring_profiles is
+		// already loaded from the initial project fetch): Cancel here means
+		// cancel, full stop — nothing is submitted, the dropdown reverts.
+		if ( status === 'completed' ) {
+			const activeProfiles = project.active_recurring_profiles || [];
+			if ( activeProfiles.length ) {
+				const names = activeProfiles.map( ( p ) => p.title ).join( ', ' );
+				const confirmed = window.confirm(
+					`This client has ${ activeProfiles.length === 1 ? 'an active recurring billing profile' : 'active recurring billing profiles' } (${ names }) which will keep generating invoices. Mark this project complete and pause ${ activeProfiles.length === 1 ? 'it' : 'them' } too?`
+				);
+				if ( ! confirmed ) return;
+
+				for ( const profile of activeProfiles ) {
+					try {
+						await coFetch( `recurring-profiles/${ profile.id }/pause/`, { method: 'POST', body: '{}' } );
+					} catch ( pauseErr ) {
+						window.alert( pauseErr?.message || `Could not pause "${ profile.title }".` );
+						return; // Don't complete the project if pausing the profile it depends on failed.
+					}
+				}
+			}
+		}
+
 		try {
 			const data = await coFetch( `projects/${ projectId }/update/`, {
 				method: 'POST',

@@ -245,9 +245,9 @@ class ClientOctopus_Proposal_Handlers {
 	 * @param string $client_email  Override email (falls back to stored client email).
 	 * @param string $email_subject Custom subject line (falls back to auto-generated).
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function send_to_client( int $proposal_id, int $owner_id, string $client_email = '', string $email_subject = '' ): true|WP_Error {
+	public static function send_to_client( int $proposal_id, int $owner_id, string $client_email = '', string $email_subject = '' ): bool|WP_Error {
 		global $wpdb;
 
 		$result = ClientOctopus_Proposal::send( $proposal_id, $owner_id, $client_email );

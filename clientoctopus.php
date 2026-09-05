@@ -3,7 +3,7 @@
  * Plugin Name: Client Octopus
  * Plugin URI:  https://clientoctopus.com
  * Description: All-in-one client workflow management for WordPress — proposals, invoices, payments, projects, and client portals.
- * Version:     1.2.0
+ * Version:     1.3.1
  * Author:      codievolt
  * Author URI:  https://codievolt.com
  * License:     GPL-2.0-or-later
@@ -12,6 +12,8 @@
  * Domain Path: /languages
  * Requires at least: 6.0
  * Requires PHP: 8.0
+ *
+ * @fs_premium_only /modules/ai/, /modules/payments/, /modules/webhooks/, /modules/portal/, /modules/projects/, /modules/messaging/, /modules/files/, /modules/team/, /modules/analytics/, /modules/booking/, /modules/calendar-sync/, /portal/, /rest-api/ai.php, /rest-api/payments.php, /rest-api/webhooks.php, /rest-api/portal.php, /rest-api/projects.php, /rest-api/messages.php, /rest-api/files.php, /rest-api/team.php, /rest-api/approvals.php, /rest-api/analytics.php, /rest-api/booking.php, /admin/views/analytics.php, /admin/views/bookings.php, /admin/components/AnalyticsApp/, /admin/components/ProjectsApp/, /admin/components/ProjectDetail/, /admin/components/ProjectApprovals/, /admin/components/ProjectFiles/, /admin/components/ProjectMessages/, /admin/components/TeamApp/, /admin/components/WebhooksApp/, /admin/components/BookingsApp/, /admin/views/projects.php, /admin/views/team.php, /admin/views/webhooks.php, /admin/projects.jsx, /admin/analytics.jsx, /admin/team.jsx, /admin/webhooks.jsx, /admin/booking.jsx, /build/projects.js, /build/projects.asset.php, /build/team.js, /build/team.asset.php, /build/webhooks.js, /build/webhooks.asset.php, /build/analytics.js, /build/analytics.asset.php, /build/portal.js, /build/portal.asset.php, /build/booking.js, /build/booking.asset.php, /assets/js/booking-widget.js, /assets/css/booking.css, /assets/css/booking-theme.css
  *
  * @package ClientOctopus
  */
@@ -85,7 +87,7 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 			ClientOctopus_Entitlements::set_user_plan( $owner_id, $plan );
 		}
 		if ( $license && ! empty( $license->secret_key ) ) {
-			clientoctopus_push_license_to_relay( $license->secret_key, $plan );
+			clientoctopus_push_license_to_relay( $license->secret_key, $plan, (int) $license->id );
 		}
 	} );
 
@@ -106,6 +108,14 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 	}, 10, 2 );
 
 	clientoctopus_fs()->add_action( 'after_uninstall', static function (): void {
+		// Off by default (Settings → Danger Zone) — deleting the plugin should
+		// only remove code, not data, since "Delete" is also how a user might
+		// (incorrectly, but commonly) start a free→paid upgrade. Data is only
+		// wiped here if the site owner explicitly opted in.
+		if ( ! get_option( 'clientoctopus_delete_data_on_uninstall' ) ) {
+			return;
+		}
+
 		global $wpdb;
 
 		// ── Custom tables ─────────────────────────────────────────────────────
@@ -128,6 +138,10 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 			'clientoctopus_reminder_log',
 			'clientoctopus_invoices',
 			'clientoctopus_recurring_profiles',
+			'clientoctopus_leads',
+			'clientoctopus_lead_reminder_log',
+			'clientoctopus_bookings',
+			'clientoctopus_booking_blocks',
 		];
 		foreach ( $tables as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall hook: drops plugin-owned tables only; table names are hardcoded, not user input.
@@ -170,7 +184,7 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
 		// Push key to relay once per day so the relay DB stays in sync
 		// even if the Freemius webhook never fired or the relay was redeployed.
 		if ( ! get_transient( 'clientoctopus_relay_sync' ) ) {
-			clientoctopus_push_license_to_relay( $license->secret_key, $plan_name );
+			clientoctopus_push_license_to_relay( $license->secret_key, $plan_name, (int) $license->id );
 			set_transient( 'clientoctopus_relay_sync', 1, DAY_IN_SECONDS );
 		}
 	} );
@@ -180,7 +194,7 @@ if ( ! function_exists( 'clientoctopus_fs' ) ) {
  * Register the current Freemius license with the relay server.
  * Fire-and-forget: failures are logged but never block the user.
  */
-function clientoctopus_push_license_to_relay( string $license_key, string $plan ): void {
+function clientoctopus_push_license_to_relay( string $license_key, string $plan, int $license_id ): void {
 	$relay_url = untrailingslashit( CLIENTOCTOPUS_AI_RELAY_URL );
 
 	wp_remote_post(
@@ -191,6 +205,7 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 			'headers'  => [ 'Content-Type' => 'application/json' ],
 			'body'     => wp_json_encode( [
 				'license_key' => $license_key,
+				'license_id'  => $license_id,
 				'product_id'  => 29266,
 				'plan'        => in_array( $plan, [ 'pro', 'agency' ], true ) ? $plan : 'pro',
 				'user_email'  => wp_get_current_user()->user_email ?? '',
@@ -203,8 +218,8 @@ function clientoctopus_push_license_to_relay( string $license_key, string $plan 
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'CLIENTOCTOPUS_VERSION',        '1.2.0' );
-define( 'CLIENTOCTOPUS_DB_VERSION',     '30' );
+define( 'CLIENTOCTOPUS_VERSION',        '1.3.0' );
+define( 'CLIENTOCTOPUS_DB_VERSION',     '34' );
 define( 'CLIENTOCTOPUS_REWRITE_VERSION', '4' );
 define( 'CLIENTOCTOPUS_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'CLIENTOCTOPUS_URL',        plugin_dir_url( __FILE__ ) );
@@ -325,6 +340,30 @@ function clientoctopus_get_owner_id( int $user_id ): int {
 	) );
 	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	return $owner ? (int) $owner : $user_id;
+}
+
+/**
+ * Return the given user's team role: 'owner' if they're not a team member
+ * row at all (the account owner themself), otherwise the stored
+ * 'admin' | 'editor' | 'viewer' role from clientoctopus_team_members.
+ *
+ * 'owner' is always treated as at least as privileged as 'admin' by callers
+ * — the account owner's own access must never be affected by this check,
+ * since they aren't a team member and role enforcement only exists to
+ * differentiate INVITED members from each other and from the owner.
+ *
+ * @param int $user_id WordPress user ID (typically get_current_user_id()).
+ * @return string 'owner' | 'admin' | 'editor' | 'viewer'
+ */
+function clientoctopus_get_member_role( int $user_id ): string {
+	global $wpdb;
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$role = $wpdb->get_var( $wpdb->prepare(
+		"SELECT role FROM {$wpdb->prefix}clientoctopus_team_members WHERE member_user_id = %d LIMIT 1",
+		$user_id
+	) );
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	return $role ?: 'owner';
 }
 
 /**
@@ -528,19 +567,22 @@ echo $business_name;
 }
 
 /**
- * Simple transient-based rate limiter for REST endpoints.
+ * Simple transient-based rate limiter, keyed by an arbitrary string — the
+ * shared implementation behind clientoctopus_rest_rate_limit() (WP user ID)
+ * and any caller needing to key by something else instead, e.g. a public
+ * proposal token, for endpoints that have no WordPress user at all.
  *
  * Returns true if the request is allowed, false if the caller has exceeded
  * $limit actions within the current $window-second period.
  *
- * @param string $action  Unique action slug (e.g. 'send_proposal').
- * @param int    $user_id WordPress user ID.
- * @param int    $limit   Maximum allowed calls per window.
- * @param int    $window  Window length in seconds (default 60).
+ * @param string $action    Unique action slug (e.g. 'send_proposal').
+ * @param string $key_value Whatever identifies "the same caller" for this action.
+ * @param int    $limit     Maximum allowed calls per window.
+ * @param int    $window    Window length in seconds (default 60).
  * @return bool True = allowed, false = rate limited.
  */
-function clientoctopus_rest_rate_limit( string $action, int $user_id, int $limit = 60, int $window = 60 ): bool {
-	$key   = 'clientoctopus_rl_' . md5( $action . '_' . $user_id );
+function clientoctopus_rest_rate_limit_by_key( string $action, string $key_value, int $limit = 60, int $window = 60 ): bool {
+	$key   = 'clientoctopus_rl_' . md5( $action . '_' . $key_value );
 	$count = (int) get_transient( $key );
 	if ( $count >= $limit ) {
 		return false;
@@ -551,6 +593,57 @@ function clientoctopus_rest_rate_limit( string $action, int $user_id, int $limit
 		set_transient( $key, $count + 1, $window );
 	}
 	return true;
+}
+
+/**
+ * Simple transient-based rate limiter for REST endpoints, keyed by WP user ID.
+ *
+ * @param string $action  Unique action slug (e.g. 'send_proposal').
+ * @param int    $user_id WordPress user ID.
+ * @param int    $limit   Maximum allowed calls per window.
+ * @param int    $window  Window length in seconds (default 60).
+ * @return bool True = allowed, false = rate limited.
+ */
+function clientoctopus_rest_rate_limit( string $action, int $user_id, int $limit = 60, int $window = 60 ): bool {
+	return clientoctopus_rest_rate_limit_by_key( $action, (string) $user_id, $limit, $window );
+}
+
+/**
+ * Best-effort visitor IP address, preferring a CDN/proxy-supplied header over
+ * REMOTE_ADDR when present. Every other IP-keyed rate limit in this plugin
+ * (portal login/magic-link) only reads REMOTE_ADDR directly, which is fine
+ * behind those specific auth flows but under-collects for a public marketing
+ * page embed (the lead-capture shortcode), which is far more likely to sit
+ * behind a CDN — falls back to REMOTE_ADDR when no proxy header is present.
+ *
+ * @return string
+ */
+/**
+ * Resolve the "client IP" used to key public rate limits (booking, lead
+ * capture). Defaults to REMOTE_ADDR — the address the webserver itself
+ * recorded for the TCP connection, which a client cannot forge — rather than
+ * X-Forwarded-For, which is an ordinary request header any visitor can set
+ * to an arbitrary value, making header-based rate limiting fully bypassable
+ * by sending a fresh fake value on every request.
+ *
+ * Sites genuinely running behind a trusted reverse proxy or CDN (where
+ * REMOTE_ADDR is the proxy's own address for every visitor, not the real
+ * client) can opt back into header-based resolution via this filter — that
+ * decision belongs to whoever controls the server's proxy configuration, not
+ * to a default that trusts client-supplied input unconditionally.
+ *
+ * @return string
+ */
+function clientoctopus_get_client_ip(): string {
+	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized immediately via sanitize_text_field.
+	$ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' ) );
+
+	/**
+	 * Filters the resolved client IP for rate-limiting purposes.
+	 *
+	 * @param string $ip REMOTE_ADDR by default.
+	 */
+	return (string) apply_filters( 'clientoctopus_client_ip', $ip );
 }
 
 function clientoctopus_output_template_favicon(): void {
@@ -688,17 +781,6 @@ final class ClientOctopus {
 					clientoctopus_create_tables();
 					update_option( 'clientoctopus_db_version', CLIENTOCTOPUS_DB_VERSION );
 				}
-
-				// DB version 30: the daily crons switched from an arbitrary
-				// wp_schedule_event( time(), ... ) anchor to a predictable 9am-local
-				// one (see clientoctopus_next_daily_anchor()). Clear the old
-				// schedules so they get picked back up with the new anchor by the
-				// existing `init`-hooked reschedule checks below, which run earlier
-				// in the request than this admin_init callback — so the fresh 9am
-				// schedule takes effect starting the very next admin page load.
-				wp_clear_scheduled_hook( 'clientoctopus_daily_automations' );
-				wp_clear_scheduled_hook( 'clientoctopus_process_recurring_profiles' );
-				wp_clear_scheduled_hook( 'clientoctopus_retry_failed_recurring_charges' );
 			}
 		} );
 
@@ -718,8 +800,9 @@ final class ClientOctopus {
 		// never be registered.
 		$this->load_rest_files();
 
-		//@fs_premium_only
-		if ( clientoctopus_fs()->is_premium() ) {
+		// This "if" block is auto-removed from the free WP.org build by
+		// Freemius's deployment processor.
+		if ( clientoctopus_fs()->is__premium_only() ) {
 			// Load webhook dispatcher.
 			$dispatcher = CLIENTOCTOPUS_DIR . 'modules/webhooks/dispatcher.php';
 			if ( file_exists( $dispatcher ) ) {
@@ -731,8 +814,27 @@ final class ClientOctopus {
 			if ( file_exists( $portal_routing ) ) {
 				require_once $portal_routing;
 			}
+
+			// Load call booking email/reminder handlers and the
+			// [clientoctopus_booking_form] shortcode.
+			$booking_handlers = CLIENTOCTOPUS_DIR . 'modules/booking/handlers.php';
+			if ( file_exists( $booking_handlers ) ) {
+				require_once $booking_handlers;
+			}
+			$booking_shortcode = CLIENTOCTOPUS_DIR . 'modules/booking/shortcode.php';
+			if ( file_exists( $booking_shortcode ) ) {
+				require_once $booking_shortcode;
+			}
+
+			// Load calendar sync (busy-time import + booking write-back for
+			// Google/Microsoft/Apple) — depends on modules/booking/handlers.php
+			// already being loaded above for clientoctopus_generate_ics() and
+			// clientoctopus_booking_settings().
+			$calendar_sync_handlers = CLIENTOCTOPUS_DIR . 'modules/calendar-sync/handlers.php';
+			if ( file_exists( $calendar_sync_handlers ) ) {
+				require_once $calendar_sync_handlers;
+			}
 		}
-		//@end:fs_premium_only
 
 		// Load client-facing proposal routing (rewrite rules + template_redirect).
 		// Available on all plans — clients can view and sign proposals on free tier.
@@ -750,6 +852,36 @@ final class ClientOctopus {
 		$invoice_handlers = CLIENTOCTOPUS_DIR . 'modules/invoices/handlers.php';
 		if ( file_exists( $invoice_handlers ) ) {
 			require_once $invoice_handlers;
+		}
+
+		// Load lead capture email + webhook handlers — fires on clientoctopus_lead_captured.
+		$lead_handlers = CLIENTOCTOPUS_DIR . 'modules/leads/handlers.php';
+		if ( file_exists( $lead_handlers ) ) {
+			require_once $lead_handlers;
+		}
+
+		// Load the [clientoctopus_lead_form] shortcode — available on all plans.
+		$lead_shortcode = CLIENTOCTOPUS_DIR . 'modules/leads/shortcode.php';
+		if ( file_exists( $lead_shortcode ) ) {
+			require_once $lead_shortcode;
+		}
+
+		// Load lead auto-archive — hooks the existing daily automations cron.
+		$lead_archive = CLIENTOCTOPUS_DIR . 'modules/leads/archive.php';
+		if ( file_exists( $lead_archive ) ) {
+			require_once $lead_archive;
+		}
+
+		// Load lead GDPR export/erase support.
+		$lead_privacy = CLIENTOCTOPUS_DIR . 'modules/leads/privacy.php';
+		if ( file_exists( $lead_privacy ) ) {
+			require_once $lead_privacy;
+		}
+
+		// Load client GDPR export/erase support.
+		$client_privacy = CLIENTOCTOPUS_DIR . 'modules/clients/privacy.php';
+		if ( file_exists( $client_privacy ) ) {
+			require_once $client_privacy;
 		}
 
 		// No WP admin block needed — portal clients no longer have WordPress accounts.
@@ -963,7 +1095,9 @@ final class ClientOctopus {
 				return;
 			}
 			// Only send the invite email when the owner has portal access.
-			if ( ! clientoctopus_can_user( $owner_id, 'use_portal' ) ) {
+			// The class_exists() check is a defensive fallback for the free
+			// WP.org build, where modules/portal/ is physically absent.
+			if ( ! clientoctopus_can_user( $owner_id, 'use_portal' ) || ! class_exists( 'ClientOctopus_Portal_Auth' ) ) {
 				return;
 			}
 			$client_id = (int) $row['client_id'];
@@ -980,7 +1114,9 @@ final class ClientOctopus {
 		// and managed entirely by the portal — no WordPress profile_update hook needed.
 
 		// ── Outbound webhook dispatch ─────────────────────────────────────────
-		//@fs_premium_only
+		// This "if" block is auto-removed from the free WP.org build by
+		// Freemius's deployment processor.
+		if ( clientoctopus_fs()->is__premium_only() ) {
 		add_action( 'clientoctopus_proposal_sent', static function ( int $proposal_id, int $owner_id ): void {
 			if ( ! function_exists( 'clientoctopus_webhook_dispatch' ) ) return;
 			$proposal = ClientOctopus_Proposal::get( $proposal_id, $owner_id );
@@ -1129,7 +1265,7 @@ final class ClientOctopus {
 				'project_id' => $project_id,
 			] );
 		}, 99, 3 );
-		//@end:fs_premium_only
+		}
 
 		// Register custom cron intervals.
 		add_filter( 'cron_schedules', static function ( array $schedules ): array {
@@ -1222,7 +1358,27 @@ final class ClientOctopus {
 
 		add_action( 'init', static function (): void {
 			if ( ! wp_next_scheduled( 'clientoctopus_retry_failed_recurring_charges' ) ) {
-				wp_schedule_event( clientoctopus_next_daily_anchor( 9 ), 'daily', 'clientoctopus_retry_failed_recurring_charges' );
+				wp_schedule_event( time(), 'daily', 'clientoctopus_retry_failed_recurring_charges' );
+			}
+		} );
+
+		// Call booking reminders — reuses the clientoctopus_15min interval
+		// already registered above for the payment-sync cron; the actual
+		// handler is registered in modules/booking/handlers.php.
+		add_action( 'init', static function (): void {
+			if ( ! wp_next_scheduled( 'clientoctopus_send_booking_reminders' ) ) {
+				wp_schedule_event( time(), 'clientoctopus_15min', 'clientoctopus_send_booking_reminders' );
+			}
+		} );
+
+		// Calendar Sync busy-time polling — same clientoctopus_15min interval;
+		// the actual handler is registered in modules/calendar-sync/handlers.php.
+		// clientoctopus_15min is only a registered *recurrence schedule*, not a
+		// hook anything fires on its own — a distinct event hook (this one)
+		// must actually be scheduled against it, the same as the two crons above.
+		add_action( 'init', static function (): void {
+			if ( ! wp_next_scheduled( 'clientoctopus_calendar_sync_tick' ) ) {
+				wp_schedule_event( time(), 'clientoctopus_15min', 'clientoctopus_calendar_sync_tick' );
 			}
 		} );
 		//@end:fs_premium_only
@@ -1248,11 +1404,13 @@ final class ClientOctopus {
 			CLIENTOCTOPUS_DIR . 'rest-api/automations.php',
 			CLIENTOCTOPUS_DIR . 'rest-api/invoices.php',
 			CLIENTOCTOPUS_DIR . 'rest-api/recurring-profiles.php',
+			CLIENTOCTOPUS_DIR . 'rest-api/leads.php',
 		];
 
-		// Premium-only routes: only loaded for paying users.
-		//@fs_premium_only
-		if ( clientoctopus_fs()->is_premium() ) {
+		// Premium-only routes: only loaded for paying users. This "if" block
+		// is auto-removed from the free WP.org build by Freemius's deployment
+		// processor.
+		if ( clientoctopus_fs()->is__premium_only() ) {
 			$route_files = array_merge( $route_files, [
 				CLIENTOCTOPUS_DIR . 'rest-api/payments.php',
 				CLIENTOCTOPUS_DIR . 'rest-api/portal.php',
@@ -1264,9 +1422,9 @@ final class ClientOctopus {
 				CLIENTOCTOPUS_DIR . 'rest-api/analytics.php',
 				CLIENTOCTOPUS_DIR . 'rest-api/team.php',
 				CLIENTOCTOPUS_DIR . 'rest-api/webhooks.php',
+				CLIENTOCTOPUS_DIR . 'rest-api/booking.php',
 			] );
 		}
-		//@end:fs_premium_only
 
 		foreach ( $route_files as $file ) {
 			if ( file_exists( $file ) ) {
@@ -1305,6 +1463,34 @@ final class ClientOctopus {
 			[ $this, 'render_plan_overview' ]
 		);
 
+		// Menu order below follows the customer journey (Leads → Bookings →
+		// Proposals → Clients → Projects → Invoices) rather than build order,
+		// with less-frequent config/admin items (Analytics, Team, Webhooks,
+		// Settings) grouped at the end. Each premium-only item keeps its own
+		// individual is__premium_only() gate (rather than one shared block)
+		// since they're no longer contiguous in this order.
+
+		// Leads: available on all plans (free, pro, agency).
+		add_submenu_page(
+			'clientoctopus',
+			__( 'Leads', 'clientoctopus' ),
+			__( 'Leads', 'clientoctopus' ),
+			'manage_clientoctopus',
+			'clientoctopus-leads',
+			[ $this, 'render_leads' ]
+		);
+
+		if ( clientoctopus_fs()->is__premium_only() ) {
+			add_submenu_page(
+				'clientoctopus',
+				__( 'Bookings', 'clientoctopus' ),
+				__( 'Bookings', 'clientoctopus' ),
+				'manage_clientoctopus',
+				'clientoctopus-bookings',
+				[ $this, 'render_bookings__premium_only' ]
+			);
+		}
+
 		add_submenu_page(
 			'clientoctopus',
 			__( 'Proposals', 'clientoctopus' ),
@@ -1323,18 +1509,7 @@ final class ClientOctopus {
 			[ $this, 'render_clients' ]
 		);
 
-		// Invoices: available on all plans (free, pro, agency).
-		add_submenu_page(
-			'clientoctopus',
-			__( 'Invoices', 'clientoctopus' ),
-			__( 'Invoices', 'clientoctopus' ),
-			'manage_clientoctopus',
-			'clientoctopus-invoices',
-			[ $this, 'render_invoices' ]
-		);
-
-		//@fs_premium_only
-		if ( clientoctopus_fs()->is_premium() ) {
+		if ( clientoctopus_fs()->is__premium_only() ) {
 			// Build Projects menu title with unread message badge if applicable.
 			$projects_menu_title = __( 'Projects', 'clientoctopus' );
 			$msg_class_file      = CLIENTOCTOPUS_DIR . 'modules/messaging/class-message.php';
@@ -1357,16 +1532,28 @@ final class ClientOctopus {
 				$projects_menu_title,
 				'manage_clientoctopus',
 				'clientoctopus-projects',
-				[ $this, 'render_projects' ]
+				[ $this, 'render_projects__premium_only' ]
 			);
+		}
 
+		// Invoices: available on all plans (free, pro, agency).
+		add_submenu_page(
+			'clientoctopus',
+			__( 'Invoices', 'clientoctopus' ),
+			__( 'Invoices', 'clientoctopus' ),
+			'manage_clientoctopus',
+			'clientoctopus-invoices',
+			[ $this, 'render_invoices' ]
+		);
+
+		if ( clientoctopus_fs()->is__premium_only() ) {
 			add_submenu_page(
 				'clientoctopus',
 				__( 'Analytics', 'clientoctopus' ),
 				__( 'Analytics', 'clientoctopus' ),
 				'manage_clientoctopus',
 				'clientoctopus-analytics',
-				[ $this, 'render_analytics' ]
+				[ $this, 'render_analytics__premium_only' ]
 			);
 
 			add_submenu_page(
@@ -1375,7 +1562,7 @@ final class ClientOctopus {
 				__( 'Team', 'clientoctopus' ),
 				'manage_options',
 				'clientoctopus-team',
-				[ $this, 'render_team' ]
+				[ $this, 'render_team__premium_only' ]
 			);
 
 			add_submenu_page(
@@ -1384,10 +1571,9 @@ final class ClientOctopus {
 				__( 'Webhooks', 'clientoctopus' ),
 				'manage_clientoctopus',
 				'clientoctopus-webhooks',
-				[ $this, 'render_webhooks' ]
+				[ $this, 'render_webhooks__premium_only' ]
 			);
 		}
-		//@end:fs_premium_only
 
 		// Settings: owner-only — team members do not manage plugin settings.
 		add_submenu_page(
@@ -1430,19 +1616,24 @@ final class ClientOctopus {
 
 		$feature_access = [
 			'create_proposal' => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'create_proposal' ),
-			'use_payments'    => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_payments' ),
-			'use_portal'      => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_portal' ),
-			'use_projects'    => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_projects' ),
-			'use_messaging'   => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_messaging' ),
-			'use_files'       => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_files' ),
 			'team_access'     => ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'team_access' ),
 		];
 
-		//@fs_premium_only
-		$usage_data['ai_requests']    = ClientOctopus_Entitlements::get_monthly_usage( $user_id, 'use_ai' );
-		$usage_data['ai_limit']       = ClientOctopus_Entitlements::get_feature_limit( $user_id, 'use_ai' );
-		$feature_access['use_ai']     = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_ai' );
-		//@end:fs_premium_only
+		// This "if" block is auto-removed from the free WP.org build by
+		// Freemius's deployment processor, so these keys are simply absent
+		// from $feature_access there — admin/views/plan-overview.php's own
+		// `?? false` default then correctly renders them as locked.
+		if ( clientoctopus_fs()->is__premium_only() ) {
+			$feature_access['use_payments']  = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_payments' );
+			$feature_access['use_portal']    = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_portal' );
+			$feature_access['use_projects']  = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_projects' );
+			$feature_access['use_messaging'] = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_messaging' );
+			$feature_access['use_files']     = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_files' );
+
+			$usage_data['ai_requests']    = ClientOctopus_Entitlements::get_monthly_usage( $user_id, 'use_ai' );
+			$usage_data['ai_limit']       = ClientOctopus_Entitlements::get_feature_limit( $user_id, 'use_ai' );
+			$feature_access['use_ai']     = ClientOctopus_Entitlements::plan_includes_feature( $user_id, 'use_ai' );
+		}
 
 		require CLIENTOCTOPUS_DIR . 'admin/views/plan-overview.php';
 	}
@@ -1465,16 +1656,27 @@ final class ClientOctopus {
 	}
 
 	/**
-	 * Render the Projects admin page.
+	 * Render the Leads admin page.
 	 */
-	public function render_projects(): void {
+	public function render_leads(): void {
+		require CLIENTOCTOPUS_DIR . 'admin/views/leads.php';
+	}
+
+	/**
+	 * Render the Projects admin page. Name ends in __premium_only so this
+	 * method (and the admin/views/projects.php it requires) is auto-removed
+	 * from the free WP.org build by Freemius's deployment processor.
+	 */
+	public function render_projects__premium_only(): void {
 		require CLIENTOCTOPUS_DIR . 'admin/views/projects.php';
 	}
 
 	/**
-	 * Render the Analytics admin page.
+	 * Render the Analytics admin page. Name ends in __premium_only so this
+	 * method (and the admin/views/analytics.php it requires) is auto-removed
+	 * from the free WP.org build by Freemius's deployment processor.
 	 */
-	public function render_analytics(): void {
+	public function render_analytics__premium_only(): void {
 		require CLIENTOCTOPUS_DIR . 'admin/views/analytics.php';
 	}
 
@@ -1486,17 +1688,29 @@ final class ClientOctopus {
 	}
 
 	/**
-	 * Render the Team management page.
+	 * Render the Team management page. Name ends in __premium_only so this
+	 * method (and the admin/views/team.php it requires) is auto-removed from
+	 * the free WP.org build by Freemius's deployment processor.
 	 */
-	public function render_team(): void {
+	public function render_team__premium_only(): void {
 		require CLIENTOCTOPUS_DIR . 'admin/views/team.php';
 	}
 
 	/**
-	 * Render the Webhooks management page.
+	 * Render the Webhooks management page. Name ends in __premium_only so
+	 * this method (and the admin/views/webhooks.php it requires) is
+	 * auto-removed from the free WP.org build by Freemius's deployment
+	 * processor.
 	 */
-	public function render_webhooks(): void {
+	public function render_webhooks__premium_only(): void {
 		require CLIENTOCTOPUS_DIR . 'admin/views/webhooks.php';
+	}
+
+	/**
+	 * Render the Bookings admin page.
+	 */
+	public function render_bookings__premium_only(): void {
+		require CLIENTOCTOPUS_DIR . 'admin/views/bookings.php';
 	}
 
 	/**
@@ -1524,7 +1738,10 @@ final class ClientOctopus {
 		$admin_css = CLIENTOCTOPUS_URL . 'admin/css/';
 		$admin_js  = CLIENTOCTOPUS_URL . 'admin/js/';
 
-		// Self-hosted fonts — no Google Fonts CDN calls.
+		// Self-hosted fonts — no Google Fonts CDN calls. CLIENTOCTOPUS_URL resolves
+		// to plugin_dir_url(), so this is a same-origin asset; Plugin Check's
+		// Offloading sniff flags it on the "fonts" path alone, a false positive.
+		// phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent
 		wp_enqueue_style( 'co-admin-fonts', CLIENTOCTOPUS_URL . 'assets/fonts/admin-fonts.css', [], CLIENTOCTOPUS_VERSION );
 
 		// Shared spinner + React mount styles for all Client Octopus admin pages.
@@ -1605,6 +1822,19 @@ final class ClientOctopus {
 
 			wp_enqueue_script( 'co-analytics', $build_url . 'analytics.js', $asset['dependencies'], $asset['version'], true );
 			wp_localize_script( 'co-analytics', 'clientoctopusData', $runtime_data );
+
+		} elseif ( str_contains( $hook, 'clientoctopus-bookings' ) ) {
+			$asset_file = $build_dir . 'booking.asset.php';
+			$asset      = file_exists( $asset_file )
+				? require $asset_file
+				: [ 'dependencies' => [ 'wp-element', 'wp-i18n' ], 'version' => CLIENTOCTOPUS_VERSION ];
+
+			if ( file_exists( $build_dir . 'booking.css' ) ) {
+				wp_enqueue_style( 'co-booking-admin', $build_url . 'booking.css', [], $asset['version'] );
+			}
+
+			wp_enqueue_script( 'co-booking-admin', $build_url . 'booking.js', $asset['dependencies'], $asset['version'], true );
+			wp_localize_script( 'co-booking-admin', 'clientoctopusData', $runtime_data );
 		//@end:fs_premium_only
 
 		} elseif ( str_contains( $hook, 'clientoctopus-clients' ) ) {
@@ -1632,6 +1862,19 @@ final class ClientOctopus {
 
 			wp_enqueue_script( 'co-invoices', $build_url . 'invoices.js', $asset['dependencies'], $asset['version'], true );
 			wp_localize_script( 'co-invoices', 'clientoctopusData', $runtime_data );
+
+		} elseif ( str_contains( $hook, 'clientoctopus-leads' ) ) {
+			$asset_file = $build_dir . 'leads.asset.php';
+			$asset      = file_exists( $asset_file )
+				? require $asset_file
+				: [ 'dependencies' => [ 'wp-element', 'wp-i18n' ], 'version' => CLIENTOCTOPUS_VERSION ];
+
+			if ( file_exists( $build_dir . 'leads.css' ) ) {
+				wp_enqueue_style( 'co-leads', $build_url . 'leads.css', [], $asset['version'] );
+			}
+
+			wp_enqueue_script( 'co-leads', $build_url . 'leads.js', $asset['dependencies'], $asset['version'], true );
+			wp_localize_script( 'co-leads', 'clientoctopusData', $runtime_data );
 
 		} elseif ( str_contains( $hook, 'clientoctopus-setup' ) ) {
 			$asset_file = $build_dir . 'setup.asset.php';
@@ -1854,6 +2097,10 @@ add_action( 'admin_init', static function (): void {
 	if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
 		return;
 	}
+	// Required GDPR/privacy disclosure text — names external services (Freemius,
+	// Stripe, Cloudflare, clientoctopus.com) the plugin talks to. Not a resource
+	// load; Plugin Check's Offloading sniff false-positives on the domain mentions.
+	// phpcs:disable PluginCheck.CodeAnalysis.Offloading.OffloadedContent
 	wp_add_privacy_policy_content(
 		'Client Octopus',
 		wp_kses_post(
@@ -1864,14 +2111,19 @@ add_action( 'admin_init', static function (): void {
 				<li>Proposal content, status history, and timestamps</li>
 				<li>Payment records (amount, currency, date — no card data is stored by this plugin)</li>
 				<li>Client portal login tokens (temporary, expire after 24 hours)</li>
+				<li>Lead capture form submissions (name, email, and any other fields the site owner has enabled) submitted by visitors via the [clientoctopus_lead_form] shortcode, along with the submitter\'s IP address (used only for spam-prevention rate limiting)</li>
 			</ul>
 			<h2>External services</h2>
 			<p>When the AI writing assistant is used (Pro/Agency plans only), the text prompt and your licence key are sent to the Client Octopus relay server for processing. No site URL or admin email is transmitted to the AI relay.</p>
 			<p>A daily licence check transmits your licence key and account email address to clientoctopus.com to verify plan status.</p>
 			<p>Licence management is handled by Freemius. When a licence is activated, your site URL, plugin version, and licence key are sent to Freemius. See <a href="https://freemius.com/privacy/">Freemius Privacy Policy</a>.</p>
-			<p>Payment processing is handled by Stripe. No card details pass through or are stored by this plugin. See <a href="https://stripe.com/privacy">Stripe Privacy Policy</a>.</p>'
+			<p>Payment processing is handled by Stripe. No card details pass through or are stored by this plugin. See <a href="https://stripe.com/privacy">Stripe Privacy Policy</a>.</p>
+			<p>If Cloudflare Turnstile is enabled for the lead capture form, submitted form data is verified with Cloudflare before being saved. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a>.</p>
+			<p>Lead capture submissions can be exported or erased via Tools &rarr; Export Personal Data / Erase Personal Data, looked up by the email address the visitor submitted.</p>
+			<p>Client records can also be exported or erased via Tools &rarr; Export Personal Data / Erase Personal Data, looked up by the client\'s email address.</p>'
 		)
 	);
+	// phpcs:enable PluginCheck.CodeAnalysis.Offloading.OffloadedContent
 } );
 
 } // end Freemius free/paid guard
